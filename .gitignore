@@ -42,3 +42,6 @@ coverage.xml
 # Logs
 *.log
 logs/
+
+# Extras
+reference/
