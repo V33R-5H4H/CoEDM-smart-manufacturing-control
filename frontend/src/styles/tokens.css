@@ -1,0 +1,162 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
+/* ========================================
+   DESIGN TOKENS — CoEDM Industrial HMI
+   Derived from Stitch M3 palette
+   ======================================== */
+
+:root {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --radius-sm: 2px;
+  --radius: 2px;
+  --radius-lg: 4px;
+  --radius-xl: 8px;
+  --radius-2xl: 12px;
+  --radius-full: 9999px;
+
+  --transition-fast: 150ms ease-out;
+  --transition: 200ms ease-out;
+  --transition-slow: 300ms ease-out;
+
+  --z-sticky: 10;
+  --z-fixed: 100;
+  --z-modal: 1000;
+
+  --sidebar-width: 16rem;
+  --sidebar-collapsed: 4rem;
+  --header-height: 44px;
+}
+
+/* ========================================
+   DARK THEME — Stitch M3 Industrial
+   ======================================== */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Primary — Steel Blue */
+  --primary: #bcc7dd;
+  --primary-light: #d8e3fa;
+  --primary-dark: #4a5568;
+  --accent: #f9bc55;
+
+  /* Status */
+  --success: #79daa6;
+  --success-light: #95f6c0;
+  --warning: #f9bc55;
+  --error: #ffb4ab;
+  --info: #bcc7dd;
+
+  --status-ok: #79daa6;
+  --status-warn: #f9bc55;
+  --status-error: #ffb4ab;
+  --status-idle: #8f9097;
+  --status-active: #bcc7dd;
+
+  /* Surface system — Stitch M3 */
+  --bg-primary: #101319;
+  --bg-secondary: #191c22;
+  --bg-tertiary: #1d2026;
+  --bg-elevated: #272a30;
+  --bg-hover: #32353b;
+  --bg-pressed: #0b0e14;
+  --bg-800: #1d2026;
+  --bg-900: #0b0e14;
+  --bg-700: #272a30;
+
+  /* Text */
+  --text-primary: #e1e2ea;
+  --text-secondary: #c5c6cd;
+  --text-muted: #8f9097;
+  --text-disabled: #44474c;
+
+  /* Borders */
+  --border: #44474c;
+  --border-light: #32353b;
+  --border-lighter: #8f9097;
+  --border-dark: #191c22;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow: 0 2px 6px rgba(0,0,0,0.5);
+  --shadow-lg: 0 8px 16px rgba(0,0,0,0.6);
+  --shadow-xl: 0 16px 32px rgba(0,0,0,0.7);
+  --shadow-inset: inset 0 1px 3px rgba(0,0,0,0.6);
+  --shadow-elevated: 0 2px 8px rgba(0,0,0,0.5);
+
+  --focus-ring: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--primary);
+  --overlay: rgba(0,0,0,0.65);
+}
+
+/* ========================================
+   LIGHT THEME — Stitch M3 Industrial
+   ======================================== */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --primary: #545f72;
+  --primary-light: #4a5568;
+  --primary-dark: #263142;
+  --accent: #724d00;
+
+  --success: #017a4f;
+  --success-light: #79daa6;
+  --warning: #724d00;
+  --error: #93000a;
+  --info: #545f72;
+
+  --status-ok: #017a4f;
+  --status-warn: #724d00;
+  --status-error: #93000a;
+  --status-idle: #44474c;
+  --status-active: #545f72;
+
+  --bg-primary: #fafafc;
+  --bg-secondary: #f0f1f4;
+  --bg-tertiary: #e6e7eb;
+  --bg-elevated: #ffffff;
+  --bg-hover: #eaebed;
+  --bg-pressed: #dddee2;
+  --bg-800: #f0f1f4;
+  --bg-900: #ffffff;
+  --bg-700: #e6e7eb;
+
+  --text-primary: #1a1c20;
+  --text-secondary: #44474c;
+  --text-muted: #74777d;
+  --text-disabled: #c5c6cd;
+
+  --border: #c5c6cd;
+  --border-light: #dddee2;
+  --border-lighter: #eaebed;
+  --border-dark: #8f9097;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
+  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-lg: 0 4px 12px rgba(0,0,0,0.1);
+  --shadow-xl: 0 8px 24px rgba(0,0,0,0.12);
+  --shadow-inset: inset 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-elevated: var(--shadow);
+
+  --focus-ring: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--primary);
+  --overlay: rgba(26,28,32,0.45);
+}
+
+/* Material Symbols config */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+.material-symbols-outlined.fill {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}

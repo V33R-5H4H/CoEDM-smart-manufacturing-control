@@ -151,166 +151,79 @@ function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking
   if (!box) {
     return (
       <div style={{
-        width: '100%',
-        height: '100%',
         border: '1px dashed var(--border)',
         borderRadius: '4px',
-        background: 'var(--bg-tertiary)'
-      }} />
+        padding: '8px',
+        height: '80px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: 0.5
+      }}>
+        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>EMPTY</span>
+      </div>
     );
   }
 
   const CAPACITY = 6;
-  const fillRatio = Math.min((box.filled_count || 0) / CAPACITY, 1);
   const filledCount = box.filled_count || 0;
-  const isFull = filledCount === CAPACITY;
   const isEmpty = filledCount === 0;
-  const isBusy = active; // LED state from WebSocket (may be delayed visually)
-  const isBlinking = isSourceBlinking; // Frontend-only source departure visual
-
-  // Eligibility based on mode
-  const canStore = operationMode === 'store' && filledCount < CAPACITY;
-  const canRetrieve = operationMode === 'retrieve' && filledCount > 0;
-  const canInteract = canStore || canRetrieve;
-
-  // Color logic
-  const isLocked = (operationMode === 'store' && isFull) || (operationMode === 'retrieve' && isEmpty);
+  const isBlinking = isSourceBlinking;
 
   return (
-    <div
+    <button
       onClick={onClick}
       style={{
-        width: '100%',
-        height: '100%',
-        // Background: True white for cells, slight tint for selection
-        background: isSelected ? '#fafaff' : 'var(--bg-primary)',
-        // Border Strategy: dashed for empty (open slot), solid for filled (container tension)
-        border: isEmpty
-          ? '1.5px dashed var(--border)' // Empty = available slot
-          : isSelected
-            ? '2.5px solid #6366f1' // Selection = distinct indigo
-            : active
-              ? '2.5px solid var(--primary)' // Active = amber
-              : isBlinking
-                ? '2.5px solid var(--warning)' // Blinking = departure
-                : '2px solid var(--text-muted)', // Filled = heavier border
-        borderRadius: '6px',
-        position: 'relative',
-        overflow: 'hidden',
-        cursor: canInteract ? 'pointer' : 'default',
-        opacity: canInteract || isBusy || isBlinking ? 1 : 0.6,
-        transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
-        // Shadow: Stronger for selection, elevated for filled, minimal for empty
-        boxShadow: isSelected
-          ? '0 4px 16px rgba(99, 102, 241, 0.2), 0 2px 6px rgba(0,0,0,0.1)' // Detach from grid
-          : active
-            ? 'var(--shadow-lg), 0 0 0 1px var(--primary)'
-            : isBlinking
-              ? 'var(--shadow-lg), 0 0 8px var(--warning)'
-              : canInteract
-                ? 'var(--shadow)'
-                : 'var(--shadow-sm)',
-        animation: isBlinking ? 'sourceBlink 0.4s ease-in-out' : 'none'
-      }}
-      onMouseEnter={(e) => {
-        if (!isBlinking && !isSelected) {
-          e.currentTarget.style.transform = 'translateY(-1px)';
-          e.currentTarget.style.boxShadow = 'var(--shadow-elevated)';
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!isBlinking && !isSelected) {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = active
-            ? 'var(--shadow-lg), 0 0 0 1px var(--primary)'
-            : 'var(--shadow)';
-        }
-      }}
-    >
-
-      {/* Volume-style fill indicator - Stronger visual weight */}
-      {filledCount > 0 && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: `${fillRatio * 100}%`,
-            background: isLocked
-              ? 'rgba(5, 150, 105, 0.18)' // Increased opacity
-              : 'rgba(8, 145, 178, 0.18)',
-            borderTop: `2px solid ${isLocked ? 'rgba(5, 150, 105, 0.4)' : 'rgba(8, 145, 178, 0.4)'}`, // Stronger border
-            borderRadius: '0 0 4px 4px',
-            transition: 'height 0.3s ease, background 0.2s ease, border-color 0.2s ease',
-            zIndex: 1
-          }}
-        />
-      )}
-
-      {/* Active/Busy state overlay */}
-      {isBusy && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'rgba(249, 115, 22, 0.08)',
-            border: '2px solid var(--primary)',
-            borderRadius: '4px',
-            animation: 'pulse 1.5s ease-in-out infinite',
-            zIndex: 2
-          }}
-        />
-      )}
-
-      {/* Box label and count */}
-      <div style={{
-        position: 'relative',
-        zIndex: 3,
-        height: '100%',
+        background: 'var(--bg-hover)',
+        border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border)',
+        borderRadius: '4px',
+        padding: '8px',
+        height: '80px',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '0.25rem',
-        fontSize: '0.875rem',
-        fontWeight: 700,
+        justifyContent: 'space-between',
+        textAlign: 'left',
+        cursor: 'pointer',
+        position: 'relative',
+        transition: 'background 150ms',
+        boxShadow: isBlinking ? 'inset 0 0 20px rgba(121,218,166,0.15)' : 'none',
+        width: '100%'
+      }}
+      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-elevated)'}
+      onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+    >
+      <span style={{
+        fontFamily: 'var(--font-mono)',
+        fontSize: '14px',
         color: 'var(--text-primary)',
-        pointerEvents: 'none'
-      }}>
-        <div>{box.box_id}</div>
-        {filledCount > 0 && (
-          <div style={{
-            fontSize: '0.7rem',
-            fontWeight: 700, // Bolder for numeric contrast
-            color: 'var(--text-primary)', // Darker on filled cells
-            background: 'var(--bg-elevated)',
-            padding: '3px 8px',
-            borderRadius: '10px',
-            border: '1.5px solid var(--border)',
-            boxShadow: 'var(--shadow-sm)'
-          }}>
-            {filledCount}/{CAPACITY}
-          </div>
+      }}>BOX-{box.row_number}0{box.column_name === 'A' ? '1' : box.column_name === 'B' ? '2' : box.column_name === 'C' ? '3' : box.column_name === 'D' ? '4' : '5'}</span>
+      
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+        <div style={{
+          width: '8px',
+          height: '8px',
+          borderRadius: '50%',
+          background: rawLED ? 'var(--status-ok)' : (isEmpty ? 'var(--border)' : 'var(--accent)'),
+          boxShadow: rawLED ? '0 0 8px var(--status-ok)' : 'none',
+          animation: isBlinking ? 'pulse 1s infinite' : 'none'
+        }} />
+        {isBlinking && (
+          <span style={{ fontSize: '9px', color: 'var(--status-ok)', fontWeight: 700 }}>ACCESS</span>
         )}
       </div>
 
-      {/* LED indicator dot - Strong ON/OFF contrast for instant recognition */}
-      <div style={{
-        position: 'absolute',
-        top: '4px',
-        right: '4px',
-        width: '7px',
-        height: '7px',
-        borderRadius: '50%',
-        background: rawLED ? 'var(--primary)' : '#d4d4d8', // Very muted grey OFF
-        boxShadow: rawLED
-          ? '0 0 8px var(--primary), 0 0 3px var(--primary), inset 0 0 2px rgba(255,255,255,0.5)' // Internal halo
-          : 'inset 0 0 2px rgba(0,0,0,0.1)',
-        zIndex: 4,
-        transition: 'all 0.15s ease'
-      }} />
-    </div>
+      {filledCount > 0 && (
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          width: '100%',
+          height: '4px',
+          background: 'var(--status-ok)',
+          opacity: 0.3
+        }} />
+      )}
+    </button>
   );
 }
 
@@ -328,51 +241,7 @@ function RackView({
   selectedBoxId
 }) {
   const columns = ['A', 'B', 'C', 'D', 'E'];
-  const rows = [1, 2, 3, 4, 5, 6, 7];
-
-  // Grid Specs matching ShuttleRail.jsx
-  // const COL_WIDTH = 120; // Removed fixed width
-  const HEADER_COL = 60;
-  const GAP = 12;
-
-  const [colWidth, setColWidth] = useState(120);
-  const gridRef = useRef(null);
-
-  useEffect(() => {
-    if (!gridRef.current) return;
-
-    const updateWidth = () => {
-      if (gridRef.current) {
-        const containerWidth = gridRef.current.offsetWidth;
-        // Available width for 5 columns = Total - Header - (6 gaps: 1 before header? No, grid gap applies between tracks)
-        // Tracks: Header | Col A | Col B | ... | Col E
-        // Gaps: 1 | 2 | 3 | 4 | 5
-        // Wait, grid-template-columns: Header Gap ColA Gap ...
-        // Total Gaps = Number of tracks - 1 = 6 - 1 = 5 gaps.
-        // Wait, there is a gap between Header and Col A.
-        // And gap between A-B, B-C, C-D, D-E.
-        // Total 5 gaps?
-        // Header (1) + 5 Cols (5) = 6 Tracks.
-        // Gaps = 5.
-        // Also we have right padding/rail?
-        // Let's stick to standard math:
-        // Width = Header + 5*Col + 5*Gap.
-        // 5*Col = Width - Header - 5*Gap.
-
-        // Safety: ensure it doesn't get too small
-        const calculatedWidth = (containerWidth - HEADER_COL - (GAP * 5)) / 5;
-        setColWidth(Math.max(80, Math.floor(calculatedWidth)));
-      }
-    };
-
-    const observer = new ResizeObserver(updateWidth);
-    observer.observe(gridRef.current);
-
-    // Initial call
-    updateWidth();
-
-    return () => observer.disconnect();
-  }, []);
+  const rows = [7, 6, 5, 4, 3, 2, 1]; // Render from top to bottom (7 -> 1)
 
   // Create a map for quick lookup
   const boxMap = {};
@@ -382,446 +251,157 @@ function RackView({
 
   return (
     <div style={{
-      background: 'var(--bg-elevated)',
-      borderRadius: '8px',
+      background: 'var(--bg-tertiary)',
+      borderRadius: '4px',
       border: '1px solid var(--border)',
-      width: '100%',
-      // maxWidth: '960px', // Removed to allow full width
-      marginLeft: 'auto',
-      marginRight: 'auto',
-      overflow: 'hidden',
-      boxShadow: 'var(--shadow-lg)',
       display: 'flex',
       flexDirection: 'column',
-      height: '100%'
+      overflow: 'hidden',
+      height: '100%',
+      position: 'relative'
     }}>
-
-      {/* Rack Header - Segmented Control Mode Toggle */}
+      {/* Canvas Header */}
       <div style={{
-        flexShrink: 0,
-        padding: '12px 16px',
-        background: 'var(--bg-secondary)',
-        borderBottom: '1px solid var(--border)'
+        height: '32px',
+        borderBottom: '1px solid var(--border)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 16px',
+        background: 'var(--bg-elevated)',
+        flexShrink: 0
       }}>
-        {/* Segmented Control - Apple/Industrial Style */}
-        <div style={{
-          display: 'inline-flex',
-          background: 'var(--bg-tertiary)',
-          borderRadius: '8px',
-          padding: '3px',
-          gap: '2px',
-          border: '1px solid var(--border-light)'
-        }}>
-          <button
-            onClick={() => setOperationMode('store')}
-            style={{
-              height: '38px',
-              padding: '0 24px',
-              border: 'none',
-              borderRadius: '6px',
-              fontWeight: '600',
-              fontSize: '0.875rem',
-              letterSpacing: '0.02em',
-              color: operationMode === 'store' ? 'var(--text-primary)' : 'var(--text-secondary)',
-              background: operationMode === 'store'
-                ? 'var(--bg-elevated)'
-                : 'transparent',
-              cursor: 'pointer',
-              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-              textTransform: 'uppercase',
-              boxShadow: operationMode === 'store' ? 'var(--shadow-inset), var(--shadow-sm)' : 'none',
-              transform: operationMode === 'store' ? 'scale(0.98)' : 'scale(1)'
-            }}
-            onMouseEnter={(e) => {
-              if (operationMode !== 'store') {
-                e.currentTarget.style.background = 'var(--bg-hover)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (operationMode !== 'store') {
-                e.currentTarget.style.background = 'transparent';
-              }
-            }}
-          >
-            Store
-          </button>
-          <button
-            onClick={() => setOperationMode('retrieve')}
-            style={{
-              height: '38px',
-              padding: '0 24px',
-              border: 'none',
-              borderRadius: '6px',
-              fontWeight: '600',
-              fontSize: '0.875rem',
-              letterSpacing: '0.02em',
-              color: operationMode === 'retrieve' ? 'var(--text-primary)' : 'var(--text-secondary)',
-              background: operationMode === 'retrieve'
-                ? 'var(--bg-elevated)'
-                : 'transparent',
-              cursor: 'pointer',
-              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-              textTransform: 'uppercase',
-              boxShadow: operationMode === 'retrieve' ? 'var(--shadow-inset), var(--shadow-sm)' : 'none',
-              transform: operationMode === 'retrieve' ? 'scale(0.98)' : 'scale(1)'
-            }}
-            onMouseEnter={(e) => {
-              if (operationMode !== 'retrieve') {
-                e.currentTarget.style.background = 'var(--bg-hover)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (operationMode !== 'retrieve') {
-                e.currentTarget.style.background = 'transparent';
-              }
-            }}
-          >
-            Retrieve
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span className="material-symbols-outlined" style={{ fontSize: '16px', color: 'var(--text-muted)' }}>grid_view</span>
+          <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Primary Storage Matrix [Z-BAY 01]
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--bg-hover)', border: '1px solid var(--border)' }} />
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Occupied</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '2px', border: '1px dashed var(--border)' }} />
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Empty</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--status-ok)' }} />
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Shuttle</span>
+          </div>
         </div>
       </div>
 
-      {/* Rack Body - Grid and Shuttle (Darker canvas = Interactive Surface) */}
+      {/* Grid Container */}
       <div style={{
         flex: 1,
+        padding: '16px',
         overflow: 'auto',
-        padding: '1.5rem 1rem',
-        background: 'var(--bg-secondary)', // Visibly darker = "This is the interactive zone"
-        display: 'flex',
-        justifyContent: 'center'
+        background: 'var(--bg-secondary)',
+        backgroundImage: 'radial-gradient(var(--bg-hover) 1px, transparent 0)',
+        backgroundSize: '20px 20px',
+        backgroundPosition: '-10px -10px'
       }}>
-
         <div style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: '2rem', // Reduce gap slightly
-          width: '100%' // Ensure full usage
+          display: 'grid',
+          gridTemplateColumns: 'min-content repeat(5, 1fr)',
+          gap: '8px',
+          minWidth: '800px',
+          width: '100%'
         }}>
-          {/* Drop-off Point (isolated) */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '1rem',
-            paddingTop: '80px', // Align with Row 1 (Header 40px + Gap + alignment)
-            flexShrink: 0 // Prevent shrinking
-          }}>
-            <div style={{
-              fontSize: '0.7rem',
-              fontWeight: '700',
-              color: 'var(--text-secondary)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.1em'
-            }}>
-              Drop-Off
-            </div>
-            <div style={{
-              width: '120px',
-              height: '120px',
-              background: 'var(--bg-elevated)',
-              border: '2px dashed var(--border-dark)',
-              borderRadius: '8px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              position: 'relative',
-              boxShadow: 'var(--shadow-sm)',
-              transition: 'all 0.3s ease'
-            }}>
-              {/* Icon/Symbol */}
+          {/* Column Headers */}
+          <div style={{ height: '24px' }} /> {/* Corner */}
+          {columns.map(col => (
+            <div key={col} style={{
+              textAlign: 'center',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '12px',
+              fontWeight: 700,
+              color: 'var(--text-muted)',
+              borderBottom: '1px solid var(--border)',
+              paddingBottom: '4px'
+            }}>COL {col}</div>
+          ))}
+
+          {/* Grid Cells */}
+          {rows.map(row => (
+            <React.Fragment key={`row-${row}`}>
+              {/* Row Label */}
               <div style={{
-                fontSize: '2rem',
-                color: 'var(--text-muted)'
-              }}>
-                ⇅
-              </div>
-              <div style={{
-                fontSize: '0.65rem',
-                fontWeight: '600',
-                color: 'var(--text-secondary)',
-                textAlign: 'center',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em'
-              }}>
-                Handoff<br />Station
-              </div>
-              {/* Status indicator */}
-              <div style={{
-                position: 'absolute',
-                bottom: '8px',
-                right: '8px',
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: 'var(--status-ok)',
-                boxShadow: '0 0 6px var(--status-ok)'
-              }} />
-            </div>
-          </div>
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                paddingRight: '8px',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '12px',
+                fontWeight: 700,
+                color: 'var(--text-muted)',
+                borderRight: '1px solid var(--border)'
+              }}>LVL {row}</div>
 
-          {/* Grid Container */}
-          <div
-            ref={gridRef}
-            style={{
-              position: 'relative',
-              marginRight: '20px',
-              flexGrow: 1, // Allow growth
-              maxWidth: '100%' // Ensure it doesn't overflow parent
-            }}
-          >
+              {/* Box Slots */}
+              {columns.map(col => {
+                const id = `${col}${row}`;
+                const box = boxMap[id];
+                const active = getEffectiveLEDState(id);
+                const rawLED = ledStates[id] || false;
+                const blinking = isSourceBlinking(id);
+                const isSelected = box && box.box_id === selectedBoxId;
+                
+                // Overlay Shuttle if it's currently at this position
+                const hasShuttle = shuttle && shuttle.position === id;
 
-            <div
-              id="rack-grid"
-              style={{
-                display: 'grid',
-                // 60px Label + 5xDynamic Slots
-                gridTemplateColumns: `${HEADER_COL}px repeat(5, ${colWidth}px)`,
-                // 40px Header + 7x80px Shelves
-                gridTemplateRows: `40px repeat(7, 80px)`,
-                gap: `${GAP}px`,
-                position: 'relative',
-                zIndex: 1
-              }}
-            >
-
-              {/* BACKGROUND RAILS - Absolutely positioned BEHIND grid items */}
-              <div style={{
-                position: 'absolute',
-                inset: 0,
-                zIndex: -1,
-                pointerEvents: 'none'
-              }}>
-                {/* Vertical Rails (between columns) */}
-                {columns.map((col, i) => (
-                  <div key={`v-rail-${i}`} style={{
-                    position: 'absolute',
-                    // Start after Header Col + (Col Width + Gap) * i
-                    left: `${HEADER_COL + (i * (colWidth + GAP)) + GAP / 2 - 1}px`,
-                    top: '40px',
-                    bottom: 0,
-                    width: '2px',
-                    background: 'linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.05))',
-                    borderLeft: '1px dashed var(--border-dark)'
-                  }} />
-                ))}
-
-                {/* Right-most Rail */}
-                <div style={{
-                  position: 'absolute',
-                  left: '100%', // Position OUTSIDE the grid
-                  marginLeft: '6px', // Gap from the last column
-                  top: '40px',
-                  bottom: 0,
-                  width: '12px',
-                  background: 'linear-gradient(90deg, #1e293b, #334155, #1e293b)',
-                  borderRadius: '4px',
-                  border: '1px solid rgba(0,0,0,0.5)',
-                  boxShadow: 'inset 2px 0 4px rgba(0,0,0,0.5)'
-                }} />
-              </div>
-
-              {/* Column headers */}
-              <div></div>
-              {columns.map((col) => (
-                <div key={col} style={{
-                  textAlign: 'center',
-                  fontWeight: '800',
-                  color: 'var(--text-primary)',
-                  fontSize: '0.8rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.12em',
-                  background: 'var(--bg-elevated)',
-                  borderRadius: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: 'var(--shadow-sm)',
-                  borderBottom: '2px solid var(--border)'
-                }}>
-                  {col}
-                </div>
-              ))}
-
-              {/* Rows */}
-              {rows.map((row, rowIndex) => (
-                <React.Fragment key={`row-frag-${row}`}>
-                  {/* Row label */}
-                  <div key={`label-${row}`} style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: '800',
-                    color: 'var(--text-primary)',
-                    fontSize: '0.85rem',
-                    textTransform: 'uppercase',
-                    background: 'var(--bg-elevated)',
-                    borderRadius: '4px',
-                    borderRight: '2px solid var(--border)',
-                    boxShadow: 'var(--shadow-sm)'
-                  }}>
-                    {row}
-                  </div>
-
-                  {/* Boxes */}
-                  {columns.map((col) => {
-                    const id = `${col}${row}`;
-                    const box = boxMap[id];
-                    const active = getEffectiveLEDState(id);
-                    const rawLED = ledStates[id] || false;
-                    const blinking = isSourceBlinking(id);
-                    const isSelected = box && box.box_id === selectedBoxId;
-
-                    return (
-                      <div
-                        key={id}
-                        id={`cell-${id}`}
-                        style={{ width: '100%', height: '100%' }}
-                      >
-                        <div
-                          onMouseEnter={(e) => {
-                            const canStore = operationMode === 'store' && box && box.filled_count < 6;
-                            const canRetrieve = operationMode === 'retrieve' && box && box.filled_count > 0;
-                            if (canStore || canRetrieve) {
-                              e.currentTarget.style.transform = 'translateY(-3px)';
-                              e.currentTarget.style.boxShadow = 'var(--shadow-elevated)';
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = 'none';
-                          }}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                            position: 'relative'
-                          }}
-                        >
-                          <BoxCard
-                            box={box}
-                            active={active}
-                            rawLED={rawLED}
-                            isSourceBlinking={blinking}
-                            isSelected={isSelected}
-                            onClick={() => box && setSelectedBox(box)}
-                            operationMode={operationMode}
-                          />
+                return (
+                  <div key={id} style={{ position: 'relative' }}>
+                    <BoxCard
+                      box={box}
+                      active={active}
+                      rawLED={rawLED}
+                      isSourceBlinking={blinking}
+                      isSelected={isSelected}
+                      onClick={() => box && setSelectedBox(box)}
+                      operationMode={operationMode}
+                    />
+                    {hasShuttle && (
+                      <div style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background: 'var(--bg-primary)',
+                        border: '2px solid var(--status-ok)',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 0 15px rgba(121,218,166,0.2)',
+                        zIndex: 10
+                      }}>
+                        <span className="material-symbols-outlined" style={{ color: 'var(--status-ok)', animation: 'pulse 1.5s infinite' }}>forklift</span>
+                        <div style={{
+                          position: 'absolute',
+                          top: '-12px',
+                          right: '-12px',
+                          background: 'var(--status-ok)',
+                          color: '#002112',
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: '10px',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          border: '1px solid var(--status-ok)',
+                          boxShadow: 'var(--shadow-lg)',
+                          whiteSpace: 'nowrap',
+                          fontWeight: 700
+                        }}>
+                          MOVING ({id})
                         </div>
                       </div>
-                    );
-                  })}
-                </React.Fragment>
-              ))}
-            </div>
-
-            <ShuttleRail
-              shuttle={shuttle}
-              colWidth={colWidth}
-              ledStates={ledStates}
-              boxes={boxes}
-              getEffectiveLEDState={getEffectiveLEDState}
-              isSourceBlinking={isSourceBlinking}
-            />
-          </div>
-
-          {/* Right Info Panel */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1.5rem',
-            paddingTop: '40px', // Align with top
-            width: '180px'
-          }}>
-            {/* Stats Group */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5rem',
-              fontSize: '0.7rem',
-              color: 'var(--text-secondary)',
-              fontWeight: '600',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em'
-            }}>
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>System Specs</div>
-              <div>Rows: 7</div>
-              <div>Columns: 5</div>
-              <div>Capacity: 210 slots</div>
-            </div>
-
-            {/* Legend */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5rem',
-              fontSize: '0.7rem',
-              color: 'var(--text-secondary)',
-              fontWeight: '600',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em'
-            }}>
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>Legend</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: operationMode === 'store' ? 'var(--status-idle)' : 'var(--primary)',
-                  boxShadow: operationMode === 'store'
-                    ? '0 0 4px var(--status-idle)'
-                    : '0 0 4px var(--primary)'
-                }} />
-                <span>{operationMode === 'store' ? 'Capacity' : 'Location'}</span>
-              </div>
-              {/* Add active state legend */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: 'var(--status-ok)',
-                  boxShadow: '0 0 6px var(--status-ok)'
-                }} />
-                <span>Active</span>
-              </div>
-            </div>
-
-            {/* Operation Status */}
-            {operationPhase !== 'IDLE' && (
-              <div style={{
-                marginTop: '1rem',
-                padding: '12px',
-                background: 'rgba(249, 115, 22, 0.1)',
-                borderRadius: '8px',
-                border: '1px solid rgba(249, 115, 22, 0.2)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.25rem'
-              }}>
-                <div style={{
-                  fontSize: '0.65rem',
-                  color: 'var(--primary)',
-                  fontWeight: '700',
-                  textTransform: 'uppercase'
-                }}>
-                  Status
-                </div>
-                <div style={{
-                  fontSize: '0.75rem',
-                  color: 'var(--text-primary)',
-                  fontWeight: '600'
-                }}>
-                  {operationPhase === 'ACKNOWLEDGEMENT' && 'Acknowledged'}
-                  {operationPhase === 'SOURCE_DEPARTURE' && 'Departing'}
-                  {operationPhase === 'PICKUP_TRANSIT' && 'En Route to Drop'}
-                  {operationPhase === 'TRANSIT' && 'In Transit'}
-                  {operationPhase === 'ARRIVAL' && 'Arriving'}
-                </div>
-              </div>
-            )}
-          </div>
+                    )}
+                  </div>
+                );
+              })}
+            </React.Fragment>
+          ))}
         </div>
       </div>
     </div>

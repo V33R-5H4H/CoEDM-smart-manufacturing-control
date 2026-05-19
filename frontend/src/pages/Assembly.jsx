@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import AssemblyControlService from '../services/Assemblycontrol';
-import { toast, ToastContainer, Flip } from 'react-toastify';
+import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import '../components/industrial-ui.css';
+import PageHeader from '../components/PageHeader';
+import { useTheme } from '../theme/ThemeContext';
 // recharts imports kept for future graph tab (currently commented out in render)
 import {
   LineChart,
@@ -17,6 +19,7 @@ import {
 } from 'recharts';
 
 export default function Assembly() {
+  const { resolved: theme } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [lastCommand, setLastCommand] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -353,92 +356,23 @@ export default function Assembly() {
 
 
   return (
-    <div className="asrs-inventory" style={{
-      height: '100%',
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden'
-    }}>
-      {/* Header - Consistent with ASRS */}
-      <motion.header
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
-        style={{
-          flexShrink: 0,
-          height: '44px',
-          padding: '0 1.5rem',
-          borderBottom: '1px solid var(--border)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          background: 'var(--bg-primary)'
-        }}
-      >
-        {/* Left: Identity - Short Form Only */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-          <span style={{
-            fontSize: '0.9rem',
-            fontWeight: '600',
-            color: 'var(--text-primary)',
-            letterSpacing: '0.02em'
-          }}>
-            ASSEMBLY
-          </span>
-          <span style={{
-            color: 'var(--text-muted)',
-            fontSize: '0.75rem',
-            fontWeight: '500',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em'
-          }}>
-            Hydraulic Station
-          </span>
-        </div>
-
-        {/* Center: Current Mode (Subtle) */}
-        <div style={{
-          fontSize: '0.7rem',
-          fontWeight: '600',
-          color: 'var(--text-muted)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em'
-        }}>
-          {isConnected ? 'SYSTEM ACTIVE' : 'IDLE'}
-        </div>
-
-        {/* Right: Status & Control */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          {isConnected ? (
-            <button
-              onClick={handleDisconnect}
-              className="btn btn-error btn-sm"
-              style={{
-                height: '28px',
-                fontSize: '0.75rem',
-                padding: '0 0.75rem'
-              }}
-              disabled={statusLoading}
-            >
-              {statusLoading ? 'Disconnecting...' : 'Disconnect'}
+    <div className="asrs-inventory module-layout">
+      <PageHeader
+        title="Assembly"
+        subtitle="Hydraulic station"
+        status={isConnected ? "System active" : "Idle"}
+        actions={
+          isConnected ? (
+            <button type="button" onClick={handleDisconnect} className="btn btn-error btn-sm" disabled={statusLoading}>
+              {statusLoading ? "Disconnecting…" : "Disconnect"}
             </button>
           ) : (
-            <button
-              onClick={handleConnect}
-              className="btn btn-success btn-sm"
-              style={{
-                height: '28px',
-                fontSize: '0.75rem',
-                padding: '0 0.75rem'
-              }}
-              disabled={statusLoading}
-            >
-              {statusLoading ? 'Connecting...' : 'Connect'}
+            <button type="button" onClick={handleConnect} className="btn btn-success btn-sm" disabled={statusLoading}>
+              {statusLoading ? "Connecting…" : "Connect"}
             </button>
-          )}
-        </div>
-      </motion.header>
+          )
+        }
+      />
 
       {/* Main Content */}
       <div
@@ -1267,16 +1201,7 @@ export default function Assembly() {
         closeOnClick
         pauseOnHover
         draggable
-        theme="light"
-        transition={Flip}
-        style={{ fontSize: "0.875rem" }}
-        toastStyle={{
-          background: "var(--bg-elevated)",
-          color: "var(--text-primary)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-lg)",
-          boxShadow: "var(--shadow-lg)",
-        }}
+        theme={theme}
       />
 
       {/* DEBUG: Temporary Data Visualization */}
