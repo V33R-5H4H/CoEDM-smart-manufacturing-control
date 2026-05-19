@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { toast } from "react-toastify";
 import MiracControlService from "../services/MiracControl";
 import MiracMachineView from "../components/MiracMachineView";
+import PageHeader from "../components/PageHeader";
 
 // --- Custom Hook for MIRAC WebSocket Data ---
 const useMiracData = () => {
@@ -232,106 +233,57 @@ const Mirac = () => {
   };
 
   return (
-    <div className="asrs-inventory" style={{
-      height: '100%',
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column',
-      background: 'var(--bg-primary)',
-      overflow: 'hidden'
-    }}>
+    <div className="asrs-inventory module-layout">
       {/* Header - Consistent with Assembly */}
-      <motion.header
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
-        style={{
-          flexShrink: 0,
-          height: '44px',
-          padding: '0 1.5rem',
-          borderBottom: '1px solid var(--border)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          background: 'var(--bg-primary)'
-        }}
-      >
-        {/* Left: Identity - Short Form Only */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-          <span style={{
-            fontSize: '0.9rem',
-            fontWeight: '600',
-            color: 'var(--text-primary)',
-            letterSpacing: '0.02em'
-          }}>
-            MIRAC-PC
-          </span>
-          <span style={{
-            color: 'var(--text-muted)',
-            fontSize: '0.75rem',
-            fontWeight: '500',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em'
-          }}>
-            CNC Machine Control
-          </span>
-        </div>
-
-        {/* Center: Current Mode (Subtle) */}
-        <div style={{
-          fontSize: '0.7rem',
-          fontWeight: '600',
-          color: 'var(--text-muted)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em'
-        }}>
-          {isConnected ? 'SYSTEM ACTIVE' : 'IDLE'}
-        </div>
-
-        {/* Right: Status & Control */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <button
-            onClick={() => setDemoMode(!demoMode)}
-            className={demoMode ? 'btn btn-warning btn-sm' : 'btn btn-ghost btn-sm'}
-            style={{
-              height: '28px',
-              fontSize: '0.75rem',
-              padding: '0 0.75rem',
-              border: demoMode ? '1px solid rgba(251, 146, 60, 0.5)' : '1px solid rgba(255,255,255,0.2)'
-            }}
-            title="Toggle demo mode (pendulum motion)"
-          >
-            {demoMode ? 'Demo: ON' : 'Demo: OFF'}
-          </button>
-          {isConnected ? (
+      <PageHeader
+        title="MIRAC-PC"
+        subtitle="CNC Machine Control"
+        status={isConnected ? 'SYSTEM ACTIVE' : 'IDLE'}
+        actions={
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <button
-              onClick={handleDisconnect}
-              className="btn btn-error btn-sm"
+              onClick={() => setDemoMode(!demoMode)}
+              className={demoMode ? 'btn btn-warning btn-sm' : 'btn btn-ghost btn-sm'}
               style={{
                 height: '28px',
                 fontSize: '0.75rem',
-                padding: '0 0.75rem'
+                padding: '0 0.75rem',
+                border: demoMode ? '1px solid rgba(251, 146, 60, 0.5)' : '1px solid rgba(255,255,255,0.2)'
               }}
-              disabled={statusLoading}
+              title="Toggle demo mode (pendulum motion)"
             >
-              {statusLoading ? 'Disconnecting...' : 'Disconnect'}
+              {demoMode ? 'Demo: ON' : 'Demo: OFF'}
             </button>
-          ) : (
-            <button
-              onClick={handleConnect}
-              className="btn btn-success btn-sm"
-              style={{
-                height: '28px',
-                fontSize: '0.75rem',
-                padding: '0 0.75rem'
-              }}
-              disabled={statusLoading}
-            >
-              {statusLoading ? 'Connecting...' : 'Connect'}
-            </button>
-          )}
-        </div>
-      </motion.header>
+            {isConnected ? (
+              <button
+                onClick={handleDisconnect}
+                className="btn btn-error btn-sm"
+                style={{
+                  height: '28px',
+                  fontSize: '0.75rem',
+                  padding: '0 0.75rem'
+                }}
+                disabled={statusLoading}
+              >
+                {statusLoading ? 'Disconnecting...' : 'Disconnect'}
+              </button>
+            ) : (
+              <button
+                onClick={handleConnect}
+                className="btn btn-success btn-sm"
+                style={{
+                  height: '28px',
+                  fontSize: '0.75rem',
+                  padding: '0 0.75rem'
+                }}
+                disabled={statusLoading}
+              >
+                {statusLoading ? 'Connecting...' : 'Connect'}
+              </button>
+            )}
+          </div>
+        }
+      />
 
       {/* Main Layout Area */}
       <div style={{

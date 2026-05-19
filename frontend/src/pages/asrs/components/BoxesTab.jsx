@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import BoxDetailsModal from './BoxDetailsModal';
 import BoxService from '../services/boxService';
 import ConfirmModal from './ConfirmModal';
-import ShuttleRail from './ShuttleRail';
+
 import { useLEDMonitoring } from '../hooks/useLEDMonitoring';
 import { useOperationShadowState } from '../hooks/useOperationShadowState';
 import { toast } from 'react-toastify';
@@ -610,253 +610,209 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, operationMode }) 
 
   return (
     <div style={{
-      width: '380px',
-      flexShrink: 0,
-      background: 'var(--bg-elevated)',
-      border: '1px solid var(--border)',
-      borderRadius: 'var(--radius-lg)',
-      boxShadow: 'var(--shadow-lg)',
+      position: 'fixed',
+      inset: 0,
+      zIndex: 100,
+      background: 'rgba(16, 19, 25, 0.8)',
+      backdropFilter: 'blur(4px)',
       display: 'flex',
-      flexDirection: 'column',
-      height: '100%'
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '16px'
     }}>
-      {/* Header */}
       <div style={{
-        padding: '1.25rem',
-        borderBottom: '1px solid var(--border)',
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--border)',
+        borderRadius: '8px',
+        boxShadow: 'var(--shadow-xl)',
+        width: '100%',
+        maxWidth: '672px',
         display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        background: 'var(--bg-secondary)'
+        flexDirection: 'column',
+        overflow: 'hidden'
       }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-            <h3 style={{
-              margin: 0,
-              fontSize: '1.125rem',
-              fontWeight: '700',
-              color: 'var(--text-primary)'
-            }}>
-              Box {box.box_id}
+        {/* Modal Header */}
+        <div style={{
+          padding: '12px 16px',
+          borderBottom: '1px solid var(--border)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          background: 'var(--bg-tertiary)'
+        }}>
+          <div>
+            <h3 style={{ fontFamily: 'var(--font-mono)', fontSize: '20px', color: 'var(--text-primary)', fontWeight: 700, margin: 0 }}>
+              BOX-{box.row_number}0{box.column_name === 'A' ? '1' : box.column_name === 'B' ? '2' : box.column_name === 'C' ? '3' : box.column_name === 'D' ? '4' : '5'} details
             </h3>
-            <span style={{
-              fontSize: '0.65rem',
-              fontWeight: '700',
-              color: operationMode === 'store' ? 'var(--primary)' : 'var(--warning)',
-              background: operationMode === 'store' ? 'rgba(249, 115, 22, 0.1)' : 'rgba(234, 179, 8, 0.1)',
-              padding: '4px 10px',
-              borderRadius: '12px',
-              border: `1px solid ${operationMode === 'store' ? 'rgba(249, 115, 22, 0.3)' : 'rgba(234, 179, 8, 0.3)'}`,
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em'
-            }}>
-              {operationMode === 'store' ? 'Store' : 'Retrieve'}
-            </span>
+            <p style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '4px 0 0 0' }}>
+              Loc: Z-BAY 01, L{box.row_number}-{box.column_name} • {filledCount}/{totalCount || 6} Occupied
+            </p>
           </div>
-          <p style={{
-            margin: 0,
-            fontSize: '0.75rem',
-            color: 'var(--text-secondary)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em'
-          }}>
-            {filledCount}/{totalCount} Occupied
-          </p>
+          <button
+            onClick={onClose}
+            style={{
+              color: 'var(--text-muted)',
+              background: 'transparent',
+              border: 'none',
+              padding: '4px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>close</span>
+          </button>
         </div>
-        <button
-          onClick={onClose}
-          style={{
-            background: 'none',
-            border: 'none',
-            fontSize: '1.5rem',
-            cursor: 'pointer',
-            color: 'var(--text-muted)',
-            padding: '0.25rem',
-            lineHeight: 1,
-            transition: 'color 0.15s'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
-          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-        >
-          ×
-        </button>
-      </div>
-      {/* Subcompartments Grid */}
-      <div style={{
-        flex: 1,
-        overflow: 'auto',
-        padding: '1rem'
-      }}>
-        {loading ? (
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            height: '200px',
-            color: 'var(--text-muted)'
-          }}>
-            Loading...
-          </div>
-        ) : (
-          <>
-            {/* Item Selector for Store Mode */}
-            {operationMode === 'store' && (
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '0.5rem',
-                  fontSize: '0.75rem',
-                  fontWeight: '600',
-                  color: 'var(--text-secondary)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em'
-                }}>
-                  Select Item
-                </label>
-                <select
-                  value={selectedItemId || ''}
-                  onChange={(e) => setSelectedItemId(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.625rem',
-                    background: 'var(--bg-elevated)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 'var(--radius)',
-                    fontSize: '0.875rem',
-                    color: 'var(--text-primary)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <option value="">-- Choose an item --</option>
-                  {items.map(item => (
-                    <option key={item.item_id} value={item.item_id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
 
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '0.75rem'
-            }}>
-              {['a', 'b', 'c', 'd', 'e', 'f'].map((label) => {
-                const sub = subCompartments.find((s) => s.sub_id === label);
-                const hasItem = sub?.item_id;
-                const isOccupied = !!hasItem;
-                const isSelected = selectedSubId === label;
+        {/* Modal Content (2x3 Grid) */}
+        <div style={{
+          padding: '12px',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '8px',
+          background: 'var(--bg-primary)'
+        }}>
+          {['a', 'b', 'c', 'd', 'e', 'f'].map((label, index) => {
+            const sub = subCompartments.find((s) => s.sub_id === label);
+            const hasItem = sub?.item_id;
+            const isOccupied = !!hasItem;
+            const isSelected = selectedSubId === label;
 
-                // Filter based on mode
-                const canStore = operationMode === 'store' && !hasItem;
-                const canRetrieve = operationMode === 'retrieve' && hasItem;
-                const isVisible = canStore || canRetrieve;
+            return (
+              <div
+                key={label}
+                onClick={() => {
+                  if (operationMode === 'store' && !isOccupied) setSelectedSubId(label);
+                  if (operationMode === 'retrieve' && isOccupied) setSelectedSubId(label);
+                }}
+                style={{
+                  border: isOccupied ? '1px solid var(--status-ok)' : '1px dashed var(--border)',
+                  background: isOccupied ? 'var(--bg-hover)' : 'var(--bg-secondary)',
+                  borderRadius: '4px',
+                  padding: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  height: '128px',
+                  position: 'relative',
+                  opacity: (!isOccupied && operationMode === 'retrieve') || (isOccupied && operationMode === 'store') ? 0.5 : 1,
+                  cursor: (operationMode === 'store' && !isOccupied) || (operationMode === 'retrieve' && isOccupied) ? 'pointer' : 'default',
+                  outline: isSelected ? '2px solid var(--primary)' : 'none'
+                }}
+              >
+                {isOccupied && (
+                  <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: 'var(--status-ok)', borderRadius: '4px 4px 0 0' }} />
+                )}
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', marginTop: '4px' }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', fontWeight: 700 }}>
+                    Sub {box.column_name}{box.row_number}{label}
+                  </span>
+                  <div style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: isOccupied ? 'var(--status-ok)' : 'transparent',
+                    border: isOccupied ? 'none' : '1px solid var(--border)',
+                    boxShadow: isOccupied ? '0 0 8px rgba(121,218,166,0.8)' : 'none'
+                  }} />
+                </div>
 
-                if (!isVisible) return null;
-
-                // Mode-specific colors - darker shades
-                const modeColors = operationMode === 'retrieve'
-                  ? {
-                    background: isSelected ? 'rgba(5, 150, 105, 0.35)' : 'rgba(5, 150, 105, 0.2)',
-                    borderColor: isSelected ? 'rgb(5, 150, 105)' : 'rgba(5, 150, 105, 0.6)',
-                    boxShadow: isSelected ? '0 0 0 1px rgba(5, 150, 105, 0.7)' : 'none'
-                  }
-                  : {
-                    background: isSelected ? 'rgba(234, 88, 12, 0.35)' : 'rgba(234, 88, 12, 0.2)',
-                    borderColor: isSelected ? 'rgb(234, 88, 12)' : 'rgba(234, 88, 12, 0.6)',
-                    boxShadow: isSelected ? '0 0 0 1px rgba(234, 88, 12, 0.7)' : 'none'
-                  };
-
-                return (
-                  <div
-                    key={label}
-                    onClick={() => setSelectedSubId(label)}
+                <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', alignItems: isOccupied ? 'flex-start' : 'center', justifyContent: isOccupied ? 'flex-end' : 'center', height: '100%' }}>
+                  {isOccupied ? (
+                    <>
+                      <p style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px', margin: 0 }}>Contents</p>
+                      <p style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.2, margin: 0 }}>{sub.item_name || 'Unknown Item'}</p>
+                    </>
+                  ) : (
+                    <p style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', margin: 0 }}>Empty</p>
+                  )}
+                </div>
+                
+                {/* Retrieve Button Overlay */}
+                {operationMode === 'retrieve' && isOccupied && isSelected && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleRetrieveOperation(); }}
+                    disabled={loading}
                     style={{
-                      padding: '1rem',
-                      background: modeColors.background,
-                      border: '1px solid',
-                      borderColor: modeColors.borderColor,
-                      borderRadius: 'var(--radius)',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s',
-                      boxShadow: modeColors.boxShadow
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isSelected) {
-                        e.currentTarget.style.borderColor = 'var(--border-dark)';
-                        e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isSelected) {
-                        e.currentTarget.style.borderColor = isOccupied ? 'rgba(5, 150, 105, 0.3)' : 'var(--border)';
-                        e.currentTarget.style.boxShadow = 'none';
-                      }
+                      position: 'absolute',
+                      bottom: '8px',
+                      right: '8px',
+                      background: 'var(--warning)',
+                      color: 'var(--bg-primary)',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '4px 8px',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      cursor: 'pointer'
                     }}
                   >
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: '0.5rem'
-                    }}>
-                      <span style={{
-                        fontWeight: '700',
-                        fontSize: '0.875rem',
-                        color: 'var(--text-primary)'
-                      }}>
-                        {label.toUpperCase()}
-                      </span>
-                      <span style={{
-                        fontSize: '0.7rem',
-                        fontWeight: '600',
-                        padding: '2px 6px',
-                        borderRadius: '10px',
-                        background: isOccupied
-                          ? 'rgba(5, 150, 105, 0.15)'
-                          : 'rgba(156, 163, 175, 0.15)',
-                        color: isOccupied ? 'var(--success)' : 'var(--text-muted)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em'
-                      }}>
-                        {isOccupied ? 'OCCUPIED' : 'EMPTY'}
-                      </span>
-                    </div>
-                    {isOccupied && sub?.item_name && (
-                      <div style={{
-                        fontSize: '0.75rem',
-                        color: 'var(--text-secondary)',
-                        marginTop: '0.25rem'
-                      }}>
-                        {sub.item_name}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
-      </div>
+                    Retrieve
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
 
-      {/* Action Footer */}
-      <div style={{
-        padding: '1rem',
-        borderTop: '1px solid var(--border)',
-        background: 'var(--bg-secondary)'
-      }}>
-        <button
-          onClick={operationMode === 'store' ? handleStoreOperation : handleRetrieveOperation}
-          disabled={!selectedSubId || (operationMode === 'store' && !selectedItemId) || loading}
-          className="btn btn-primary"
-          style={{
-            width: '100%',
-            opacity: (selectedSubId && (operationMode === 'retrieve' || selectedItemId)) ? 1 : 0.5
-          }}
-        >
-          {loading ? 'Processing...' : operationMode === 'store' ? 'Store Item' : 'Retrieve Item'}
-        </button>
+        {/* Modal Actions - Store Mode Only */}
+        {operationMode === 'store' && selectedSubId && (
+          <div style={{
+            padding: '12px 16px',
+            borderTop: '1px solid var(--border)',
+            background: 'var(--bg-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <select
+              value={selectedItemId || ''}
+              onChange={(e) => setSelectedItemId(e.target.value)}
+              disabled={loading}
+              style={{
+                flex: 1,
+                background: 'var(--bg-primary)',
+                border: '1px solid var(--border)',
+                borderRadius: '4px',
+                padding: '8px',
+                color: 'var(--text-primary)',
+                fontSize: '12px',
+                fontFamily: 'var(--font-mono)'
+              }}
+            >
+              <option value="">Select item to store...</option>
+              {items.map(item => (
+                <option key={item.item_id} value={item.item_id}>
+                  [{item.item_id}] {item.name}
+                </option>
+              ))}
+            </select>
+            
+            <button
+              onClick={handleStoreOperation}
+              disabled={!selectedItemId || loading}
+              style={{
+                background: 'var(--primary)',
+                color: 'var(--bg-primary)',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '8px 16px',
+                fontSize: '11px',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                cursor: (!selectedItemId || loading) ? 'not-allowed' : 'pointer',
+                opacity: (!selectedItemId || loading) ? 0.5 : 1
+              }}
+            >
+              Execute Store
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
