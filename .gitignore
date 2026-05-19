@@ -45,3 +45,5 @@ logs/
 
 # Extras
 reference/
+# start.py / stop.py runtime
+.pids
