@@ -1,10 +1,12 @@
-import { useState } from "react";
+import React, { useState, Suspense, lazy } from "react";
 import { Routes, Route, NavLink } from "react-router-dom";
-import Dashboard from "./pages/Dashboard";
-import Triac from "./pages/Triac";
-import Mirac from "./pages/Mirac";
-import Assembly from "./pages/Assembly";
-import ASRSDashboard from "./pages/asrs/Dashboard";
+
+// Lazy load page components to improve initial load performance (LCP)
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Triac = lazy(() => import("./pages/Triac"));
+const Mirac = lazy(() => import("./pages/Mirac"));
+const Assembly = lazy(() => import("./pages/Assembly"));
+const ASRSDashboard = lazy(() => import("./pages/asrs/Dashboard"));
 
 export default function App() {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -92,13 +94,20 @@ export default function App() {
 
       {/* Main Content */}
       <main className="main-content">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/asrs" element={<ASRSDashboard />} />
-          <Route path="/triac" element={<Triac />} />
-          <Route path="/mirac" element={<Mirac />} />
-          <Route path="/assembly" element={<Assembly />} />
-        </Routes>
+        <Suspense fallback={
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'var(--text-muted)' }}>
+            <span className="material-symbols-outlined" style={{ animation: 'spin 1s linear infinite', fontSize: '24px', marginRight: '8px' }}>sync</span>
+            Loading module...
+          </div>
+        }>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/asrs" element={<ASRSDashboard />} />
+            <Route path="/triac" element={<Triac />} />
+            <Route path="/mirac" element={<Mirac />} />
+            <Route path="/assembly" element={<Assembly />} />
+          </Routes>
+        </Suspense>
       </main>
     </div>
   );

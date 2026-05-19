@@ -17,7 +17,7 @@ function Dashboard() {
   const [isConnected, setIsConnected] = useState(false);
   const [isStatusExpanded, setIsStatusExpanded] = useState(false);
   const [operationMode, setOperationMode] = useState("store");
-  const { shuttleState, connected: ledConnected } = useLEDMonitoring();
+  const { shuttleState, connected: ledConnected, ledStates } = useLEDMonitoring();
   const { resolved: theme } = useTheme();
 
   useEffect(() => {
@@ -64,7 +64,7 @@ function Dashboard() {
   };
 
   const tabPanels = {
-    boxes: <BoxesTab isServerConnected={isConnected} />,
+    boxes: <BoxesTab isServerConnected={isConnected} ledStates={ledStates} shuttleState={shuttleState} ledConnected={ledConnected} />,
     items: <ItemsTab isServerConnected={isConnected} />,
     transactions: <TransactionsTab isServerConnected={isConnected} />,
   };

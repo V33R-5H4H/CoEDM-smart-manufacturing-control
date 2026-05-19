@@ -42,6 +42,8 @@ export default function Assembly() {
   // Canvas refs for real-time plotting
   const rawCanvasRef = useRef(null);
   const smoothedCanvasRef = useRef(null);
+  const lastUpdateRef = useRef(0);
+  const lastRenderUpdateRef = useRef(0);
 
   // Track previous safety state for edge-triggered toast alerts
   const prevSafetyRef = useRef({ curtain: false, buzzer: false });
@@ -70,10 +72,15 @@ export default function Assembly() {
 
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data);
-      setPlantData(data);
-
-      // Update connection badge based on OPC-UA connected field
-      setIsConnected(data.connected !== false);
+      const now = performance.now();
+      
+      // Update data references for continuous data streams
+      if (now - lastUpdateRef.current > 100) {
+        setPlantData(data);
+        setIsConnected(data.connected !== false);
+        setLastCommand(data.assembly?.bearing ? 'Bearing ON' : 'Bearing OFF');
+        lastUpdateRef.current = now;
+      }
 
       // Edge-triggered safety alerts — only toast on rising edge (false → true)
       const prev = prevSafetyRef.current;
@@ -100,8 +107,6 @@ export default function Assembly() {
         buzzer:  data.safety?.buzzer  || false,
       };
 
-      setLastCommand(data.assembly?.bearing ? 'Bearing ON' : 'Bearing OFF');
-
       // Continuously collect data points for plotting
       const newPoint = {
         time: plotTimestampRef.current,
@@ -119,7 +124,9 @@ export default function Assembly() {
         plotTimestampRef.current = plotDataPointsRef.current.length;
       }
 
-      setPlotData([...plotDataPointsRef.current]);
+      if (now - lastUpdateRef.current > 100) {
+         setPlotData([...plotDataPointsRef.current]);
+      }
     };
 
     ws.onerror = (err) => {
@@ -161,9 +168,13 @@ export default function Assembly() {
         // Otherwise, move towards target gradually
         const newVal = prev + diff * smoothingFactor;
 
-        // Debug: Track data points (keep last 100)
-        const workpiece = plantData?.assembly?.bearing ? 'bearing' : 'shaft';
-        setSmoothedDataPoints(points => [...points.slice(-99), { value: newVal - 43, workpiece, timestamp: Date.now() }]);
+        // Debug: Track data points, throttle React state updates to ~16fps
+        const now = performance.now();
+        if (now - lastRenderUpdateRef.current > 60) {
+          const workpiece = plantData?.assembly?.bearing ? 'bearing' : 'shaft';
+          setSmoothedDataPoints(points => [...points.slice(-99), { value: newVal - 43, workpiece, timestamp: Date.now() }]);
+          lastRenderUpdateRef.current = now;
+        }
 
         return newVal;
       });

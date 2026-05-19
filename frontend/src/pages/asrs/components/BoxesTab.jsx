@@ -7,7 +7,7 @@ import { useLEDMonitoring } from '../hooks/useLEDMonitoring';
 import { useOperationShadowState } from '../hooks/useOperationShadowState';
 import { toast } from 'react-toastify';
 
-function BoxesTab({ isServerConnected = false }) {
+function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = null, ledConnected = false }) {
 
   // Open delete modal for a box
   const openDeleteModal = (boxId) => {
@@ -40,7 +40,7 @@ function BoxesTab({ isServerConnected = false }) {
   const [selectedBox, setSelectedBox] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [operationMode, setOperationMode] = useState('store'); // 'store' | 'retrieve'
-  const { ledStates, shuttleState, connected } = useLEDMonitoring();
+  const connected = ledConnected;
 
   // Frontend Operation Shadow State - decouples physical LED truth from visual storytelling
   const {
