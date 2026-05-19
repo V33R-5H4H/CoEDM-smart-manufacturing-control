@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import AssemblyControlService from '../services/Assemblycontrol';
 import { toast, ToastContainer, Flip } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import '../components/industrial-ui.css';
+// recharts imports kept for future graph tab (currently commented out in render)
 import {
   LineChart,
   Line,
@@ -39,21 +40,71 @@ export default function Assembly() {
   const rawCanvasRef = useRef(null);
   const smoothedCanvasRef = useRef(null);
 
+  // Track previous safety state for edge-triggered toast alerts
+  const prevSafetyRef = useRef({ curtain: false, buzzer: false });
+
   // ====== BEGIN: REAL HYDRAULIC DATA WEBSOCKET USAGE ======
-  useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8000/ws/hydraulic");
+  // WebSocket ref so reconnect logic can replace it without tearing down the effect
+  const wsRef = useRef(null);
+  const reconnectTimerRef = useRef(null);
+
+  const connectWS = useCallback(() => {
+    // Derive WS base from VITE_WS_URL env var if set; otherwise use Vite proxy path.
+    // In dev: Vite proxies /api/control/assembly/ws/** → ws://localhost:8000
+    // In prod: set VITE_WS_URL=ws://your-server:8000 in frontend/.env
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsBase = import.meta.env.VITE_WS_URL || `${protocol}//${window.location.host}`;
+    const wsUrl = `${wsBase}/api/control/assembly/ws/hydraulic-data`;
+
+    console.log('[Assembly] Connecting to hydraulic WS:', wsUrl);
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log('[Assembly] Hydraulic WebSocket connected');
+      setIsConnected(true);
+    };
+
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data);
       setPlantData(data);
-      setIsConnected(true);
-      setLastCommand(data.assembly.bearing ? "Bearing ON" : "Bearing OFF");
+
+      // Update connection badge based on OPC-UA connected field
+      setIsConnected(data.connected !== false);
+
+      // Edge-triggered safety alerts — only toast on rising edge (false → true)
+      const prev = prevSafetyRef.current;
+      if (data.safety?.curtain && !prev.curtain) {
+        toast.error('⚠️ SAFETY CURTAIN TRIGGERED — Human presence detected!', {
+          toastId: 'curtain-alert',
+          autoClose: false,
+          closeOnClick: false,
+        });
+      }
+      if (data.safety?.buzzer && !prev.buzzer) {
+        toast.error('🔔 BUZZER ACTIVE — Emergency condition!', {
+          toastId: 'buzzer-alert',
+          autoClose: false,
+          closeOnClick: false,
+        });
+      }
+      // Dismiss alerts when condition clears
+      if (!data.safety?.curtain && prev.curtain) toast.dismiss('curtain-alert');
+      if (!data.safety?.buzzer  && prev.buzzer)  toast.dismiss('buzzer-alert');
+
+      prevSafetyRef.current = {
+        curtain: data.safety?.curtain || false,
+        buzzer:  data.safety?.buzzer  || false,
+      };
+
+      setLastCommand(data.assembly?.bearing ? 'Bearing ON' : 'Bearing OFF');
 
       // Continuously collect data points for plotting
       const newPoint = {
         time: plotTimestampRef.current,
         displacement: data.position?.displacement_mm || 0,
         bearing: data.assembly?.bearing ? 1 : 0,
-        shaft: data.assembly?.shaft ? 1 : 0,
+        shaft:   data.assembly?.shaft   ? 1 : 0,
       };
       plotDataPointsRef.current.push(newPoint);
       plotTimestampRef.current += 1;
@@ -61,17 +112,35 @@ export default function Assembly() {
       // Keep last 500 points for performance
       if (plotDataPointsRef.current.length > 500) {
         plotDataPointsRef.current.shift();
-        // Adjust time values to keep them sequential
-        plotDataPointsRef.current.forEach((point, index) => {
-          point.time = index;
-        });
+        plotDataPointsRef.current.forEach((point, index) => { point.time = index; });
         plotTimestampRef.current = plotDataPointsRef.current.length;
       }
 
       setPlotData([...plotDataPointsRef.current]);
     };
-    return () => ws.close();
+
+    ws.onerror = (err) => {
+      console.error('[Assembly] Hydraulic WebSocket error', err);
+      setIsConnected(false);
+    };
+
+    ws.onclose = () => {
+      console.warn('[Assembly] Hydraulic WebSocket closed, reconnecting in 3s...');
+      setIsConnected(false);
+      // Exponential backoff not needed for a local LAN connection — 3 s flat retry
+      reconnectTimerRef.current = setTimeout(() => {
+        if (wsRef.current?.readyState !== WebSocket.OPEN) connectWS();
+      }, 3000);
+    };
   }, []);
+
+  useEffect(() => {
+    connectWS();
+    return () => {
+      clearTimeout(reconnectTimerRef.current);
+      wsRef.current?.close();
+    };
+  }, [connectWS]);
   // ====== END: REAL HYDRAULIC DATA WEBSOCKET USAGE ======
 
   // Exponential smoothing filter for position data

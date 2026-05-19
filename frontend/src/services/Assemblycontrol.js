@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:8000/api/control/assembly";
+// VITE_API_URL defaults to /api (relative) so Vite proxies it to localhost:8000 in dev.
+// Set VITE_API_URL=https://your-server.com/api in frontend/.env for production.
+const API_URL = `${import.meta.env.VITE_API_URL || "/api"}/control/assembly`;
 
 class AssemblyControlService {
   /**

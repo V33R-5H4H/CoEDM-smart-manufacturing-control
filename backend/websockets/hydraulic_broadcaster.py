@@ -40,48 +40,73 @@ class HydraulicBroadcaster:
                 self.broadcast_task.cancel()
     
     async def _read_hydraulic_data(self) -> dict:
-        """Read current hydraulic data from OPC UA server"""
+        """Read current hydraulic data from OPC UA server.
+
+        Uses opcua_connection.get_node() which correctly wraps the tag string
+        with the required 'ns=4;s=' namespace prefix, consistent with all other
+        station modules in this project.
+        """
         try:
             if not opcua_connection.connected:
-                return None
-            
+                # Broadcast explicit offline state so the frontend can reflect
+                # the disconnected condition rather than going silent.
+                return self._disconnected_payload()
+
             data = {}
             for tag_name, node_id in HYDRAULIC_DATA_TAGS.items():
                 try:
-                    node = opcua_connection.client.get_node(node_id)  # node_id is already a full tag string
+                    # get_node() wraps node_id with ns=4;s= — do NOT call
+                    # opcua_connection.client.get_node() directly here.
+                    node = opcua_connection.get_node(node_id)
                     value = node.get_value()
                     data[tag_name] = value
                 except Exception as e:
                     logger.warning(f"Failed to read {tag_name}: {e}")
                     data[tag_name] = None
-            
+
             # Map to frontend format
             return {
-                "timestamp": asyncio.get_event_loop().time(),
+                "connected": True,
+                "timestamp": asyncio.get_running_loop().time(),
                 "assembly": {
-                    "bearing": data.get("bearing_operation", False),
-                    "shaft": data.get("shaft_operation", False),
+                    "bearing": bool(data.get("bearing_operation") or False),
+                    "shaft":   bool(data.get("shaft_operation") or False),
                 },
                 "position": {
-                    "displacement_mm": data.get("displacement_mm", 0.0),
+                    "displacement_mm": float(data.get("displacement_mm") or 0.0),
                 },
                 "vice": {
-                    "open": data.get("vice_open", False),
-                    "close": data.get("vice_close", False),
+                    "open":  bool(data.get("vice_open") or False),
+                    "close": bool(data.get("vice_close") or False),
                 },
                 "safety": {
-                    "buzzer": data.get("buzzer", False),
-                    "curtain": data.get("safety_curtain", False),
+                    "buzzer":  bool(data.get("buzzer") or False),
+                    "curtain": bool(data.get("safety_curtain") or False),
                     "lights": {
-                        "red": data.get("light_red", False),
-                        "orange": data.get("light_orange", False),
-                        "green": data.get("light_green", False),
+                        "red":    bool(data.get("light_red") or False),
+                        "orange": bool(data.get("light_orange") or False),
+                        "green":  bool(data.get("light_green") or False),
                     }
                 }
             }
         except Exception as e:
             logger.error(f"Error reading hydraulic data: {e}")
-            return None
+            return self._disconnected_payload()
+
+    def _disconnected_payload(self) -> dict:
+        """Return a safe all-false payload flagging the connection as down."""
+        return {
+            "connected": False,
+            "timestamp": 0,
+            "assembly": {"bearing": False, "shaft": False},
+            "position": {"displacement_mm": 0.0},
+            "vice": {"open": False, "close": False},
+            "safety": {
+                "buzzer": False,
+                "curtain": False,
+                "lights": {"red": False, "orange": False, "green": False},
+            },
+        }
     
     async def _broadcast_loop(self):
         """Main broadcast loop - reads and sends data continuously"""
@@ -109,8 +134,8 @@ class HydraulicBroadcaster:
                     for conn in disconnected:
                         self.disconnect(conn)
                 
-                # Wait before next update (1 Hz update rate)
-                await asyncio.sleep(1.0)
+                # Wait before next update (500 ms — 2 Hz for responsive motion)
+                await asyncio.sleep(0.5)
         
         except asyncio.CancelledError:
             logger.info("Hydraulic broadcast loop cancelled")
