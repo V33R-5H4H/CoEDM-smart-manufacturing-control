@@ -1,7 +1,13 @@
-import time
-from opcua import Client
+import os, sys
 
-SERVER_URL = "opc.tcp://10.10.14.102:4840"
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_ROOT = os.path.dirname(_SCRIPT_DIR)
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+from backend.config import settings
+
+SERVER_URL = settings.MIRAC_OPCUA_URL
 
 # Node IDs based on controller definition
 NODES = {

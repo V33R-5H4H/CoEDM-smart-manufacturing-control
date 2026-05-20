@@ -6,16 +6,17 @@ import threading
 import queue
 import time
 
-# Ensure project root is on path to import app.controllers works in direct script run
-ROOT = os.path.dirname(os.path.abspath(__file__))
-if ROOT not in sys.path:
-    sys.path.insert(0, ROOT)
+# Ensure project root is on path
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_ROOT = os.path.dirname(_SCRIPT_DIR)
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
 from backend.stations.hydraulic_backend import run_hydraulic, disconnect_hydraulic
+from backend.config import settings
 
-
-ROBOT_IP = "10.10.14.106"
-PORT = 5890
+ROBOT_IP = settings.COBOT_HOST
+PORT = settings.COBOT_PORT
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 

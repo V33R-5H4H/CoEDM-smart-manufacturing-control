@@ -68,9 +68,11 @@ class MIRACDataGateway:
         "temperature": 4013,
     }
 
-    def __init__(self, host: str = "10.10.14.103", port: int = 502):
-        self.host = host
-        self.port = port
+    def __init__(self, host: str = None, port: int = None):
+        # Read from central config (backend/.env) if not explicitly provided
+        from backend.config import settings
+        self.host = host or settings.VIBIT_HOST
+        self.port = port or settings.VIBIT_PORT
         self.client = None
         self.state: Dict[str, VIBITMetrics] = {
             "vibit1": VIBITMetrics(timestamp=datetime.now().isoformat()),

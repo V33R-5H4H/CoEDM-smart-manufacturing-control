@@ -1,0 +1,1 @@
+# Cobot CRUD package — placeholder
