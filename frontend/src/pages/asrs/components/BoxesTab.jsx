@@ -49,7 +49,8 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
     getEffectiveLEDState,
     isSourceBlinking,
     visualShuttle,
-    operationPhase
+    operationPhase,
+    pendingOperation
   } = useOperationShadowState(ledStates, shuttleState);
 
   // Debug: Log when WebSocket data changes
@@ -117,6 +118,8 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
           setOperationMode={setOperationMode}
           operationPhase={operationPhase}
           selectedBoxId={selectedBox?.box_id}
+          pendingOperation={pendingOperation}
+          shuttleState={shuttleState}
         />
       </div>
 
@@ -149,7 +152,7 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
 }
 
 // Reusable Box Card Component - Industrial Storage Drawer Style with Capacity Visuals & Availability Highlighting
-function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking, isSelected }) {
+function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking, isSelected, isWorking }) {
   if (!box) {
     return (
       <div style={{
@@ -184,32 +187,41 @@ function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking
     return 'var(--status-ok)'; // Green when low-to-mid capacity
   };
 
+  // Base background
+  const baseBackground = isWorking
+    ? 'linear-gradient(135deg, rgba(35, 12, 12, 0.95), rgba(20, 8, 8, 0.95))'
+    : 'var(--bg-hover)';
+
   // Availability highlight styles
-  const borderStyle = isSelected 
-    ? '1px solid var(--primary)' 
-    : isAvailable 
-      ? (operationMode === 'store' 
-          ? '1px solid rgba(121, 218, 166, 0.6)'  // Emerald green border for store-available
-          : '1px solid rgba(235, 165, 80, 0.6)')   // Amber orange border for retrieve-available
-      : '1px solid var(--border)';
-
-  const shadowStyle = isBlinking 
-    ? 'inset 0 0 20px rgba(121,218,166,0.15)' 
+  const borderStyle = isWorking
+    ? '1px solid rgba(239, 68, 68, 0.9)'
     : isSelected 
-      ? '0 0 8px rgba(188,199,221,0.2)' 
+      ? '1px solid var(--primary)' 
       : isAvailable 
-        ? (operationMode === 'store'
-            ? '0 0 8px rgba(121, 218, 166, 0.15)' 
-            : '0 0 8px rgba(235, 165, 80, 0.15)')
-        : 'none';
+        ? (operationMode === 'store' 
+            ? '1px solid rgba(121, 218, 166, 0.6)'  // Emerald green border for store-available
+            : '1px solid rgba(235, 165, 80, 0.6)')   // Amber orange border for retrieve-available
+        : '1px solid var(--border)';
 
-  const opacityStyle = isAvailable ? 1.0 : 0.35;
+  const shadowStyle = isWorking
+    ? '0 0 15px rgba(239, 68, 68, 0.35), inset 0 0 10px rgba(239, 68, 68, 0.1)'
+    : isBlinking 
+      ? 'inset 0 0 20px rgba(121,218,166,0.15)' 
+      : isSelected 
+        ? '0 0 8px rgba(188,199,221,0.2)' 
+        : isAvailable 
+          ? (operationMode === 'store'
+              ? '0 0 8px rgba(121, 218, 166, 0.15)' 
+              : '0 0 8px rgba(235, 165, 80, 0.15)')
+          : 'none';
+
+  const opacityStyle = isWorking ? 1.0 : (isAvailable ? 1.0 : 0.35);
 
   return (
     <button
       onClick={onClick}
       style={{
-        background: 'var(--bg-hover)',
+        background: baseBackground,
         border: borderStyle,
         borderRadius: '4px',
         padding: '8px',
@@ -226,16 +238,18 @@ function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking
         width: '100%'
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'var(--bg-elevated)';
-        if (!isSelected) {
+        e.currentTarget.style.background = isWorking
+          ? 'linear-gradient(135deg, rgba(45, 15, 15, 0.95), rgba(25, 10, 10, 0.95))'
+          : 'var(--bg-elevated)';
+        if (!isSelected && !isWorking) {
           e.currentTarget.style.borderColor = isAvailable
             ? (operationMode === 'store' ? 'rgba(121, 218, 166, 0.8)' : 'rgba(235, 165, 80, 0.8)')
             : 'var(--border-lighter)';
         }
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.background = 'var(--bg-hover)';
-        if (!isSelected) {
+        e.currentTarget.style.background = baseBackground;
+        if (!isSelected && !isWorking) {
           e.currentTarget.style.borderColor = isAvailable
             ? (operationMode === 'store' ? 'rgba(121, 218, 166, 0.6)' : 'rgba(235, 165, 80, 0.6)')
             : 'var(--border)';
@@ -248,12 +262,31 @@ function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking
           fontFamily: 'var(--font-mono)',
           fontSize: '13px',
           fontWeight: 700,
-          color: isSelected ? 'var(--primary-light)' : 'var(--text-primary)',
+          color: isWorking
+            ? '#ff8080'
+            : isSelected
+              ? 'var(--primary-light)'
+              : 'var(--text-primary)',
         }}>
           BOX-{box.row_number}0{box.column_name === 'A' ? '1' : box.column_name === 'B' ? '2' : box.column_name === 'C' ? '3' : box.column_name === 'D' ? '4' : '5'}
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          {isAvailable && (
+          {isWorking ? (
+            <span style={{ 
+              fontSize: '8.5px', 
+              color: '#ef4444', 
+              fontWeight: 900, 
+              fontFamily: 'var(--font-mono)',
+              border: '1px solid rgba(239, 68, 68, 0.4)',
+              padding: '1.5px 5px',
+              borderRadius: '2.5px',
+              background: 'rgba(239, 68, 68, 0.12)',
+              letterSpacing: '0.06em',
+              animation: 'pulse 1.2s infinite'
+            }}>
+              ACTIVE
+            </span>
+          ) : isAvailable && (
             <span style={{ 
               fontSize: '8px', 
               color: operationMode === 'store' ? 'var(--status-ok)' : 'var(--status-warn)', 
@@ -275,9 +308,17 @@ function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: rawLED ? 'var(--status-ok)' : (isEmpty ? 'var(--border)' : 'var(--accent)'),
-            boxShadow: rawLED ? '0 0 8px var(--status-ok)' : 'none',
-            animation: isBlinking ? 'pulse 1s infinite' : 'none'
+            background: isWorking
+              ? '#ef4444'
+              : rawLED 
+                ? 'var(--status-ok)' 
+                : (isEmpty ? 'var(--border)' : 'var(--accent)'),
+            boxShadow: isWorking
+              ? '0 0 10px #ef4444'
+              : rawLED 
+                ? '0 0 8px var(--status-ok)' 
+                : 'none',
+            animation: (isWorking || isBlinking) ? 'pulse 1s infinite' : 'none'
           }} />
         </div>
       </div>
@@ -366,7 +407,9 @@ function RackView({
   operationMode,
   setOperationMode,
   operationPhase,
-  selectedBoxId
+  selectedBoxId,
+  pendingOperation,
+  shuttleState
 }) {
   const columns = ['A', 'B', 'C', 'D', 'E'];
   const rows = [7, 6, 5, 4, 3, 2, 1]; // Render from top to bottom (7 -> 1)
@@ -477,6 +520,13 @@ function RackView({
                 const blinking = isSourceBlinking(id);
                 const isSelected = box && box.box_id === selectedBoxId;
                 
+                // Determine if this box is currently undergoing store or retrieve operation
+                const isWorking = box && (
+                  (pendingOperation && pendingOperation.targetCell === id) ||
+                  (shuttleState?.command && shuttleState.command.startsWith(id)) ||
+                  rawLED
+                );
+
                 // Overlay Shuttle if it's currently at this position
                 const hasShuttle = shuttle && shuttle.position === id;
 
@@ -488,6 +538,7 @@ function RackView({
                       rawLED={rawLED}
                       isSourceBlinking={blinking}
                       isSelected={isSelected}
+                      isWorking={isWorking}
                       onClick={() => box && setSelectedBox(box)}
                       operationMode={operationMode}
                     />

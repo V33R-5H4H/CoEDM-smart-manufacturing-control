@@ -45,6 +45,10 @@ export default function Assembly() {
   const lastUpdateRef = useRef(0);
   const lastRenderUpdateRef = useRef(0);
 
+  // References for continuous fluid physical animation
+  const targetPositionRef = useRef(43);
+  const workpieceRef = useRef('none');
+
   // Track previous safety state for edge-triggered toast alerts
   const prevSafetyRef = useRef({ curtain: false, buzzer: false });
 
@@ -72,6 +76,13 @@ export default function Assembly() {
 
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data);
+      
+      // Update target and workpiece refs immediately for zero-lag physical animation
+      if (data.position?.displacement_mm != null) {
+        targetPositionRef.current = data.position.displacement_mm;
+      }
+      workpieceRef.current = data.assembly?.bearing ? 'bearing' : (data.assembly?.shaft ? 'shaft' : 'none');
+
       const now = performance.now();
       
       // Update data references for continuous data streams
@@ -153,35 +164,46 @@ export default function Assembly() {
   }, [connectWS]);
   // ====== END: REAL HYDRAULIC DATA WEBSOCKET USAGE ======
 
-  // Exponential smoothing filter for position data
+  // Physical cylinder animation controller running at native monitor refresh rate
   useEffect(() => {
-    if (!plantData?.position?.displacement_mm) return;
+    let animationFrameId;
 
-    const targetPosition = plantData.position.displacement_mm;
-    const smoothingFactor = 0.08; // Lower = smoother (reduced from 0.15 for more fluid motion)
-
-    const smoothInterval = setInterval(() => {
+    const updatePhysics = () => {
       setSmoothedPosition(prev => {
-        const diff = targetPosition - prev;
-        // If very close to target, snap to it
-        if (Math.abs(diff) < 0.1) return targetPosition;
-        // Otherwise, move towards target gradually
-        const newVal = prev + diff * smoothingFactor;
+        const target = targetPositionRef.current;
+        const diff = target - prev;
 
-        // Debug: Track data points, throttle React state updates to ~16fps
+        // If extremely close, snap to target
+        if (Math.abs(diff) < 0.05) return target;
+
+        // Hydraulic press physics simulation (slower powerful descent, faster retraction)
+        const isDescending = diff > 0;
+        const maxSpeed = isDescending ? 1.8 : 2.8; // mm per frame
+        const proportionalSpeed = Math.abs(diff) * 0.08;
+        const actualSpeed = Math.min(proportionalSpeed, maxSpeed);
+
+        const newVal = prev + Math.sign(diff) * actualSpeed;
+
+        // Track data points, throttle React state updates to ~16fps
         const now = performance.now();
         if (now - lastRenderUpdateRef.current > 60) {
-          const workpiece = plantData?.assembly?.bearing ? 'bearing' : 'shaft';
-          setSmoothedDataPoints(points => [...points.slice(-99), { value: newVal - 43, workpiece, timestamp: Date.now() }]);
+          const workpiece = workpieceRef.current;
+          setSmoothedDataPoints(points => [
+            ...points.slice(-99),
+            { value: newVal - 43, workpiece, timestamp: Date.now() }
+          ]);
           lastRenderUpdateRef.current = now;
         }
 
         return newVal;
       });
-    }, 16); // ~60fps
 
-    return () => clearInterval(smoothInterval);
-  }, [plantData?.position?.displacement_mm, plantData?.assembly?.bearing]);
+      animationFrameId = requestAnimationFrame(updatePhysics);
+    };
+
+    animationFrameId = requestAnimationFrame(updatePhysics);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, []);
 
   // Track raw data points for debugging
   useEffect(() => {
@@ -788,7 +810,7 @@ export default function Assembly() {
                                 : `${Math.max(0, Math.min(185, (smoothedPosition - 43)) * 0.85)}px`
                             }}
                             transition={{
-                              duration: 0,
+                              duration: 0.05,
                               ease: "linear"
                             }}
                             style={{
@@ -831,7 +853,7 @@ export default function Assembly() {
                             : Math.max(0, Math.min(185, (smoothedPosition - 43)) * 0.85)
                         }}
                         transition={{
-                          duration: 0,
+                          duration: 0.05,
                           ease: "linear"
                         }}
                         style={{

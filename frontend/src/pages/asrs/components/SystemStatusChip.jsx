@@ -1,7 +1,8 @@
 
-const SystemStatusChip = ({ plcConnected, ledConnected, shuttleState, onMouseEnter, onMouseLeave, isExpanded }) => {
-  // Determine worst active state (priority: disconnected > busy > idle > ok)
+const SystemStatusChip = ({ plcConnected, ledConnected, shuttleState, onMouseEnter, onMouseLeave, isExpanded, safetyCurtainActive }) => {
+  // Determine worst active state (priority: safety breach > disconnected > busy > idle > ok)
   const getWorstState = () => {
+    if (safetyCurtainActive) return { color: '#dc2626', label: 'SYSTEM', text: 'Safety Breach' };
     if (!plcConnected) return { color: 'var(--status-error)', label: 'SYSTEM', text: 'Disconnected' };
     if (!ledConnected) return { color: 'var(--status-error)', label: 'SYSTEM', text: 'LED Offline' };
     if (shuttleState?.state === 'busy' || shuttleState?.state === 'moving') {

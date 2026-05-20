@@ -1,6 +1,6 @@
 import React from 'react';
 
-const StatusPanel = ({ plcConnected, ledConnected, shuttleState, isExpanded }) => {
+const StatusPanel = ({ plcConnected, ledConnected, shuttleState, isExpanded, safetyCurtainActive }) => {
   if (!isExpanded) return null;
 
   const statusIcons = {
@@ -61,6 +61,12 @@ const StatusPanel = ({ plcConnected, ledConnected, shuttleState, isExpanded }) =
         ? `${shuttleStatus.charAt(0).toUpperCase() + shuttleStatus.slice(1)} @ ${shuttlePosition}`
         : shuttleStatus.charAt(0).toUpperCase() + shuttleStatus.slice(1),
       color: getStatusColor(shuttleStatus),
+    },
+    {
+      label: 'SAFETY CURTAIN',
+      icon: safetyCurtainActive ? '⚠' : '●',
+      text: safetyCurtainActive ? 'BREACHED' : 'CLEAR',
+      color: safetyCurtainActive ? '#dc2626' : 'var(--status-ok)',
     },
   ];
 
