@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import BoxDetailsModal from './BoxDetailsModal';
 import BoxService from '../services/boxService';
+import SubCompartmentService from '../services/subCompartmentService';
+import ItemService from '../services/itemService';
 import ConfirmModal from './ConfirmModal';
 
 import { useLEDMonitoring } from '../hooks/useLEDMonitoring';
@@ -34,6 +36,7 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
     }
   };
   const [boxes, setBoxes] = useState([]);
+  const [subcompartmentsMap, setSubcompartmentsMap] = useState({});
   const [loading, setLoading] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [boxToDelete, setBoxToDelete] = useState(null);
@@ -76,6 +79,21 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
       // Backend now returns { success: true, data: [...] }
       const boxData = response.data.data || response.data;
       setBoxes(boxData);
+
+      try {
+        const subResponse = await SubCompartmentService.getAllSubCompartments();
+        const subData = subResponse.data || subResponse || [];
+        const map = {};
+        subData.forEach(sub => {
+          if (!map[sub.box_id]) {
+            map[sub.box_id] = [];
+          }
+          map[sub.box_id].push(sub);
+        });
+        setSubcompartmentsMap(map);
+      } catch (subError) {
+        console.error('Error fetching subcompartments in fetchBoxes:', subError);
+      }
     } catch (error) {
       if (error.response && error.response.status === 503) {
         toast.error('PLC/OPC UA server is offline or unreachable. Please check the connection.');
@@ -120,6 +138,7 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
           selectedBoxId={selectedBox?.box_id}
           pendingOperation={pendingOperation}
           shuttleState={shuttleState}
+          subcompartmentsMap={subcompartmentsMap}
         />
       </div>
 
@@ -152,14 +171,14 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
 }
 
 // Reusable Box Card Component - Industrial Storage Drawer Style with Capacity Visuals & Availability Highlighting
-function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking, isSelected, isWorking }) {
+function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking, isSelected, isWorking, subcompartments = [] }) {
   if (!box) {
     return (
       <div style={{
         border: '1px dashed var(--border)',
         borderRadius: '4px',
         padding: '8px',
-        height: '80px',
+        height: '110px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -225,7 +244,7 @@ function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking
         border: borderStyle,
         borderRadius: '4px',
         padding: '8px',
-        height: '80px',
+        height: '110px',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
@@ -323,26 +342,58 @@ function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking
         </div>
       </div>
 
-      {/* Middle row: visual segmented progress representing 6 slots */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%', margin: '2px 0' }}>
-        <div style={{ display: 'flex', gap: '3px', width: '100%' }}>
-          {Array.from({ length: CAPACITY }).map((_, idx) => {
-            const isFilled = idx < filledCount;
-            return (
-              <div
-                key={idx}
-                style={{
-                  flex: 1,
-                  height: '6px',
-                  borderRadius: '1px',
-                  background: isFilled ? getCapacityColor() : 'rgba(255,255,255,0.05)',
-                  border: isFilled ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                  transition: 'background 200ms'
-                }}
-              />
-            );
-          })}
-        </div>
+      {/* Middle row: 3x2 grid of subcompartment cells */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: '4px',
+        width: '100%',
+        margin: '4px 0'
+      }}>
+        {['a', 'b', 'c', 'd', 'e', 'f'].map((label) => {
+          const sub = subcompartments.find(s => s.sub_id === label);
+          const isOccupied = sub?.item_id || sub?.status === 'Occupied';
+          return (
+            <div
+              key={label}
+              style={{
+                height: '14px',
+                borderRadius: '2px',
+                border: isOccupied 
+                  ? '1px solid rgba(121, 218, 166, 0.6)' 
+                  : '1px dashed rgba(255, 255, 255, 0.12)',
+                background: isOccupied 
+                  ? 'rgba(121, 218, 166, 0.15)' 
+                  : 'rgba(255, 255, 255, 0.02)',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0 4px',
+                boxSizing: 'border-box'
+              }}
+            >
+              <span style={{
+                fontSize: '7.5px',
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 700,
+                color: isOccupied ? 'rgba(121, 218, 166, 0.85)' : 'rgba(255, 255, 255, 0.25)',
+                lineHeight: 1
+              }}>
+                {label.toUpperCase()}
+              </span>
+              {isOccupied && (
+                <div style={{
+                  width: '3.5px',
+                  height: '3.5px',
+                  borderRadius: '50%',
+                  background: 'var(--status-ok)',
+                  boxShadow: '0 0 3px var(--status-ok)'
+                }} />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Bottom row: numeric representation / status badge */}
@@ -409,7 +460,8 @@ function RackView({
   operationPhase,
   selectedBoxId,
   pendingOperation,
-  shuttleState
+  shuttleState,
+  subcompartmentsMap = {}
 }) {
   const columns = ['A', 'B', 'C', 'D', 'E'];
   const rows = [7, 6, 5, 4, 3, 2, 1]; // Render from top to bottom (7 -> 1)
@@ -530,6 +582,8 @@ function RackView({
                 // Overlay Shuttle if it's currently at this position
                 const hasShuttle = shuttle && shuttle.position === id;
 
+                const boxSubs = box ? (subcompartmentsMap[box.box_id] || []) : [];
+
                 return (
                   <div key={id} style={{ position: 'relative' }}>
                     <BoxCard
@@ -541,6 +595,7 @@ function RackView({
                       isWorking={isWorking}
                       onClick={() => box && setSelectedBox(box)}
                       operationMode={operationMode}
+                      subcompartments={boxSubs}
                     />
                     {hasShuttle && (
                       <div style={{
@@ -610,7 +665,6 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, operationMode }) 
 
   const fetchItems = async () => {
     try {
-      const ItemService = (await import('../services/itemService')).default;
       const response = await ItemService.getAllItems();
       setItems(response.data || []);
     } catch (error) {
@@ -621,7 +675,6 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, operationMode }) 
   const fetchSubCompartments = async () => {
     try {
       setLoading(true);
-      const SubCompartmentService = (await import('../services/subCompartmentService')).default;
       const response = await SubCompartmentService.getAllSubCompartments();
 
       // Filter subcompartments for this specific box
@@ -648,7 +701,6 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, operationMode }) 
 
     try {
       setLoading(true);
-      const SubCompartmentService = (await import('../services/subCompartmentService')).default;
 
       // 1. Send the command
       await SubCompartmentService.addProduct({
@@ -721,7 +773,6 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, operationMode }) 
 
     try {
       setLoading(true);
-      const SubCompartmentService = (await import('../services/subCompartmentService')).default;
       await SubCompartmentService.retrieveProduct({
         boxId: box.box_id,
         subId: selectedSubId,
@@ -847,11 +898,11 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, operationMode }) 
           </button>
         </div>
 
-        {/* Modal Content (2x3 Grid) */}
+        {/* Modal Content (3x2 Grid) */}
         <div style={{
           padding: '12px',
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateColumns: 'repeat(2, 1fr)',
           gap: '8px',
           background: 'var(--bg-primary)'
         }}>
