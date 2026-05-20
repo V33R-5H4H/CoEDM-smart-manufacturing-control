@@ -11,7 +11,7 @@ import { ToastContainer, toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import "react-toastify/dist/ReactToastify.css";
 
-const API_BASE = "http://100.97.200.68:8000/api/control/asrs";
+const API_BASE = `http://${window.location.hostname}:8000/api/control/asrs`;
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState("boxes");
@@ -29,7 +29,7 @@ function Dashboard() {
 
   const connectSafetyWS = useCallback(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host.includes('localhost') ? window.location.host : '100.97.200.68:8000';
+    const host = `${window.location.hostname}:8000`;
     const wsBase = import.meta.env.VITE_WS_URL || `${protocol}//${host}`;
     const wsUrl = `${wsBase}/api/control/assembly/ws/hydraulic-data`;
 

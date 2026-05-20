@@ -437,13 +437,67 @@ function RackView({
   subcompartmentsMap = {}
 }) {
   const columns = ['A', 'B', 'C', 'D', 'E'];
-  const rows = [7, 6, 5, 4, 3, 2, 1]; // Render from top to bottom (7 -> 1)
+  const rows = [1, 2, 3, 4, 5, 6, 7]; // Render from top to bottom (1 -> 7)
 
   // Create a map for quick lookup
   const boxMap = {};
   boxes.forEach((b) => {
     boxMap[`${b.column_name}${b.row_number}`] = b;
   });
+
+  const gridRef = React.useRef(null);
+  const cellRefs = React.useRef({});
+  const [trolleyPos, setTrolleyPos] = React.useState({ top: 0, left: 0, width: 0, height: 0, visible: false });
+
+  React.useEffect(() => {
+    const updateTrolley = () => {
+      const activeCol = shuttle?.col;
+      const activeRow = shuttle?.row;
+      // Default to DROP_OFF if row is 0 or if there is no col/row (like startup)
+      const activeId = (activeRow === 0 || activeCol === 'DROP_OFF' || !activeCol) ? 'DROP_OFF' : `${activeCol}${activeRow}`;
+      
+      const cellEl = cellRefs.current[activeId];
+      const gridEl = gridRef.current;
+      if (cellEl && gridEl) {
+        const cellRect = cellEl.getBoundingClientRect();
+        const gridRect = gridEl.getBoundingClientRect();
+        setTrolleyPos({
+          top: cellRect.top - gridRect.top + gridEl.scrollTop,
+          left: cellRect.left - gridRect.left + gridEl.scrollLeft,
+          width: cellRect.width,
+          height: cellRect.height,
+          visible: true
+        });
+      } else {
+        setTrolleyPos(prev => ({ ...prev, visible: false }));
+      }
+    };
+
+    // Run immediately
+    updateTrolley();
+
+    window.addEventListener('resize', updateTrolley);
+    const gridEl = gridRef.current;
+    if (gridEl) {
+      gridEl.addEventListener('scroll', updateTrolley);
+    }
+    
+    // Check multiple times to handle dynamic loading and layout updates
+    const timers = [
+      setTimeout(updateTrolley, 100),
+      setTimeout(updateTrolley, 300),
+      setTimeout(updateTrolley, 600),
+      setTimeout(updateTrolley, 1000)
+    ];
+
+    return () => {
+      window.removeEventListener('resize', updateTrolley);
+      if (gridEl) {
+        gridEl.removeEventListener('scroll', updateTrolley);
+      }
+      timers.forEach(t => clearTimeout(t));
+    };
+  }, [shuttle?.col, shuttle?.row, boxes]);
 
   return (
     <div style={{
@@ -456,6 +510,24 @@ function RackView({
       height: '100%',
       position: 'relative'
     }}>
+      <style>{`
+        @keyframes mechanical-hum {
+          0% { transform: translateY(0) scaleY(1); }
+          25% { transform: translateY(-0.4px) scaleY(0.995); }
+          50% { transform: translateY(0.2px) scaleY(1.002); }
+          75% { transform: translateY(-0.2px) scaleY(0.998); }
+          100% { transform: translateY(0) scaleY(1); }
+        }
+        @keyframes roller-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes lidar-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+
       {/* Canvas Header */}
       <div style={{
         height: '32px',
@@ -490,126 +562,390 @@ function RackView({
       </div>
 
       {/* Grid Container */}
-      <div style={{
-        flex: 1,
-        padding: '16px',
-        overflow: 'auto',
-        background: 'var(--bg-secondary)',
-        backgroundImage: 'radial-gradient(var(--bg-hover) 1px, transparent 0)',
-        backgroundSize: '20px 20px',
-        backgroundPosition: '-10px -10px'
-      }}>
+      <div 
+        ref={gridRef}
+        style={{
+          flex: 1,
+          padding: '16px',
+          overflow: 'auto',
+          background: 'var(--bg-secondary)',
+          backgroundImage: 'radial-gradient(var(--bg-hover) 1px, transparent 0)',
+          backgroundSize: '20px 20px',
+          backgroundPosition: '-10px -10px',
+          position: 'relative'
+        }}
+      >
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'min-content repeat(5, 1fr)',
-          gap: '8px',
-          minWidth: '800px',
-          width: '100%'
+          display: 'flex',
+          gap: '24px',
+          alignItems: 'stretch',
+          minWidth: '950px',
+          width: '100%',
+          position: 'relative'
         }}>
-          {/* Column Headers */}
-          <div style={{ height: '24px' }} /> {/* Corner */}
-          {columns.map(col => (
-            <div key={col} style={{
-              textAlign: 'center',
-              fontFamily: 'var(--font-mono)',
-              fontSize: '12px',
-              fontWeight: 700,
-              color: 'var(--text-muted)',
-              borderBottom: '1px solid var(--border)',
-              paddingBottom: '4px'
-            }}>COL {col}</div>
-          ))}
+          {/* Handoff Conveyor / Docking Station */}
+          <div 
+            ref={el => cellRefs.current['DROP_OFF'] = el}
+            style={{
+              width: '140px',
+              background: 'var(--bg-tertiary)',
+              border: '2px dashed var(--border)',
+              borderRadius: '6px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+              boxSizing: 'border-box',
+              position: 'relative',
+              boxShadow: 'inset 0 0 15px rgba(0,0,0,0.2)',
+              minHeight: '220px',
+              alignSelf: 'end',
+              marginBottom: '8px'
+            }}
+          >
+            <div style={{
+              position: 'absolute',
+              top: '12px',
+              bottom: '12px',
+              width: '40px',
+              borderLeft: '2px solid var(--border)',
+              borderRight: '2px solid var(--border)',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '8px 0',
+              opacity: 0.75
+            }}>
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} style={{ width: '32px', height: '6px', background: 'var(--border)', borderRadius: '3px', border: '1px solid rgba(0,0,0,0.5)' }} />
+              ))}
+            </div>
 
-          {/* Grid Cells */}
-          {rows.map(row => (
-            <React.Fragment key={`row-${row}`}>
-              {/* Row Label */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-                paddingRight: '8px',
+            <div style={{
+              zIndex: 1,
+              background: 'rgba(15, 23, 42, 0.85)',
+              padding: '8px 12px',
+              borderRadius: '4px',
+              border: '1px solid var(--border)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '4px',
+              textAlign: 'center',
+              backdropFilter: 'blur(4px)'
+            }}>
+              <span className="material-symbols-outlined" style={{ color: 'var(--status-ok)', fontSize: '24px' }}>conveyor_belt</span>
+              <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Handoff Bay
+              </span>
+              <span style={{ fontSize: '8px', color: 'var(--text-muted)' }}>
+                [DROP_OFF]
+              </span>
+            </div>
+          </div>
+
+          {/* Main Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'min-content repeat(5, 1fr)',
+            gap: '8px',
+            flex: 1
+          }}>
+            {/* Column Headers */}
+            <div style={{ height: '24px' }} /> {/* Corner */}
+            {columns.map(col => (
+              <div key={col} style={{
+                textAlign: 'center',
                 fontFamily: 'var(--font-mono)',
                 fontSize: '12px',
                 fontWeight: 700,
                 color: 'var(--text-muted)',
-                borderRight: '1px solid var(--border)'
-              }}>LVL {row}</div>
+                borderBottom: '1px solid var(--border)',
+                paddingBottom: '4px'
+              }}>COL {col}</div>
+            ))}
 
-              {/* Box Slots */}
-              {columns.map(col => {
-                const id = `${col}${row}`;
-                const box = boxMap[id];
-                const active = getEffectiveLEDState(id);
-                const rawLED = ledStates[id] || false;
-                const blinking = isSourceBlinking(id);
-                const isSelected = box && box.box_id === selectedBoxId;
-                
-                // Determine if this box is currently undergoing store or retrieve operation
-                const isWorking = box && (
-                  (pendingOperation && pendingOperation.targetCell === id) ||
-                  (shuttleState?.command && shuttleState.command.startsWith(id)) ||
-                  rawLED
-                );
+            {/* Grid Cells */}
+            {rows.map(row => (
+              <React.Fragment key={`row-${row}`}>
+                {/* Row Label */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                  paddingRight: '8px',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  color: 'var(--text-muted)',
+                  borderRight: '1px solid var(--border)'
+                }}>LVL {row}</div>
 
-                // Overlay Shuttle if it's currently at this position
-                const hasShuttle = shuttle && shuttle.position === id;
+                {/* Box Slots */}
+                {columns.map(col => {
+                  const id = `${col}${row}`;
+                  const box = boxMap[id];
+                  const active = getEffectiveLEDState(id);
+                  const rawLED = ledStates[id] || false;
+                  const blinking = isSourceBlinking(id);
+                  const isSelected = box && box.box_id === selectedBoxId;
+                  
+                  // Determine if this box is currently undergoing store or retrieve operation
+                  const isWorking = box && (
+                    (pendingOperation && pendingOperation.targetCell === id) ||
+                    (shuttleState?.command && shuttleState.command.startsWith(id)) ||
+                    rawLED
+                  );
 
-                const boxSubs = box ? (subcompartmentsMap[box.box_id] || []) : [];
+                  const boxSubs = box ? (subcompartmentsMap[box.box_id] || []) : [];
 
-                return (
-                  <div key={id} style={{ position: 'relative' }}>
-                    <BoxCard
-                      box={box}
-                      active={active}
-                      rawLED={rawLED}
-                      isSourceBlinking={blinking}
-                      isSelected={isSelected}
-                      isWorking={isWorking}
-                      onClick={() => box && setSelectedBox(box)}
-                      operationMode={operationMode}
-                      subcompartments={boxSubs}
-                    />
-                    {hasShuttle && (
-                      <div style={{
-                        position: 'absolute',
-                        inset: 0,
-                        background: 'var(--bg-primary)',
-                        border: '2px solid var(--status-ok)',
-                        borderRadius: '4px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 0 15px rgba(121,218,166,0.2)',
-                        zIndex: 10
-                      }}>
-                        <span className="material-symbols-outlined" style={{ color: 'var(--status-ok)', animation: 'pulse 1.5s infinite' }}>forklift</span>
-                        <div style={{
-                          position: 'absolute',
-                          top: '-12px',
-                          right: '-12px',
-                          background: 'var(--status-ok)',
-                          color: '#002112',
-                          fontFamily: 'var(--font-mono)',
-                          fontSize: '10px',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          border: '1px solid var(--status-ok)',
-                          boxShadow: 'var(--shadow-lg)',
-                          whiteSpace: 'nowrap',
-                          fontWeight: 700
-                        }}>
-                          MOVING ({id})
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </React.Fragment>
-          ))}
+                  return (
+                    <div key={id} ref={el => cellRefs.current[id] = el} style={{ position: 'relative' }}>
+                      <BoxCard
+                        box={box}
+                        active={active}
+                        rawLED={rawLED}
+                        isSourceBlinking={blinking}
+                        isSelected={isSelected}
+                        isWorking={isWorking}
+                        onClick={() => box && setSelectedBox(box)}
+                        operationMode={operationMode}
+                        subcompartments={boxSubs}
+                      />
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            ))}
+          </div>
         </div>
+
+        {/* Smooth-glide Trolley Carriage overlay */}
+        {trolleyPos.visible && (
+          <div
+            style={{
+              position: 'absolute',
+              top: `${trolleyPos.top}px`,
+              left: `${trolleyPos.left}px`,
+              width: `${trolleyPos.width}px`,
+              height: `${trolleyPos.height}px`,
+              pointerEvents: 'none',
+              zIndex: 100,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'top 2.4s cubic-bezier(0.25, 0.1, 0.25, 1), left 2.4s cubic-bezier(0.25, 0.1, 0.25, 1)',
+              boxSizing: 'border-box'
+            }}
+          >
+            {/* The ASRS Mechanical Trolley/Cart Assembly */}
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '-8px', // Riding on the bottom cell rail
+                width: '94px',
+                height: '48px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                animation: shuttle?.state === 'moving' ? 'mechanical-hum 0.12s linear infinite' : 'none'
+              }}
+            >
+              {/* 1. Vertical Fork Lifting Prongs (Extends upwards behind the box slot) */}
+              <div style={{
+                position: 'absolute',
+                bottom: '14px',
+                width: '76px',
+                height: '28px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                zIndex: 1
+              }}>
+                {/* Left Prong */}
+                <div style={{
+                  width: '5px',
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #94a3b8 0%, #cbd5e1 50%, #475569 100%)',
+                  border: '1px solid #334155',
+                  borderRadius: '2px 2px 0 0',
+                  boxShadow: '1px 0 3px rgba(0,0,0,0.3)'
+                }} />
+                {/* Right Prong */}
+                <div style={{
+                  width: '5px',
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #94a3b8 0%, #cbd5e1 50%, #475569 100%)',
+                  border: '1px solid #334155',
+                  borderRadius: '2px 2px 0 0',
+                  boxShadow: '-1px 0 3px rgba(0,0,0,0.3)'
+                }} />
+              </div>
+
+              {/* 2. Crate / Cargo Box Load (Rendered when carrying or moving) */}
+              {/* Only show load if shuttle is busy or moving to show it is transporting item */}
+              {(shuttle?.state === 'moving' || shuttle?.state === 'busy') && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '15px',
+                  width: '46px',
+                  height: '24px',
+                  background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.25) 0%, rgba(234, 179, 8, 0.05) 100%)',
+                  border: '1.5px solid #eab308',
+                  borderRadius: '3px',
+                  boxShadow: '0 0 12px rgba(234, 179, 8, 0.4), inset 0 0 6px rgba(234, 179, 8, 0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 2,
+                  backdropFilter: 'blur(1px)'
+                }}>
+                  {/* Crate reinforcing ribs */}
+                  <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'space-around', padding: '2px' }}>
+                    <div style={{ width: '2px', height: '100%', background: 'rgba(234, 179, 8, 0.5)' }} />
+                    <div style={{ width: '2px', height: '100%', background: 'rgba(234, 179, 8, 0.5)' }} />
+                    <div style={{ width: '2px', height: '100%', background: 'rgba(234, 179, 8, 0.5)' }} />
+                  </div>
+                </div>
+              )}
+
+              {/* 3. Horizontal Trolley Flatbed Chassis */}
+              <div style={{
+                width: '100%',
+                height: '14px',
+                background: 'linear-gradient(180deg, #475569 0%, #1e293b 100%)',
+                border: '1.5px solid #64748b',
+                borderRadius: '3px',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.2)',
+                position: 'relative',
+                zIndex: 3,
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                {/* Hazard Warning Stripes on Flatbed Center */}
+                <div style={{
+                  position: 'absolute',
+                  left: '12px',
+                  right: '12px',
+                  height: '6px',
+                  background: 'repeating-linear-gradient(-45deg, #eab308, #eab308 4px, #1e293b 4px, #1e293b 8px)',
+                  opacity: 0.85,
+                  borderRadius: '1px'
+                }} />
+
+                {/* Laser Headlights on bumper tips */}
+                <div style={{
+                  position: 'absolute',
+                  left: '2px',
+                  width: '4px',
+                  height: '4px',
+                  borderRadius: '50%',
+                  background: '#fff',
+                  boxShadow: '0 0 6px #fff',
+                  opacity: shuttle?.state === 'moving' ? 1 : 0.4
+                }} />
+                <div style={{
+                  position: 'absolute',
+                  right: '2px',
+                  width: '4px',
+                  height: '4px',
+                  borderRadius: '50%',
+                  background: '#fff',
+                  boxShadow: '0 0 6px #fff',
+                  opacity: shuttle?.state === 'moving' ? 1 : 0.4
+                }} />
+
+                {/* Small pulsing status LED */}
+                <div style={{
+                  position: 'absolute',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '4px',
+                  height: '4px',
+                  borderRadius: '50%',
+                  background: shuttle?.state === 'moving' ? '#06b6d4' : '#10b981',
+                  boxShadow: `0 0 6px ${shuttle?.state === 'moving' ? '#06b6d4' : '#10b981'}`
+                }} />
+              </div>
+
+              {/* 4. Roller Wheels underneath (Locked to rail line) */}
+              <div style={{
+                width: '76px',
+                height: '8px',
+                position: 'relative',
+                zIndex: 2,
+                display: 'flex',
+                justifyContent: 'space-between',
+                padding: '0 4px'
+              }}>
+                {/* Left Wheel */}
+                <div style={{
+                  width: '12px',
+                  height: '12px',
+                  marginTop: '-4px',
+                  borderRadius: '50%',
+                  background: 'conic-gradient(from 0deg, #64748b, #1e293b, #64748b, #0f172a, #64748b)',
+                  border: '1.5px solid #020617',
+                  boxShadow: '0 2px 3px rgba(0,0,0,0.4)',
+                  animation: shuttle?.state === 'moving' ? 'roller-spin 0.3s linear infinite' : 'none'
+                }}>
+                  {/* Wheel hub */}
+                  <div style={{ margin: '3px auto 0 auto', width: '2px', height: '2px', borderRadius: '50%', background: '#cbd5e1' }} />
+                </div>
+                {/* Right Wheel */}
+                <div style={{
+                  width: '12px',
+                  height: '12px',
+                  marginTop: '-4px',
+                  borderRadius: '50%',
+                  background: 'conic-gradient(from 0deg, #64748b, #1e293b, #64748b, #0f172a, #64748b)',
+                  border: '1.5px solid #020617',
+                  boxShadow: '0 2px 3px rgba(0,0,0,0.4)',
+                  animation: shuttle?.state === 'moving' ? 'roller-spin 0.3s linear infinite' : 'none'
+                }}>
+                  {/* Wheel hub */}
+                  <div style={{ margin: '3px auto 0 auto', width: '2px', height: '2px', borderRadius: '50%', background: '#cbd5e1' }} />
+                </div>
+              </div>
+
+              {/* 5. Overhead Target Telemetry Badge */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '-24px',
+                  background: 'rgba(15, 23, 42, 0.9)',
+                  color: shuttle?.state === 'moving' ? '#06b6d4' : '#10b981',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '8px',
+                  fontWeight: 900,
+                  padding: '2px 6px',
+                  borderRadius: '3px',
+                  border: `1px solid ${shuttle?.state === 'moving' ? 'rgba(6, 182, 212, 0.5)' : 'rgba(16, 185, 129, 0.5)'}`,
+                  boxShadow: '0 3px 6px rgba(0,0,0,0.3)',
+                  whiteSpace: 'nowrap',
+                  letterSpacing: '0.05em',
+                  zIndex: 4,
+                  backdropFilter: 'blur(2px)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <span style={{
+                  width: '4px',
+                  height: '4px',
+                  borderRadius: '50%',
+                  background: shuttle?.state === 'moving' ? '#06b6d4' : '#10b981',
+                  animation: shuttle?.state === 'moving' ? 'pulse 1s infinite' : 'none'
+                }} />
+                {shuttle?.row === 0 || shuttle?.col === 'DROP_OFF' || !shuttle?.col ? 'BAY-DROP_OFF' : `BAY-${shuttle.col}${shuttle.row}`}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

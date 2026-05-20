@@ -89,6 +89,15 @@ async def connect_mirac():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/disconnect")
+async def disconnect_mirac():
+    try:
+        result = mirac_gateway.disconnect()
+        return {"success": True, "message": "MIRAC disconnected", "result": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.websocket("/ws/vibit-data")
 async def vibit_data_websocket(websocket: WebSocket):
     """

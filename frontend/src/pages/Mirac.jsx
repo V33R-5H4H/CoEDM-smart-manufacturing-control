@@ -14,7 +14,7 @@ const useMiracData = () => {
 
   useEffect(() => {
     let stopped = false;
-    const endpoint = "http://127.0.0.1:1880/vibit";
+    const endpoint = "http://localhost:8000/api/control/mirac/vibit-data";
     const hookId = hookInstanceRef.current;
     const POLL_INTERVAL_MS = 1000;
 
@@ -24,51 +24,52 @@ const useMiracData = () => {
       try {
         const res = await fetch(endpoint, { cache: "no-store" });
         if (!res.ok) throw new Error(`status ${res.status}`);
-        const payload = await res.json();
+        const telemetry = await res.json();
         if (stopped) return;
 
-        // New VIBIT format nests telemetry under payload.data; keep old format as fallback.
-        const telemetry = payload?.data && typeof payload.data === "object" ? payload.data : payload;
-        const rpm = Number(telemetry?.calculated_rpm ?? telemetry?.spindle_rpm ?? 0);
-        const leadStatus = telemetry?.lead_status;
+        const rpm = Number(telemetry?.rpm ?? telemetry?.spindle_speed ?? 0);
+        const ledStatus = telemetry?.led_status;
 
-        // Map flat VIBIT data to nested structure expected by UI
+        // Map telemetry from backend to nested structure expected by UI
         const mappedData = {
           status: {
-            green: leadStatus === 1 || payload?.completeness === "complete",
-            yellow: leadStatus === 0 || payload?.completeness === "partial",
-            red: payload?.completeness === "error",
-            cycle_start: rpm > 0
+            green: telemetry?.led_green || ledStatus === 1 || ledStatus === 1.0,
+            yellow: telemetry?.led_yellow || ledStatus === 0 || ledStatus === 0.0,
+            red: telemetry?.led_red || ledStatus === 2 || ledStatus === 2.0,
+            cycle_start: telemetry?.cycle_start || rpm > 0
           },
           spindle: {
             speed: rpm,
-            temperature: telemetry?.sensor_1,
-            vibration: telemetry?.x_rms_acceleration || 0
+            temperature: telemetry?.spindle_temp ?? telemetry?.temperature ?? 0,
+            vibration: telemetry?.spindle_vibration ?? telemetry?.x_rms_acceleration ?? 0
           },
           tool: {
-            number: 1,
-            temperature: telemetry?.sensor_1,
-            vibration: telemetry?.y_rms_acceleration || 0,
-            reboot_count: telemetry?.reboot_count || 0
+            number: telemetry?.tool_number ?? 1,
+            temperature: telemetry?.tool_temp ?? telemetry?.temperature ?? 0,
+            vibration: telemetry?.tool_vibration ?? telemetry?.y_rms_acceleration ?? 0,
+            reboot_count: telemetry?.reboot_count ?? 0
           },
           axes: {
             x: {
-              rms_accel: telemetry?.x_rms_acceleration || 0,
-              rms_velocity: telemetry?.x_rms_velocity || 0,
-              peak_accel: telemetry?.x_peak_acceleration || 0,
-              peak_velocity: telemetry?.x_peak_velocity || 0
+              rms_accel: telemetry?.x_rms_acceleration ?? 0,
+              rms_velocity: telemetry?.x_rms_velocity ?? 0,
+              peak_accel: telemetry?.x_peak_acceleration ?? 0,
+              peak_velocity: telemetry?.x_peak_velocity ?? 0,
+              value: telemetry?.x_axis_value ?? 0
             },
             y: {
-              rms_accel: telemetry?.y_rms_acceleration || 0,
-              rms_velocity: telemetry?.y_rms_velocity || 0,
-              peak_accel: telemetry?.y_peak_acceleration || 0,
-              peak_velocity: telemetry?.y_peak_velocity || 0
+              rms_accel: telemetry?.y_rms_acceleration ?? 0,
+              rms_velocity: telemetry?.y_rms_velocity ?? 0,
+              peak_accel: telemetry?.y_peak_acceleration ?? 0,
+              peak_velocity: telemetry?.y_peak_velocity ?? 0,
+              value: 0
             },
             z: {
-              rms_accel: telemetry?.z_rms_acceleration || 0,
-              rms_velocity: telemetry?.z_rms_velocity || 0,
-              peak_accel: telemetry?.z_peak_acceleration || 0,
-              peak_velocity: telemetry?.z_peak_velocity || 0
+              rms_accel: telemetry?.z_rms_acceleration ?? 0,
+              rms_velocity: telemetry?.z_rms_velocity ?? 0,
+              peak_accel: telemetry?.z_peak_acceleration ?? 0,
+              peak_velocity: telemetry?.z_peak_velocity ?? 0,
+              value: telemetry?.z_axis_value ?? 0
             }
           }
         };
@@ -407,7 +408,7 @@ const Mirac = () => {
             spindleRPM={data?.spindle?.speed || 0}
             carriagePositionPct={getCarriagePositionPct(data?.axes)}
             spindleRunning={data?.status?.cycle_start || false}
-            alarmActive={wsStatus !== 'connected'}
+            alarmActive={!isConnected}
             toolEngaged={false}
             coolantOn={false}
             demoMode={demoMode}

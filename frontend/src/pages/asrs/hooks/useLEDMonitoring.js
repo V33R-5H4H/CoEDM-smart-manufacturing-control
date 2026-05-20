@@ -8,7 +8,8 @@ export function useLEDMonitoring() {
 
   useEffect(() => {
     function connect() {
-      const ws = new WebSocket('ws://100.97.200.68:8000/api/control/asrs/ws/led-status');
+      const host = window.location.hostname;
+      const ws = new WebSocket(`ws://${host}:8000/api/control/asrs/ws/led-status`);
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -18,7 +19,7 @@ export function useLEDMonitoring() {
         // Fetch latest shuttle state immediately on connection (fire and forget)
         (async () => {
           try {
-            const res = await fetch('http://100.97.200.68:8000/api/control/asrs/shuttle_state');
+            const res = await fetch(`http://${host}:8000/api/control/asrs/shuttle_state`);
             if (res.ok) {
               const data = await res.json();
               console.log('Initial shuttle state fetched:', data);
