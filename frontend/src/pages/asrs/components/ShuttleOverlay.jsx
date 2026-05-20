@@ -22,23 +22,12 @@ function ShuttleOverlay({ row, col }) {
 
   return (
     <div
+      className="shuttle-overlay"
       style={{
-        position: 'absolute',
         left: pos.x,
         top: pos.y,
         width: pos.w,
         height: pos.h,
-        background: 'linear-gradient(135deg, #00e5ff, #00bcd4)',
-        borderRadius: '10px',
-        boxShadow: '0 0 20px rgba(0,229,255,0.7)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontWeight: 700,
-        color: '#00363a',
-        transition: 'all 0.5s ease',
-        pointerEvents: 'none',
-        zIndex: 10,
       }}
     >
       Shuttle

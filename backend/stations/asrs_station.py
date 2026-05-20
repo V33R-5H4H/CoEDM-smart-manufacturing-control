@@ -41,6 +41,9 @@ class ASRSController:
         # Register for auto-reconnect
         asrs_connection.register_reconnect_callback(self._on_reconnect)
 
+        # Register callback for automatic shuttle tracking based on LED edge transitions
+        self.led_service.register_callback(self._on_led_state_change)
+
     # ------------------------------------------------------------------
     # Connection lifecycle
     # ------------------------------------------------------------------
@@ -203,3 +206,27 @@ class ASRSController:
 
     def get_led_states(self) -> dict:
         return self.led_service.get_all_states()
+
+    def _on_led_state_change(self, box_id: str, active: bool, prev: bool):
+        """
+        Callback triggered when LED state changes.
+        Tracks transition from True (active) to False (inactive) to determine
+        when a store or retrieve operation completes.
+        """
+        if prev and not active:
+            # Transition from active to inactive (operation completed)
+            snapshot = self.shuttle.snapshot()
+            if snapshot["state"] == "busy":
+                shuttle_target = f"{snapshot['column']}{snapshot['row']}"
+                if box_id == shuttle_target:
+                    logging.info(
+                        f"[ASRSController] Detected transition to OFF for box {box_id}. "
+                        f"Active command '{snapshot['command']}' complete."
+                    )
+                    cmd = snapshot["command"]
+                    if cmd and cmd.upper().endswith("S"):
+                        logging.info(f"[ASRSController] Store operation complete. Setting shuttle to idle.")
+                        self.shuttle.set_idle()
+                    else:
+                        logging.info(f"[ASRSController] Retrieve operation complete. Returning shuttle to drop-off.")
+                        self.shuttle.return_to_dropoff()
