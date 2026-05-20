@@ -91,15 +91,15 @@ def _make_session_for_add(
 
 class TestAddProductWithASRS:
 
-    @patch("backend.stations.asrs_logic.InventorySessionLocal")
-    @patch("backend.stations.asrs_logic.asrs_controller")
+    @patch("backend.stations.asrs.asrs_logic.InventorySessionLocal")
+    @patch("backend.stations.asrs.asrs_logic.asrs_controller")
     def test_new_slot_plc_success_creates_subcompartment(self, mock_asrs, MockSession):
         """PLC succeeds + slot doesn't exist → new SubCompartment row created."""
         session = _make_session_for_add(subcom_status=None)
         MockSession.return_value = session
         mock_asrs.run.return_value = {"success": True, "message": "OK"}
 
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         logic.asrs_controller = mock_asrs
 
@@ -112,15 +112,15 @@ class TestAddProductWithASRS:
         assert result["subcom_place"] == "A1a"
         session.commit.assert_called_once()
 
-    @patch("backend.stations.asrs_logic.InventorySessionLocal")
-    @patch("backend.stations.asrs_logic.asrs_controller")
+    @patch("backend.stations.asrs.asrs_logic.InventorySessionLocal")
+    @patch("backend.stations.asrs.asrs_logic.asrs_controller")
     def test_empty_slot_plc_success_updates_subcompartment(self, mock_asrs, MockSession):
         """PLC succeeds + slot exists as Empty → existing row updated."""
         session = _make_session_for_add(subcom_status="Empty")
         MockSession.return_value = session
         mock_asrs.run.return_value = {"success": True, "message": "OK"}
 
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         logic.asrs_controller = mock_asrs
 
@@ -130,15 +130,15 @@ class TestAddProductWithASRS:
         assert result["db_operation"] == "updated"
         session.commit.assert_called_once()
 
-    @patch("backend.stations.asrs_logic.InventorySessionLocal")
-    @patch("backend.stations.asrs_logic.asrs_controller")
+    @patch("backend.stations.asrs.asrs_logic.InventorySessionLocal")
+    @patch("backend.stations.asrs.asrs_logic.asrs_controller")
     def test_plc_failure_db_not_updated(self, mock_asrs, MockSession):
         """When PLC throws → DB should NOT be touched (no commit, no insert)."""
         session = _make_session_for_add(subcom_status=None)
         MockSession.return_value = session
         mock_asrs.run.side_effect = Exception("Not connected to PLC")
 
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         logic.asrs_controller = mock_asrs
 
@@ -150,8 +150,8 @@ class TestAddProductWithASRS:
         assert session.execute.call_count == 2
         session.commit.assert_not_called()
 
-    @patch("backend.stations.asrs_logic.InventorySessionLocal")
-    @patch("backend.stations.asrs_logic.asrs_controller")
+    @patch("backend.stations.asrs.asrs_logic.InventorySessionLocal")
+    @patch("backend.stations.asrs.asrs_logic.asrs_controller")
     def test_occupied_slot_returns_failure_without_plc_call(self, mock_asrs, MockSession):
         """Slot already Occupied → early return, PLC never called."""
         # Note: in the current algorithm, PLC is called BEFORE the occupied check.
@@ -160,7 +160,7 @@ class TestAddProductWithASRS:
         MockSession.return_value = session
         mock_asrs.run.return_value = {"success": True, "message": "OK"}
 
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         logic.asrs_controller = mock_asrs
 
@@ -170,14 +170,14 @@ class TestAddProductWithASRS:
         assert "OCCUPIED" in result["message"]
         session.commit.assert_not_called()
 
-    @patch("backend.stations.asrs_logic.InventorySessionLocal")
-    @patch("backend.stations.asrs_logic.asrs_controller")
+    @patch("backend.stations.asrs.asrs_logic.InventorySessionLocal")
+    @patch("backend.stations.asrs.asrs_logic.asrs_controller")
     def test_item_not_found_raises(self, mock_asrs, MockSession):
         """Item doesn't exist in Items table → ValueError raised."""
         session = _make_session_for_add(item_exists=False)
         MockSession.return_value = session
 
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         logic.asrs_controller = mock_asrs
 
@@ -186,14 +186,14 @@ class TestAddProductWithASRS:
 
         mock_asrs.run.assert_not_called()  # PLC never reached
 
-    @patch("backend.stations.asrs_logic.InventorySessionLocal")
-    @patch("backend.stations.asrs_logic.asrs_controller")
+    @patch("backend.stations.asrs.asrs_logic.InventorySessionLocal")
+    @patch("backend.stations.asrs.asrs_logic.asrs_controller")
     def test_box_not_found_raises(self, mock_asrs, MockSession):
         """Box doesn't exist in Boxes table → ValueError raised."""
         session = _make_session_for_add(box_exists=False)
         MockSession.return_value = session
 
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         logic.asrs_controller = mock_asrs
 
@@ -202,13 +202,13 @@ class TestAddProductWithASRS:
 
     def test_missing_box_id_raises(self):
         """Empty box_id → ValueError without DB call."""
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         with pytest.raises(Exception):
             logic.add_product_with_asrs("", "a", "1")
 
     def test_missing_item_id_raises(self):
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         with pytest.raises(Exception):
             logic.add_product_with_asrs("A1", "a", "")
@@ -220,8 +220,8 @@ class TestAddProductWithASRS:
 
 class TestRetrieveProductWithASRS:
 
-    @patch("backend.stations.asrs_logic.InventorySessionLocal")
-    @patch("backend.stations.asrs_logic.asrs_controller")
+    @patch("backend.stations.asrs.asrs_logic.InventorySessionLocal")
+    @patch("backend.stations.asrs.asrs_logic.asrs_controller")
     def test_plc_success_db_updated(self, mock_asrs, MockSession):
         """PLC succeeds → SubCompartments marked Empty + Transactions logged."""
         session = MagicMock()
@@ -234,7 +234,7 @@ class TestRetrieveProductWithASRS:
         )
         mock_asrs.run.return_value = {"success": True, "message": "OK"}
 
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         logic.asrs_controller = mock_asrs
 
@@ -246,8 +246,8 @@ class TestRetrieveProductWithASRS:
         assert result["plc_status"] == "OK"
         session.commit.assert_called_once()
 
-    @patch("backend.stations.asrs_logic.InventorySessionLocal")
-    @patch("backend.stations.asrs_logic.asrs_controller")
+    @patch("backend.stations.asrs.asrs_logic.InventorySessionLocal")
+    @patch("backend.stations.asrs.asrs_logic.asrs_controller")
     def test_plc_failure_db_not_updated(self, mock_asrs, MockSession):
         """PLC fails → DB must NOT be updated (no commit)."""
         session = MagicMock()
@@ -258,7 +258,7 @@ class TestRetrieveProductWithASRS:
         )
         mock_asrs.run.side_effect = Exception("PLC error")
 
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         logic.asrs_controller = mock_asrs
 
@@ -268,8 +268,8 @@ class TestRetrieveProductWithASRS:
         assert result["plc_status"] == "ERROR"
         session.commit.assert_not_called()
 
-    @patch("backend.stations.asrs_logic.InventorySessionLocal")
-    @patch("backend.stations.asrs_logic.asrs_controller")
+    @patch("backend.stations.asrs.asrs_logic.InventorySessionLocal")
+    @patch("backend.stations.asrs.asrs_logic.asrs_controller")
     def test_insufficient_stock_raises(self, mock_asrs, MockSession):
         """Fewer items in DB than requested → ValueError."""
         session = MagicMock()
@@ -280,7 +280,7 @@ class TestRetrieveProductWithASRS:
             [["A1a", "A1", "a", "A", 1]]
         )
 
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         logic.asrs_controller = mock_asrs
 
@@ -290,13 +290,13 @@ class TestRetrieveProductWithASRS:
         mock_asrs.run.assert_not_called()  # PLC never called when stock insufficient
 
     def test_invalid_quantity_raises(self):
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         with pytest.raises(Exception):
             logic.retrieve_product_with_asrs("1", 0)  # qty must be > 0
 
     def test_missing_item_id_raises(self):
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         with pytest.raises(Exception):
             logic.retrieve_product_with_asrs("", 1)
@@ -308,8 +308,8 @@ class TestRetrieveProductWithASRS:
 
 class TestRetrieveFromSpecificLocation:
 
-    @patch("backend.stations.asrs_logic.InventorySessionLocal")
-    @patch("backend.stations.asrs_logic.asrs_controller")
+    @patch("backend.stations.asrs.asrs_logic.InventorySessionLocal")
+    @patch("backend.stations.asrs.asrs_logic.asrs_controller")
     def test_success_clears_subcompartment(self, mock_asrs, MockSession):
         """Correct item in correct slot → PLC command sent, DB cleared."""
         session = MagicMock()
@@ -324,7 +324,7 @@ class TestRetrieveFromSpecificLocation:
         ]
         mock_asrs.run.return_value = {"success": True, "message": "OK"}
 
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         logic.asrs_controller = mock_asrs
 
@@ -335,8 +335,8 @@ class TestRetrieveFromSpecificLocation:
         assert result["plc_status"] == "OK"
         session.commit.assert_called_once()
 
-    @patch("backend.stations.asrs_logic.InventorySessionLocal")
-    @patch("backend.stations.asrs_logic.asrs_controller")
+    @patch("backend.stations.asrs.asrs_logic.InventorySessionLocal")
+    @patch("backend.stations.asrs.asrs_logic.asrs_controller")
     def test_slot_not_found_returns_failure(self, mock_asrs, MockSession):
         """Non-existent subcom_place → returns failure dict, no exception."""
         session = MagicMock()
@@ -345,7 +345,7 @@ class TestRetrieveFromSpecificLocation:
             ["subcom_place", "item_id", "status"], []
         )
 
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         logic.asrs_controller = mock_asrs
 
@@ -356,8 +356,8 @@ class TestRetrieveFromSpecificLocation:
         mock_asrs.run.assert_not_called()
         session.commit.assert_not_called()
 
-    @patch("backend.stations.asrs_logic.InventorySessionLocal")
-    @patch("backend.stations.asrs_logic.asrs_controller")
+    @patch("backend.stations.asrs.asrs_logic.InventorySessionLocal")
+    @patch("backend.stations.asrs.asrs_logic.asrs_controller")
     def test_slot_empty_returns_failure(self, mock_asrs, MockSession):
         """Slot exists but is Empty → failure dict, no PLC call."""
         session = MagicMock()
@@ -366,7 +366,7 @@ class TestRetrieveFromSpecificLocation:
             ["subcom_place", "item_id", "status"], [["A1b", None, "Empty"]]
         )
 
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         logic.asrs_controller = mock_asrs
 
@@ -376,8 +376,8 @@ class TestRetrieveFromSpecificLocation:
         assert "not occupied" in result["message"].lower()
         mock_asrs.run.assert_not_called()
 
-    @patch("backend.stations.asrs_logic.InventorySessionLocal")
-    @patch("backend.stations.asrs_logic.asrs_controller")
+    @patch("backend.stations.asrs.asrs_logic.InventorySessionLocal")
+    @patch("backend.stations.asrs.asrs_logic.asrs_controller")
     def test_item_mismatch_returns_failure(self, mock_asrs, MockSession):
         """Slot has a different item than requested → mismatch failure, no PLC."""
         session = MagicMock()
@@ -387,7 +387,7 @@ class TestRetrieveFromSpecificLocation:
             ["subcom_place", "item_id", "status"], [["A1e", 2, "Occupied"]]
         )
 
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         logic.asrs_controller = mock_asrs
 
@@ -397,8 +397,8 @@ class TestRetrieveFromSpecificLocation:
         assert "mismatch" in result["message"].lower()
         mock_asrs.run.assert_not_called()
 
-    @patch("backend.stations.asrs_logic.InventorySessionLocal")
-    @patch("backend.stations.asrs_logic.asrs_controller")
+    @patch("backend.stations.asrs.asrs_logic.InventorySessionLocal")
+    @patch("backend.stations.asrs.asrs_logic.asrs_controller")
     def test_plc_failure_returns_failure_dict(self, mock_asrs, MockSession):
         """PLC command throws → returns failure dict (no exception), DB not updated."""
         session = MagicMock()
@@ -408,7 +408,7 @@ class TestRetrieveFromSpecificLocation:
         )
         mock_asrs.run.side_effect = Exception("PLC timeout")
 
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         logic.asrs_controller = mock_asrs
 
@@ -426,20 +426,20 @@ class TestRetrieveFromSpecificLocation:
 class TestASRSLogicHelpers:
 
     def test_extract_box_id(self):
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         assert logic.extract_box_id("A11") == "A1"
         assert logic.extract_box_id("B23") == "B2"
         assert logic.extract_box_id("E7a") == "E7"
 
     def test_extract_box_id_too_short_raises(self):
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         with pytest.raises(ValueError):
             logic.extract_box_id("A")
 
     def test_validate_box_id_format(self):
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         assert logic.validate_box_id_format("A1") is True
         assert logic.validate_box_id_format("E7") is True
@@ -449,7 +449,7 @@ class TestASRSLogicHelpers:
         assert logic.validate_box_id_format("AA1") is False # too long
 
     def test_validate_sub_id(self):
-        from backend.stations.asrs_logic import ASRSLogic
+        from backend.stations.asrs.asrs_logic import ASRSLogic
         logic = ASRSLogic()
         assert logic.validate_sub_id(1) is True
         assert logic.validate_sub_id(7) is True
