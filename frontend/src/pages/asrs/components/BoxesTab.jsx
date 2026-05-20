@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import BoxDetailsModal from './BoxDetailsModal';
 import BoxService from '../services/boxService';
 import SubCompartmentService from '../services/subCompartmentService';
 import ItemService from '../services/itemService';
@@ -9,7 +8,7 @@ import { useLEDMonitoring } from '../hooks/useLEDMonitoring';
 import { useOperationShadowState } from '../hooks/useOperationShadowState';
 import { toast } from 'react-toastify';
 
-function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = null, ledConnected = false, operationMode: propOperationMode }) {
+function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = null, ledConnected = false }) {
 
   // Open delete modal for a box
   const openDeleteModal = (boxId) => {
@@ -42,9 +41,6 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
   const [boxToDelete, setBoxToDelete] = useState(null);
   const [selectedBox, setSelectedBox] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
-  const [localOperationMode, setLocalOperationMode] = useState('store');
-  const operationMode = propOperationMode !== undefined ? propOperationMode : localOperationMode;
-  const setOperationMode = propOperationMode !== undefined ? () => {} : setLocalOperationMode;
   const connected = ledConnected;
 
   // Frontend Operation Shadow State - decouples physical LED truth from visual storytelling
@@ -132,8 +128,6 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
             setShowDetails(true);
           }}
           shuttle={visualShuttle}
-          operationMode={operationMode}
-          setOperationMode={setOperationMode}
           operationPhase={operationPhase}
           selectedBoxId={selectedBox?.box_id}
           pendingOperation={pendingOperation}
@@ -152,7 +146,6 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
             setSelectedBox(null);
           }}
           onRefresh={fetchBoxes}
-          operationMode={operationMode}
         />
       )}
 
@@ -195,46 +188,32 @@ function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking
   const isFull = filledCount === CAPACITY;
   const isBlinking = isSourceBlinking;
 
-  // Determine availability based on current operation mode
-  const isAvailable = operationMode === 'store' ? !isFull : !isEmpty;
-
-  // Compute color based on capacity level for premium dashboard look
-  const getCapacityColor = () => {
-    if (isEmpty) return 'var(--text-disabled)';
-    if (isFull) return 'var(--status-error)'; // Red when full
-    if (filledCount >= 4) return 'var(--status-warn)'; // Orange/amber when almost full
-    return 'var(--status-ok)'; // Green when low-to-mid capacity
-  };
+  const isMajorityFilled = filledCount >= 3;
+  const boxThemeColor = isMajorityFilled ? 'rgba(121, 218, 166, 0.6)' : 'rgba(239, 68, 68, 0.6)';
+  const boxThemeColorHover = isMajorityFilled ? 'rgba(121, 218, 166, 0.85)' : 'rgba(239, 68, 68, 0.85)';
+  const boxGlowColor = isMajorityFilled ? 'rgba(121, 218, 166, 0.15)' : 'rgba(239, 68, 68, 0.15)';
 
   // Base background
   const baseBackground = isWorking
     ? 'linear-gradient(135deg, rgba(35, 12, 12, 0.95), rgba(20, 8, 8, 0.95))'
     : 'var(--bg-hover)';
 
-  // Availability highlight styles
+  // Highlighting styles based on majority subcompartment color (green/red)
   const borderStyle = isWorking
     ? '1px solid rgba(239, 68, 68, 0.9)'
     : isSelected 
-      ? '1px solid var(--primary)' 
-      : isAvailable 
-        ? (operationMode === 'store' 
-            ? '1px solid rgba(121, 218, 166, 0.6)'  // Emerald green border for store-available
-            : '1px solid rgba(235, 165, 80, 0.6)')   // Amber orange border for retrieve-available
-        : '1px solid var(--border)';
+      ? '2px solid var(--primary)' 
+      : `1px solid ${boxThemeColor}`;
 
   const shadowStyle = isWorking
     ? '0 0 15px rgba(239, 68, 68, 0.35), inset 0 0 10px rgba(239, 68, 68, 0.1)'
     : isBlinking 
-      ? 'inset 0 0 20px rgba(121,218,166,0.15)' 
+      ? `inset 0 0 20px ${isMajorityFilled ? 'rgba(121,218,166,0.15)' : 'rgba(239,68,68,0.15)'}` 
       : isSelected 
         ? '0 0 8px rgba(188,199,221,0.2)' 
-        : isAvailable 
-          ? (operationMode === 'store'
-              ? '0 0 8px rgba(121, 218, 166, 0.15)' 
-              : '0 0 8px rgba(235, 165, 80, 0.15)')
-          : 'none';
+        : `0 0 8px ${boxGlowColor}`;
 
-  const opacityStyle = isWorking ? 1.0 : (isAvailable ? 1.0 : 0.35);
+  const opacityStyle = 1.0;
 
   return (
     <button
@@ -261,17 +240,13 @@ function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking
           ? 'linear-gradient(135deg, rgba(45, 15, 15, 0.95), rgba(25, 10, 10, 0.95))'
           : 'var(--bg-elevated)';
         if (!isSelected && !isWorking) {
-          e.currentTarget.style.borderColor = isAvailable
-            ? (operationMode === 'store' ? 'rgba(121, 218, 166, 0.8)' : 'rgba(235, 165, 80, 0.8)')
-            : 'var(--border-lighter)';
+          e.currentTarget.style.borderColor = boxThemeColorHover;
         }
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = baseBackground;
         if (!isSelected && !isWorking) {
-          e.currentTarget.style.borderColor = isAvailable
-            ? (operationMode === 'store' ? 'rgba(121, 218, 166, 0.6)' : 'rgba(235, 165, 80, 0.6)')
-            : 'var(--border)';
+          e.currentTarget.style.borderColor = boxThemeColor;
         }
       }}
     >
@@ -305,19 +280,19 @@ function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking
             }}>
               ACTIVE
             </span>
-          ) : isAvailable && (
+          ) : isSelected && (
             <span style={{ 
               fontSize: '8px', 
-              color: operationMode === 'store' ? 'var(--status-ok)' : 'var(--status-warn)', 
+              color: 'var(--primary)', 
               fontWeight: 800, 
               fontFamily: 'var(--font-mono)',
-              border: `1px solid ${operationMode === 'store' ? 'rgba(121, 218, 166, 0.3)' : 'rgba(235, 165, 80, 0.3)'}`,
+              border: '1px solid rgba(188,199,221,0.3)',
               padding: '1px 4px',
               borderRadius: '2px',
-              background: operationMode === 'store' ? 'rgba(121, 218, 166, 0.08)' : 'rgba(235, 165, 80, 0.08)',
+              background: 'rgba(188,199,221,0.08)',
               letterSpacing: '0.05em'
             }}>
-              {operationMode === 'store' ? 'STORE OK' : 'STOCK'}
+              SELECTED
             </span>
           )}
           {isBlinking && (
@@ -331,12 +306,12 @@ function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking
               ? '#ef4444'
               : rawLED 
                 ? 'var(--status-ok)' 
-                : (isEmpty ? 'var(--border)' : 'var(--accent)'),
+                : (isMajorityFilled ? 'var(--status-ok)' : 'var(--status-error)'),
             boxShadow: isWorking
               ? '0 0 10px #ef4444'
               : rawLED 
                 ? '0 0 8px var(--status-ok)' 
-                : 'none',
+                : `0 0 6px ${isMajorityFilled ? 'var(--status-ok)' : 'var(--status-error)'}`,
             animation: (isWorking || isBlinking) ? 'pulse 1s infinite' : 'none'
           }} />
         </div>
@@ -361,10 +336,10 @@ function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking
                 borderRadius: '2px',
                 border: isOccupied 
                   ? '1px solid rgba(121, 218, 166, 0.6)' 
-                  : '1px dashed rgba(255, 255, 255, 0.12)',
+                  : '1px solid rgba(239, 68, 68, 0.4)',
                 background: isOccupied 
                   ? 'rgba(121, 218, 166, 0.15)' 
-                  : 'rgba(255, 255, 255, 0.02)',
+                  : 'rgba(239, 68, 68, 0.1)',
                 position: 'relative',
                 display: 'flex',
                 alignItems: 'center',
@@ -377,20 +352,18 @@ function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking
                 fontSize: '7.5px',
                 fontFamily: 'var(--font-mono)',
                 fontWeight: 700,
-                color: isOccupied ? 'rgba(121, 218, 166, 0.85)' : 'rgba(255, 255, 255, 0.25)',
+                color: isOccupied ? 'rgba(121, 218, 166, 0.85)' : 'rgba(239, 68, 68, 0.8)',
                 lineHeight: 1
               }}>
                 {label.toUpperCase()}
               </span>
-              {isOccupied && (
-                <div style={{
-                  width: '3.5px',
-                  height: '3.5px',
-                  borderRadius: '50%',
-                  background: 'var(--status-ok)',
-                  boxShadow: '0 0 3px var(--status-ok)'
-                }} />
-              )}
+              <div style={{
+                width: '3.5px',
+                height: '3.5px',
+                borderRadius: '50%',
+                background: isOccupied ? 'var(--status-ok)' : 'var(--status-error)',
+                boxShadow: isOccupied ? '0 0 3px var(--status-ok)' : '0 0 3px var(--status-error)'
+              }} />
             </div>
           );
         })}
@@ -423,9 +396,9 @@ function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking
             fontFamily: 'var(--font-mono)',
             padding: '1px 4px',
             borderRadius: '2px',
-            background: 'rgba(255, 255, 255, 0.05)',
-            color: 'var(--text-muted)',
-            fontWeight: 500
+            background: 'rgba(255, 180, 171, 0.15)',
+            color: 'var(--status-error)',
+            fontWeight: 700
           }}>
             EMPTY
           </span>
@@ -435,11 +408,11 @@ function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking
             fontFamily: 'var(--font-mono)',
             padding: '1px 4px',
             borderRadius: '2px',
-            background: 'rgba(121, 218, 166, 0.08)',
-            color: 'var(--status-ok)',
-            fontWeight: 500
+            background: isMajorityFilled ? 'rgba(121, 218, 166, 0.12)' : 'rgba(255, 180, 171, 0.15)',
+            color: isMajorityFilled ? 'var(--status-ok)' : 'var(--status-error)',
+            fontWeight: 700
           }}>
-            ACTIVE
+            {isMajorityFilled ? 'ACTIVE' : 'PARTIAL'}
           </span>
         )}
       </div>
@@ -915,39 +888,47 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, operationMode }) 
             return (
               <div
                 key={label}
-                onClick={() => {
-                  if (operationMode === 'store' && !isOccupied) setSelectedSubId(label);
-                  if (operationMode === 'retrieve' && isOccupied) setSelectedSubId(label);
-                }}
+                onClick={() => setSelectedSubId(label)}
                 style={{
-                  border: isOccupied ? '1px solid var(--status-ok)' : '1px dashed var(--border)',
-                  background: isOccupied ? 'var(--bg-hover)' : 'var(--bg-secondary)',
+                  border: isOccupied ? '1px solid rgba(121, 218, 166, 0.6)' : '1px solid rgba(239, 68, 68, 0.5)',
+                  background: isOccupied ? 'rgba(121, 218, 166, 0.1)' : 'rgba(239, 68, 68, 0.05)',
                   borderRadius: '4px',
                   padding: '12px',
                   display: 'flex',
                   flexDirection: 'column',
                   height: '128px',
                   position: 'relative',
-                  opacity: (!isOccupied && operationMode === 'retrieve') || (isOccupied && operationMode === 'store') ? 0.5 : 1,
-                  cursor: (operationMode === 'store' && !isOccupied) || (operationMode === 'retrieve' && isOccupied) ? 'pointer' : 'default',
-                  outline: isSelected ? '2px solid var(--primary)' : 'none'
+                  cursor: 'pointer',
+                  outline: isSelected ? '2px solid var(--primary)' : 'none',
+                  transition: 'border-color 150ms, background-color 150ms'
                 }}
               >
-                {isOccupied && (
-                  <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: 'var(--status-ok)', borderRadius: '4px 4px 0 0' }} />
-                )}
+                <div style={{ 
+                  position: 'absolute', 
+                  top: 0, 
+                  left: 0, 
+                  width: '100%', 
+                  height: '4px', 
+                  background: isOccupied ? 'var(--status-ok)' : 'var(--status-error)', 
+                  borderRadius: '4px 4px 0 0' 
+                }} />
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', marginTop: '4px' }}>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', fontWeight: 700 }}>
-                    Sub {box.column_name}{box.row_number}{label}
+                  <span style={{ 
+                    fontFamily: 'var(--font-mono)', 
+                    fontSize: '12px', 
+                    color: isOccupied ? 'rgba(121, 218, 166, 0.85)' : 'rgba(239, 68, 68, 0.8)', 
+                    fontWeight: 700 
+                  }}>
+                    Sub {box.column_name}{box.row_number}{label.toUpperCase()}
                   </span>
                   <div style={{
                     width: '8px',
                     height: '8px',
                     borderRadius: '50%',
-                    background: isOccupied ? 'var(--status-ok)' : 'transparent',
-                    border: isOccupied ? 'none' : '1px solid var(--border)',
-                    boxShadow: isOccupied ? '0 0 8px rgba(121,218,166,0.8)' : 'none'
+                    background: isOccupied ? 'var(--status-ok)' : 'var(--status-error)',
+                    border: 'none',
+                    boxShadow: isOccupied ? '0 0 8px rgba(121,218,166,0.8)' : '0 0 8px rgba(239,68,68,0.8)'
                   }} />
                 </div>
 
@@ -958,89 +939,124 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, operationMode }) 
                       <p style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.2, margin: 0 }}>{sub.item_name || 'Unknown Item'}</p>
                     </>
                   ) : (
-                    <p style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', margin: 0 }}>Empty</p>
+                    <p style={{ fontSize: '11px', color: 'var(--status-error)', fontWeight: 700, textTransform: 'uppercase', margin: 0 }}>Empty</p>
                   )}
                 </div>
-                
-                {/* Retrieve Button Overlay */}
-                {operationMode === 'retrieve' && isOccupied && isSelected && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleRetrieveOperation(); }}
-                    disabled={loading}
-                    style={{
-                      position: 'absolute',
-                      bottom: '8px',
-                      right: '8px',
-                      background: 'var(--warning)',
-                      color: 'var(--bg-primary)',
-                      border: 'none',
-                      borderRadius: '4px',
-                      padding: '4px 8px',
-                      fontSize: '10px',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Retrieve
-                  </button>
-                )}
               </div>
             );
           })}
         </div>
 
-        {/* Modal Actions - Store Mode Only */}
-        {operationMode === 'store' && selectedSubId && (
+        {/* Modal Actions - Contextual Bottom Panel */}
+        {selectedSubId ? (() => {
+          const selectedSub = subCompartments.find((s) => s.sub_id === selectedSubId);
+          const isSelectedOccupied = !!selectedSub?.item_id;
+
+          if (isSelectedOccupied) {
+            return (
+              <div style={{
+                padding: '12px 16px',
+                borderTop: '1px solid var(--border)',
+                background: 'rgba(239, 68, 68, 0.05)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px'
+              }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  Selected subcompartment <strong style={{ color: 'var(--status-error)' }}>{box.column_name}{box.row_number}{selectedSubId.toUpperCase()}</strong> contains: <strong style={{ color: 'var(--text-primary)' }}>{selectedSub.item_name || 'Unknown Item'}</strong>
+                </span>
+                <button
+                  onClick={handleRetrieveOperation}
+                  disabled={loading}
+                  style={{
+                    background: 'var(--status-error)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '8px 16px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    opacity: loading ? 0.5 : 1,
+                    boxShadow: '0 0 8px rgba(239, 68, 68, 0.2)'
+                  }}
+                >
+                  Execute Retrieve
+                </button>
+              </div>
+            );
+          } else {
+            return (
+              <div style={{
+                padding: '12px 16px',
+                borderTop: '1px solid var(--border)',
+                background: 'rgba(121, 218, 166, 0.05)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginRight: 'auto' }}>
+                  Store item in subcompartment <strong style={{ color: 'var(--status-ok)' }}>{box.column_name}{box.row_number}{selectedSubId.toUpperCase()}</strong>:
+                </span>
+                <select
+                  value={selectedItemId || ''}
+                  onChange={(e) => setSelectedItemId(e.target.value)}
+                  disabled={loading}
+                  style={{
+                    width: '200px',
+                    background: 'var(--bg-primary)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '4px',
+                    padding: '8px',
+                    color: 'var(--text-primary)',
+                    fontSize: '12px',
+                    fontFamily: 'var(--font-mono)'
+                  }}
+                >
+                  <option value="">Select item...</option>
+                  {items.map(item => (
+                    <option key={item.item_id} value={item.item_id}>
+                      [{item.item_id}] {item.name}
+                    </option>
+                  ))}
+                </select>
+                
+                <button
+                  onClick={handleStoreOperation}
+                  disabled={!selectedItemId || loading}
+                  style={{
+                    background: 'var(--primary)',
+                    color: 'var(--bg-primary)',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '8px 16px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    cursor: (!selectedItemId || loading) ? 'not-allowed' : 'pointer',
+                    opacity: (!selectedItemId || loading) ? 0.5 : 1,
+                    boxShadow: '0 0 8px rgba(121, 218, 166, 0.2)'
+                  }}
+                >
+                  Execute Store
+                </button>
+              </div>
+            );
+          }
+        })() : (
           <div style={{
-            padding: '12px 16px',
+            padding: '16px',
             borderTop: '1px solid var(--border)',
             background: 'var(--bg-secondary)',
             display: 'flex',
             alignItems: 'center',
-            gap: '12px'
+            justifyContent: 'center'
           }}>
-            <select
-              value={selectedItemId || ''}
-              onChange={(e) => setSelectedItemId(e.target.value)}
-              disabled={loading}
-              style={{
-                flex: 1,
-                background: 'var(--bg-primary)',
-                border: '1px solid var(--border)',
-                borderRadius: '4px',
-                padding: '8px',
-                color: 'var(--text-primary)',
-                fontSize: '12px',
-                fontFamily: 'var(--font-mono)'
-              }}
-            >
-              <option value="">Select item to store...</option>
-              {items.map(item => (
-                <option key={item.item_id} value={item.item_id}>
-                  [{item.item_id}] {item.name}
-                </option>
-              ))}
-            </select>
-            
-            <button
-              onClick={handleStoreOperation}
-              disabled={!selectedItemId || loading}
-              style={{
-                background: 'var(--primary)',
-                color: 'var(--bg-primary)',
-                border: 'none',
-                borderRadius: '4px',
-                padding: '8px 16px',
-                fontSize: '11px',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                cursor: (!selectedItemId || loading) ? 'not-allowed' : 'pointer',
-                opacity: (!selectedItemId || loading) ? 0.5 : 1
-              }}
-            >
-              Execute Store
-            </button>
+            <span style={{ fontSize: '12px', color: 'var(--text-disabled)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Select a subcompartment from the grid above to perform store/retrieve
+            </span>
           </div>
         )}
       </div>

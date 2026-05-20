@@ -17,7 +17,6 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState("boxes");
   const [isConnected, setIsConnected] = useState(false);
   const [isStatusExpanded, setIsStatusExpanded] = useState(false);
-  const [operationMode, setOperationMode] = useState("store");
   const [safetyCurtainActive, setSafetyCurtainActive] = useState(false);
   
   const { shuttleState, connected: ledConnected, ledStates } = useLEDMonitoring();
@@ -135,7 +134,7 @@ function Dashboard() {
   };
 
   const tabPanels = {
-    boxes: <BoxesTab isServerConnected={isConnected} ledStates={ledStates} shuttleState={shuttleState} ledConnected={ledConnected} operationMode={operationMode} />,
+    boxes: <BoxesTab isServerConnected={isConnected} ledStates={ledStates} shuttleState={shuttleState} ledConnected={ledConnected} />,
     items: <ItemsTab isServerConnected={isConnected} />,
     transactions: <TransactionsTab isServerConnected={isConnected} />,
   };
@@ -294,56 +293,6 @@ function Dashboard() {
           ))}
         </div>
 
-        {/* Store/Retrieve toggle — Stitch industrial toggle */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          background: 'var(--bg-elevated)',
-          borderRadius: '2px',
-          padding: '3px',
-          border: '1px solid var(--border)',
-          opacity: safetyCurtainActive ? 0.5 : 1,
-          pointerEvents: safetyCurtainActive ? 'none' : 'auto',
-        }}>
-          <span style={{
-            fontSize: '11px',
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            color: 'var(--text-muted)',
-            padding: '0 8px',
-            letterSpacing: '0.05em',
-          }}>Mode:</span>
-          <div style={{
-            display: 'flex',
-            background: 'var(--bg-pressed)',
-            borderRadius: '2px',
-            overflow: 'hidden',
-            border: '1px solid var(--border)',
-          }}>
-            {["store", "retrieve"].map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setOperationMode(mode)}
-                style={{
-                  fontSize: '11px',
-                  fontWeight: operationMode === mode ? 700 : 500,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  padding: '4px 16px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: operationMode === mode ? 'var(--primary)' : 'transparent',
-                  color: operationMode === mode ? 'var(--bg-primary)' : 'var(--text-muted)',
-                  transition: 'all 150ms ease-out',
-                }}
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* Workspace — fills remaining space */}
