@@ -1,10 +1,10 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from backend.stations.asrs_station import ASRSController
+from backend.stations.asrs.asrs_station import ASRSController
 
-@patch("backend.stations.asrs_station.asrs_connection")
-@patch("backend.stations.asrs_station.ShuttleState")
-@patch("backend.stations.asrs_station.LEDService")
+@patch("backend.stations.asrs.asrs_station.asrs_connection")
+@patch("backend.stations.asrs.asrs_station.ShuttleState")
+@patch("backend.stations.asrs.asrs_station.LEDService")
 def test_on_led_state_change_store_complete(mock_led_service, mock_shuttle_state, mock_connection):
     # Setup mocks
     shuttle_mock = MagicMock()
@@ -25,9 +25,9 @@ def test_on_led_state_change_store_complete(mock_led_service, mock_shuttle_state
     shuttle_mock.set_idle.assert_called_once()
     shuttle_mock.return_to_dropoff.assert_not_called()
 
-@patch("backend.stations.asrs_station.asrs_connection")
-@patch("backend.stations.asrs_station.ShuttleState")
-@patch("backend.stations.asrs_station.LEDService")
+@patch("backend.stations.asrs.asrs_station.asrs_connection")
+@patch("backend.stations.asrs.asrs_station.ShuttleState")
+@patch("backend.stations.asrs.asrs_station.LEDService")
 def test_on_led_state_change_retrieve_complete(mock_led_service, mock_shuttle_state, mock_connection):
     # Setup mocks
     shuttle_mock = MagicMock()

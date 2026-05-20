@@ -2,7 +2,7 @@ import asyncio
 import json
 from fastapi import WebSocket
 from typing import Set
-from backend.stations.cnc_mirac_station import opcua_connection, MIRAC_DATA_TAGS
+from backend.stations.mirac.cnc_mirac_station import opcua_connection, MIRAC_DATA_TAGS
 from backend.communication.vibit_modbus import VibitModbusReader
 from backend.config import settings
 import logging

@@ -47,3 +47,6 @@ logs/
 reference/
 # start.py / stop.py runtime
 .pids
+
+#Stitch Designs
+stitch_designs/
