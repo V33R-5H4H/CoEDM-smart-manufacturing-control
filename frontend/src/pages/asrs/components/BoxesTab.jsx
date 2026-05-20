@@ -7,7 +7,7 @@ import { useLEDMonitoring } from '../hooks/useLEDMonitoring';
 import { useOperationShadowState } from '../hooks/useOperationShadowState';
 import { toast } from 'react-toastify';
 
-function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = null, ledConnected = false }) {
+function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = null, ledConnected = false, operationMode: propOperationMode }) {
 
   // Open delete modal for a box
   const openDeleteModal = (boxId) => {
@@ -39,7 +39,9 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
   const [boxToDelete, setBoxToDelete] = useState(null);
   const [selectedBox, setSelectedBox] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
-  const [operationMode, setOperationMode] = useState('store'); // 'store' | 'retrieve'
+  const [localOperationMode, setLocalOperationMode] = useState('store');
+  const operationMode = propOperationMode !== undefined ? propOperationMode : localOperationMode;
+  const setOperationMode = propOperationMode !== undefined ? () => {} : setLocalOperationMode;
   const connected = ledConnected;
 
   // Frontend Operation Shadow State - decouples physical LED truth from visual storytelling
@@ -146,7 +148,7 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
   );
 }
 
-// Reusable Box Card Component - Industrial Storage Drawer Style
+// Reusable Box Card Component - Industrial Storage Drawer Style with Capacity Visuals & Availability Highlighting
 function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking, isSelected }) {
   if (!box) {
     return (
@@ -168,14 +170,47 @@ function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking
   const CAPACITY = 6;
   const filledCount = box.filled_count || 0;
   const isEmpty = filledCount === 0;
+  const isFull = filledCount === CAPACITY;
   const isBlinking = isSourceBlinking;
+
+  // Determine availability based on current operation mode
+  const isAvailable = operationMode === 'store' ? !isFull : !isEmpty;
+
+  // Compute color based on capacity level for premium dashboard look
+  const getCapacityColor = () => {
+    if (isEmpty) return 'var(--text-disabled)';
+    if (isFull) return 'var(--status-error)'; // Red when full
+    if (filledCount >= 4) return 'var(--status-warn)'; // Orange/amber when almost full
+    return 'var(--status-ok)'; // Green when low-to-mid capacity
+  };
+
+  // Availability highlight styles
+  const borderStyle = isSelected 
+    ? '1px solid var(--primary)' 
+    : isAvailable 
+      ? (operationMode === 'store' 
+          ? '1px solid rgba(121, 218, 166, 0.6)'  // Emerald green border for store-available
+          : '1px solid rgba(235, 165, 80, 0.6)')   // Amber orange border for retrieve-available
+      : '1px solid var(--border)';
+
+  const shadowStyle = isBlinking 
+    ? 'inset 0 0 20px rgba(121,218,166,0.15)' 
+    : isSelected 
+      ? '0 0 8px rgba(188,199,221,0.2)' 
+      : isAvailable 
+        ? (operationMode === 'store'
+            ? '0 0 8px rgba(121, 218, 166, 0.15)' 
+            : '0 0 8px rgba(235, 165, 80, 0.15)')
+        : 'none';
+
+  const opacityStyle = isAvailable ? 1.0 : 0.35;
 
   return (
     <button
       onClick={onClick}
       style={{
         background: 'var(--bg-hover)',
-        border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border)',
+        border: borderStyle,
         borderRadius: '4px',
         padding: '8px',
         height: '80px',
@@ -185,44 +220,137 @@ function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking
         textAlign: 'left',
         cursor: 'pointer',
         position: 'relative',
-        transition: 'background 150ms',
-        boxShadow: isBlinking ? 'inset 0 0 20px rgba(121,218,166,0.15)' : 'none',
+        transition: 'all 150ms ease-out',
+        boxShadow: shadowStyle,
+        opacity: opacityStyle,
         width: '100%'
       }}
-      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-elevated)'}
-      onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = 'var(--bg-elevated)';
+        if (!isSelected) {
+          e.currentTarget.style.borderColor = isAvailable
+            ? (operationMode === 'store' ? 'rgba(121, 218, 166, 0.8)' : 'rgba(235, 165, 80, 0.8)')
+            : 'var(--border-lighter)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'var(--bg-hover)';
+        if (!isSelected) {
+          e.currentTarget.style.borderColor = isAvailable
+            ? (operationMode === 'store' ? 'rgba(121, 218, 166, 0.6)' : 'rgba(235, 165, 80, 0.6)')
+            : 'var(--border)';
+        }
+      }}
     >
-      <span style={{
-        fontFamily: 'var(--font-mono)',
-        fontSize: '14px',
-        color: 'var(--text-primary)',
-      }}>BOX-{box.row_number}0{box.column_name === 'A' ? '1' : box.column_name === 'B' ? '2' : box.column_name === 'C' ? '3' : box.column_name === 'D' ? '4' : '5'}</span>
-      
+      {/* Top row: Box ID and LED dot */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-        <div style={{
-          width: '8px',
-          height: '8px',
-          borderRadius: '50%',
-          background: rawLED ? 'var(--status-ok)' : (isEmpty ? 'var(--border)' : 'var(--accent)'),
-          boxShadow: rawLED ? '0 0 8px var(--status-ok)' : 'none',
-          animation: isBlinking ? 'pulse 1s infinite' : 'none'
-        }} />
-        {isBlinking && (
-          <span style={{ fontSize: '9px', color: 'var(--status-ok)', fontWeight: 700 }}>ACCESS</span>
-        )}
+        <span style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: '13px',
+          fontWeight: 700,
+          color: isSelected ? 'var(--primary-light)' : 'var(--text-primary)',
+        }}>
+          BOX-{box.row_number}0{box.column_name === 'A' ? '1' : box.column_name === 'B' ? '2' : box.column_name === 'C' ? '3' : box.column_name === 'D' ? '4' : '5'}
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {isAvailable && (
+            <span style={{ 
+              fontSize: '8px', 
+              color: operationMode === 'store' ? 'var(--status-ok)' : 'var(--status-warn)', 
+              fontWeight: 800, 
+              fontFamily: 'var(--font-mono)',
+              border: `1px solid ${operationMode === 'store' ? 'rgba(121, 218, 166, 0.3)' : 'rgba(235, 165, 80, 0.3)'}`,
+              padding: '1px 4px',
+              borderRadius: '2px',
+              background: operationMode === 'store' ? 'rgba(121, 218, 166, 0.08)' : 'rgba(235, 165, 80, 0.08)',
+              letterSpacing: '0.05em'
+            }}>
+              {operationMode === 'store' ? 'STORE OK' : 'STOCK'}
+            </span>
+          )}
+          {isBlinking && (
+            <span style={{ fontSize: '9px', color: 'var(--status-ok)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>ACCESS</span>
+          )}
+          <div style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: rawLED ? 'var(--status-ok)' : (isEmpty ? 'var(--border)' : 'var(--accent)'),
+            boxShadow: rawLED ? '0 0 8px var(--status-ok)' : 'none',
+            animation: isBlinking ? 'pulse 1s infinite' : 'none'
+          }} />
+        </div>
       </div>
 
-      {filledCount > 0 && (
-        <div style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          width: '100%',
-          height: '4px',
-          background: 'var(--status-ok)',
-          opacity: 0.3
-        }} />
-      )}
+      {/* Middle row: visual segmented progress representing 6 slots */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%', margin: '2px 0' }}>
+        <div style={{ display: 'flex', gap: '3px', width: '100%' }}>
+          {Array.from({ length: CAPACITY }).map((_, idx) => {
+            const isFilled = idx < filledCount;
+            return (
+              <div
+                key={idx}
+                style={{
+                  flex: 1,
+                  height: '6px',
+                  borderRadius: '1px',
+                  background: isFilled ? getCapacityColor() : 'rgba(255,255,255,0.05)',
+                  border: isFilled ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                  transition: 'background 200ms'
+                }}
+              />
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Bottom row: numeric representation / status badge */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+        <span style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: '10px',
+          color: isEmpty ? 'var(--text-disabled)' : 'var(--text-secondary)'
+        }}>
+          {filledCount} / {CAPACITY} UNITS
+        </span>
+        {isFull ? (
+          <span style={{
+            fontSize: '9px',
+            fontFamily: 'var(--font-mono)',
+            padding: '1px 4px',
+            borderRadius: '2px',
+            background: 'rgba(255, 180, 171, 0.15)',
+            color: 'var(--status-error)',
+            fontWeight: 700
+          }}>
+            FULL
+          </span>
+        ) : isEmpty ? (
+          <span style={{
+            fontSize: '9px',
+            fontFamily: 'var(--font-mono)',
+            padding: '1px 4px',
+            borderRadius: '2px',
+            background: 'rgba(255, 255, 255, 0.05)',
+            color: 'var(--text-muted)',
+            fontWeight: 500
+          }}>
+            EMPTY
+          </span>
+        ) : (
+          <span style={{
+            fontSize: '9px',
+            fontFamily: 'var(--font-mono)',
+            padding: '1px 4px',
+            borderRadius: '2px',
+            background: 'rgba(121, 218, 166, 0.08)',
+            color: 'var(--status-ok)',
+            fontWeight: 500
+          }}>
+            ACTIVE
+          </span>
+        )}
+      </div>
     </button>
   );
 }

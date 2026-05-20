@@ -271,6 +271,12 @@ class ASRSLogic:
             if not item_id or not isinstance(quantity, int) or quantity <= 0:
                 raise ValueError("Invalid inputs: item_id and positive quantity required")
 
+            # Convert item_id to int if possible to match schema type
+            try:
+                item_id_val = int(item_id)
+            except (ValueError, TypeError):
+                item_id_val = item_id
+
             # STEP 2: Find occupied subcompartments (column-wise priority)
             available = session.execute(
                 text("""
@@ -282,7 +288,7 @@ class ASRSLogic:
                     ORDER BY b.column_name, b.row_number, sc.sub_id
                     LIMIT :quantity
                 """),
-                {"item_id": item_id, "quantity": quantity}
+                {"item_id": item_id_val, "quantity": quantity}
             ).fetchall()
 
             if len(available) < quantity:
@@ -364,7 +370,7 @@ class ASRSLogic:
                         (item_id, subcom_place, action, time)
                         VALUES (:item_id, :subcom_place, 'retrieved', :time)
                     """),
-                    {"item_id": item_id, "subcom_place": subcom_place, "time": datetime.now()}
+                    {"item_id": item_id_val, "subcom_place": subcom_place, "time": datetime.now()}
                 )
             session.commit()
             session.close()
@@ -416,6 +422,12 @@ class ASRSLogic:
         try:
             logger.info(f"retrieve_from_specific_location called: boxId={box_id}, subId={sub_id}, itemId={item_id}")
             
+            # Convert item_id to int if possible to match schema type
+            try:
+                item_id_val = int(item_id)
+            except (ValueError, TypeError):
+                item_id_val = item_id
+
             # STEP 1: Validate that subcompartment exists and has the item
             subcom_place = f"{box_id}{sub_id}"
             query = text("""
@@ -446,11 +458,11 @@ class ASRSLogic:
                 }
             
             # Verify the item matches
-            if actual_item_id != item_id:
+            if actual_item_id != item_id_val:
                 session.close()
                 return {
                     "success": False,
-                    "message": f"Item mismatch: expected {item_id}, found {actual_item_id} in {subcom_place}"
+                    "message": f"Item mismatch: expected {item_id_val}, found {actual_item_id} in {subcom_place}"
                 }
             
             # STEP 2: Send PLC retrieve command

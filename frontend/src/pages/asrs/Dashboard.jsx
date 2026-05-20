@@ -64,7 +64,7 @@ function Dashboard() {
   };
 
   const tabPanels = {
-    boxes: <BoxesTab isServerConnected={isConnected} ledStates={ledStates} shuttleState={shuttleState} ledConnected={ledConnected} />,
+    boxes: <BoxesTab isServerConnected={isConnected} ledStates={ledStates} shuttleState={shuttleState} ledConnected={ledConnected} operationMode={operationMode} />,
     items: <ItemsTab isServerConnected={isConnected} />,
     transactions: <TransactionsTab isServerConnected={isConnected} />,
   };
