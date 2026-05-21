@@ -22,7 +22,6 @@ class MiracBroadcaster:
         self.vibit_reader = VibitModbusReader(
             host=VIBIT_HOST,
             port=VIBIT_PORT,
-            device_id=VIBIT_UNIT_ID,
         )
         
     async def connect(self, websocket: WebSocket):
@@ -67,7 +66,7 @@ class MiracBroadcaster:
         """Build unified payload for frontend without exposing source details."""
         try:
             plc_data = await self._read_plc_data()
-            vibit_data = self.vibit_reader.read_snapshot() or {}
+            vibit_data = self.vibit_reader.read_snapshot(device_id=VIBIT_UNIT_ID) or {}
 
             vibit_temp = vibit_data.get("temperature")
             vibit_rpm = vibit_data.get("rpm")

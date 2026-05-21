@@ -746,11 +746,19 @@ MACHINES = [
     },
     {
         "id": "vibit_mirac",
-        "name": "VIBIT Sensor (MIRAC)",
+        "name": "VIBIT Sensor (MIRAC — Spindle, Unit 1)",
         "type": "modbus",
         "host": settings.VIBIT_HOST,
         "port": settings.VIBIT_PORT,
         "unit_id": settings.VIBIT_UNIT_ID,
+    },
+    {
+        "id": "vibit_mirac_2",
+        "name": "VIBIT Sensor (MIRAC — Tool, Unit 2)",
+        "type": "modbus",
+        "host": settings.VIBIT_HOST,
+        "port": settings.VIBIT_PORT,
+        "unit_id": settings.VIBIT_UNIT_ID_2,
     },
     {
         "id": "vibit_triac",
