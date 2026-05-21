@@ -50,6 +50,8 @@ class VIBITMetrics:
     # Direct CNC OPC UA tags (only on primary slave state)
     x_axis_value: float = 0.0
     z_axis_value: float = 0.0
+    x_axis_feed: float = 0.0
+    z_axis_feed: float = 0.0
     spindle_speed: float = 0.0
     spindle_temp: float = 0.0
     spindle_vibration: float = 0.0
@@ -100,7 +102,7 @@ class MIRACDataGateway:
         }
 
         self.is_connected = False
-        self.read_interval = 0.5   # 500ms — safe default
+        self.read_interval = 0.1   # 100ms — fast polling
         self.is_reading = False
         self._lock = threading.Lock()
         self._read_thread: Optional[threading.Thread] = None

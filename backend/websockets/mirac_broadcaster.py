@@ -163,8 +163,8 @@ class MiracBroadcaster:
                         self._read_count = 0
                         self._write_to_db()
                 
-                # Wait before next update (1 Hz update rate)
-                await asyncio.sleep(1.0)
+                # Wait before next update (10 Hz update rate)
+                await asyncio.sleep(0.1)
         
         except asyncio.CancelledError:
             logger.info("Mirac broadcast loop cancelled")

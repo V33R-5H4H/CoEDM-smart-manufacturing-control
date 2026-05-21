@@ -68,7 +68,7 @@ const useVibitData = () => {
     };
 
     fetchAll();
-    const id = setInterval(fetchAll, 1000);
+    const id = setInterval(fetchAll, 150);
     return () => { stopped = true; clearInterval(id); };
   }, []);
 
@@ -532,8 +532,9 @@ const Mirac = () => {
                   <div style={{
                     fontSize: "0.65rem", fontWeight: 700, color: "var(--text-muted)",
                     textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12,
-                  }}>CNC Status (OPC-UA)</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                  }}>CNC Raw Data (OPC-UA Diagnostics)</div>
+                  
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
                     {[
                       { label: "Cycle Start", val: merged?.cycle_start },
                       { label: "Cycle Stop",  val: merged?.cycle_stop },
@@ -550,8 +551,44 @@ const Mirac = () => {
                         </span>
                       </div>
                     ))}
-                    <Metric title="Tool #" value={merged?.tool_number} unit="#" />
                   </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
+                    {[
+                      { label: "LED Green", val: merged?.led_green, color: "#4ade80" },
+                      { label: "LED Yellow", val: merged?.led_yellow, color: "#fbbf24" },
+                      { label: "LED Red", val: merged?.led_red, color: "#ef4444" },
+                    ].map(({ label, val, color }) => (
+                      <div key={label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{
+                          width: 8, height: 8, borderRadius: "50%",
+                          background: val ? color : "#555",
+                          boxShadow: val ? `0 0 6px ${color}` : "none",
+                        }} />
+                        <span style={{ fontSize: "0.6rem", color: "var(--text-muted)", textTransform: "uppercase" }}>{label.replace("LED ", "")}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", paddingBottom: "0.75rem", borderBottom: "1px solid var(--border)", marginBottom: "0.75rem" }}>
+                    <Metric title="X Axis Pos" value={merged?.x_axis_value} unit="mm" />
+                    <Metric title="Z Axis Pos" value={merged?.z_axis_value} unit="mm" />
+                    <Metric title="X Feed" value={merged?.x_axis_feed} unit="mm/min" />
+                    <Metric title="Z Feed" value={merged?.z_axis_feed} unit="mm/min" />
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", paddingBottom: "0.75rem", borderBottom: "1px solid var(--border)", marginBottom: "0.75rem" }}>
+                    <Metric title="Spindle RPM" value={merged?.spindle_speed} unit="RPM" />
+                    <Metric title="Spindle Temp" value={merged?.spindle_temp} unit="°C" />
+                    <Metric title="Spindle Vib" value={merged?.spindle_vibration} unit="" />
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                    <Metric title="Tool #" value={merged?.tool_number} unit="#" />
+                    <Metric title="Tool Temp" value={merged?.tool_temp} unit="°C" />
+                    <Metric title="Tool Vib" value={merged?.tool_vibration} unit="" />
+                  </div>
+
                 </div>
               )}
             </div>
