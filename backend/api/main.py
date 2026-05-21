@@ -110,6 +110,11 @@ async def startup_event():
     asrs_controller.shuttle.register_callback(_shuttle_callback)
     logger.info("[Startup] ✓ Shuttle broadcast callback registered")
 
+    # 5. Start continuous background DB loggers
+    mirac_broadcaster.start_background_logging()
+    hydraulic_broadcaster.start_background_logging()
+    logger.info("[Startup] ✓ Background data loggers started")
+
     logger.info(
         "[Startup] Application ready  host=%s  port=%s  debug=%s  log=%s",
         settings.API_HOST, settings.API_PORT, settings.DEBUG, settings.LOG_LEVEL,

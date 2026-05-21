@@ -20,26 +20,21 @@ class HydraulicBroadcaster:
         self._read_count = 0
         self._db_write_interval = 10  # write every 10 reads (10 * 500ms = 5 seconds)
         
+    def start_background_logging(self):
+        """Start continuous background polling and DB logging"""
+        if not self.is_broadcasting:
+            self.broadcast_task = asyncio.create_task(self._broadcast_loop())
+            
     async def connect(self, websocket: WebSocket):
         """Register a new WebSocket connection"""
         await websocket.accept()
         self.active_connections.add(websocket)
         logger.info(f"Hydraulic WebSocket connected. Total connections: {len(self.active_connections)}")
-        
-        # Start broadcasting if this is the first connection
-        if not self.is_broadcasting:
-            self.broadcast_task = asyncio.create_task(self._broadcast_loop())
     
     def disconnect(self, websocket: WebSocket):
         """Unregister a WebSocket connection"""
         self.active_connections.discard(websocket)
         logger.info(f"Hydraulic WebSocket disconnected. Total connections: {len(self.active_connections)}")
-        
-        # Stop broadcasting if no connections remain
-        if len(self.active_connections) == 0 and self.is_broadcasting:
-            self.is_broadcasting = False
-            if self.broadcast_task:
-                self.broadcast_task.cancel()
     
     async def _read_hydraulic_data(self) -> dict:
         """Read current hydraulic data from OPC UA server.
@@ -113,10 +108,10 @@ class HydraulicBroadcaster:
     async def _broadcast_loop(self):
         """Main broadcast loop - reads and sends data continuously"""
         self.is_broadcasting = True
-        logger.info("Hydraulic broadcast loop started")
+        logger.info("Hydraulic continuous broadcast and logging loop started")
         
         try:
-            while self.is_broadcasting and len(self.active_connections) > 0:
+            while self.is_broadcasting:
                 # Read hydraulic data
                 data = await self._read_hydraulic_data()
                 
