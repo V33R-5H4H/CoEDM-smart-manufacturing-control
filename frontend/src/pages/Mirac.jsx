@@ -597,7 +597,8 @@ const Mirac = () => {
             <div style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
               <MiracMachineView
                 spindleRPM={rpm}
-                carriagePositionPct={carriagePct}
+                xAxisPos={merged?.x_axis_value ?? 0}
+                zAxisPos={merged?.z_axis_value ?? 0}
                 spindleRunning={merged?.cycle_start || rpm > 0}
                 alarmActive={!isConnected}
                 toolEngaged={false}

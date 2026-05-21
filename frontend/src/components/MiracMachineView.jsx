@@ -29,7 +29,9 @@ const MiracMachineView = ({
   toolEngaged = false,
   alarmActive = false,
   coolantOn = false,
-  demoMode = false
+  demoMode = false,
+  xAxisPos = 0,
+  zAxisPos = 0
 }) => {
   const [isAnimationPlaying, setIsAnimationPlaying] = useState(false);
   const [demoCarriageX, setDemoCarriageX] = useState(280);
@@ -110,7 +112,15 @@ const MiracMachineView = ({
   // When demo mode is active, use demo values; when play button is active, use demo speed; otherwise use real data
   const effectiveRPM = isAnimationPlaying ? 1000 : spindleRPM;
   const effectiveSpindleRunning = isAnimationPlaying ? true : spindleRunning;
-  const effectiveCarriagePos = demoMode ? ((demoCarriageX - 280) / 340) * 100 : carriagePositionPct;
+  
+  // Real coordinates mapping
+  // Assuming typical MIRAC bounds: Z goes from 0 (tailstock) to -150 (headstock)
+  const realZPct = Math.min(100, Math.max(0, (zAxisPos / -150) * 100));
+  const effectiveCarriagePos = demoMode ? ((demoCarriageX - 280) / 340) * 100 : realZPct;
+
+  // Assuming X goes from 0 to 100. Map to 0..20 px vertical offset
+  const realXOffset = Math.min(20, Math.max(0, (xAxisPos / 100) * 20));
+  const effectiveToolY = demoMode ? demoToolY : realXOffset;
 
   // Calculate chuck rotation duration from RPM: 60 / RPM = seconds per revolution
   const spinDuration = useMemo(() => {
@@ -395,10 +405,10 @@ const MiracMachineView = ({
             strokeWidth="1.5"
           />
 
-          {/* Tool post - grey block on top, controlled by demoToolY offset */}
+          {/* Tool post - grey block on top, controlled by effectiveToolY offset */}
           <rect
             x="435"
-            y={215 + demoToolY}
+            y={215 + effectiveToolY}
             width="30"
             height="35"
             fill="#4a4a4a"
@@ -409,7 +419,7 @@ const MiracMachineView = ({
 
           {/* Tool tip - cutting insert (triangle pointing left) */}
           <polygon
-            points={`432,${260 + demoToolY} 415,${275 + demoToolY} 432,${290 + demoToolY}`}
+            points={`432,${260 + effectiveToolY} 415,${275 + effectiveToolY} 432,${290 + effectiveToolY}`}
             fill={toolEngaged ? '#ff9500' : '#8a7a5a'}
             stroke={toolEngaged ? '#ffb84d' : '#6a5a3a'}
             strokeWidth="1.5"
@@ -420,9 +430,9 @@ const MiracMachineView = ({
             <>
               <line
                 x1="445"
-                y1={280 + demoToolY}
+                y1={280 + effectiveToolY}
                 x2="433"
-                y2={298 + demoToolY}
+                y2={298 + effectiveToolY}
                 stroke="#ffcc00"
                 strokeWidth="2"
                 opacity="0.8"
@@ -431,9 +441,9 @@ const MiracMachineView = ({
               />
               <line
                 x1="445"
-                y1={280 + demoToolY}
+                y1={280 + effectiveToolY}
                 x2="437"
-                y2={302 + demoToolY}
+                y2={302 + effectiveToolY}
                 stroke="#ffcc00"
                 strokeWidth="1.5"
                 opacity="0.7"
@@ -442,9 +452,9 @@ const MiracMachineView = ({
               />
               <line
                 x1="445"
-                y1={280 + demoToolY}
+                y1={280 + effectiveToolY}
                 x2="429"
-                y2={294 + demoToolY}
+                y2={294 + effectiveToolY}
                 stroke="#ffcc00"
                 strokeWidth="1"
                 opacity="0.6"
@@ -458,9 +468,9 @@ const MiracMachineView = ({
           {coolantOn && (
             <line
               x1="445"
-              y1={280 + demoToolY}
+              y1={280 + effectiveToolY}
               x2="433"
-              y2={320 + demoToolY}
+              y2={320 + effectiveToolY}
               stroke="#1e90ff"
               strokeWidth="1.5"
               opacity="0.6"
