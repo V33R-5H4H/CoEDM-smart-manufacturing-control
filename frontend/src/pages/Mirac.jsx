@@ -42,34 +42,26 @@ const useVibitData = () => {
   const [merged, setMerged] = useState(null);
 
   useEffect(() => {
-    let stopped = false;
-
-    const fetchAll = async () => {
-      // Merged data (used for machine view + OPC-UA tags)
+    let ws = new WebSocket("ws://localhost:8000/api/control/mirac/ws/vibit-data");
+    
+    ws.onmessage = (event) => {
       try {
-        const r = await fetch(`${API}/vibit-data`, { cache: "no-store" });
-        if (r.ok && !stopped) {
-          const d = await r.json();
-          setMerged(d);
-        }
-      } catch (_) {}
-
-      // Unit 1 raw
-      try {
-        const r = await fetch(`${API}/vibit-data/unit/1`, { cache: "no-store" });
-        if (r.ok && !stopped) setUnit1(await r.json());
-      } catch (_) {}
-
-      // Unit 2 raw
-      try {
-        const r = await fetch(`${API}/vibit-data/unit/2`, { cache: "no-store" });
-        if (r.ok && !stopped) setUnit2(await r.json());
-      } catch (_) {}
+        const data = JSON.parse(event.data);
+        if (data.merged) setMerged(data.merged);
+        if (data.unit1) setUnit1(data.unit1);
+        if (data.unit2) setUnit2(data.unit2);
+      } catch (e) {
+        console.error("Failed to parse WebSocket data", e);
+      }
+    };
+    
+    ws.onclose = () => {
+      console.log("WebSocket connection closed");
     };
 
-    fetchAll();
-    const id = setInterval(fetchAll, 150);
-    return () => { stopped = true; clearInterval(id); };
+    return () => { 
+      ws.close();
+    };
   }, []);
 
   return { unit1, unit2, merged };

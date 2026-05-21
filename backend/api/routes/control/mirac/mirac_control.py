@@ -159,16 +159,20 @@ async def vibit_data_websocket(websocket: WebSocket):
         prev = None
         while True:
             try:
-                current = get_vibit_data()
-                if current != prev:
-                    await websocket.send_text(json.dumps(current, default=str))
-                    prev = current
-                await asyncio.sleep(0.5)
+                payload = {
+                    "merged": get_vibit_data(),
+                    "unit1": get_vibit_unit_data(1),
+                    "unit2": get_vibit_unit_data(2),
+                }
+                
+                # Send continuously without strict equality check since floats fluctuate
+                await websocket.send_text(json.dumps(payload, default=str))
+                await asyncio.sleep(0.1)
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.warning(f"WebSocket loop error: {e}")
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(0.1)
     except WebSocketDisconnect:
         logger.info("VIBIT WebSocket client disconnected")
     except Exception as e:
