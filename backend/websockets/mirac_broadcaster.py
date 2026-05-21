@@ -23,6 +23,8 @@ class MiracBroadcaster:
             host=VIBIT_HOST,
             port=VIBIT_PORT,
         )
+        self._read_count = 0
+        self._db_write_interval = 5  # write every 5 reads (5 * 1s = 5 seconds)
         
     async def connect(self, websocket: WebSocket):
         """Register a new WebSocket connection"""
@@ -66,7 +68,7 @@ class MiracBroadcaster:
         """Build unified payload for frontend without exposing source details."""
         try:
             plc_data = await self._read_plc_data()
-            vibit_data = self.vibit_reader.read_snapshot(device_id=VIBIT_UNIT_ID) or {}
+            vibit_data = self.vibit_reader.read_snapshot() or {}
 
             vibit_temp = vibit_data.get("temperature")
             vibit_rpm = vibit_data.get("rpm")
@@ -87,7 +89,12 @@ class MiracBroadcaster:
             green_on = bool(led_status) if led_status is not None else bool(plc_data.get("led_green", False))
             red_on = (not green_on) if led_status is not None else bool(plc_data.get("led_red", False))
             yellow_on = bool(plc_data.get("led_yellow", False))
-            
+
+            # Store raw values for DB persistence
+            self._last_plc_data = plc_data
+            self._last_vibit_data = vibit_data
+            self._last_connected = opcua_connection.connected
+
             # Organize data into a clean JSON structure for the frontend
             return {
                 "timestamp": asyncio.get_event_loop().time(),
@@ -149,6 +156,12 @@ class MiracBroadcaster:
                     # Clean up disconnected clients
                     for conn in disconnected:
                         self.disconnect(conn)
+
+                    # Persist to database every N reads
+                    self._read_count += 1
+                    if self._read_count >= self._db_write_interval:
+                        self._read_count = 0
+                        self._write_to_db()
                 
                 # Wait before next update (1 Hz update rate)
                 await asyncio.sleep(1.0)
@@ -161,6 +174,19 @@ class MiracBroadcaster:
             self.vibit_reader.close()
             self.is_broadcasting = False
             logger.info("Mirac broadcast loop stopped")
+
+    def _write_to_db(self):
+        """Write MIRAC PLC + VIBIT readings to database (fire-and-forget)."""
+        try:
+            from backend.database.sensor_data import write_mirac_plc_reading, write_vibit_reading
+            plc = getattr(self, "_last_plc_data", {})
+            vibit = getattr(self, "_last_vibit_data", {})
+            connected = getattr(self, "_last_connected", False)
+            write_mirac_plc_reading(plc, connected)
+            write_vibit_reading(vibit)
+        except Exception as exc:
+            logger.error("[MiracBroadcaster] DB write failed: %s", exc)
+
 
 # Global broadcaster instance
 mirac_broadcaster = MiracBroadcaster()

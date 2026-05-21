@@ -19,6 +19,7 @@ from backend.api.routes.control.assembly import assembly_control
 from backend.api.routes.control.mirac import mirac_control
 from backend.api.routes.control.asrs.shuttle import router as shuttle_router
 from backend.api.routes.data.asrs.asrs_data import router as asrs_data_router
+from backend.api.routes.sensor_data import router as sensor_data_router
 from backend.stations.asrs.asrs_singleton import asrs_controller
 from backend.websockets.assembly_broadcaster import hydraulic_broadcaster
 from backend.websockets.mirac_broadcaster import mirac_broadcaster
@@ -56,6 +57,7 @@ app.include_router(assembly_control.router)
 app.include_router(mirac_control.router)
 app.include_router(shuttle_router)
 app.include_router(asrs_data_router)
+app.include_router(sensor_data_router)
 
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -76,6 +78,14 @@ async def startup_event():
         logger.error("[Startup] ⚠ Database is unreachable: %s", db_status["message"])
     else:
         logger.info("[Startup] ✓ Database OK")
+
+    # 1b. Create sensor data tables if missing
+    try:
+        from backend.database.sensor_data import create_sensor_tables
+        create_sensor_tables()
+        logger.info("[Startup] ✓ Sensor data tables ready")
+    except Exception as exc:
+        logger.error("[Startup] ⚠ Sensor table creation failed: %s", exc)
 
     # 2. Set event loop on LED service (needed for bridge from OPC-UA thread)
     asrs_controller.led_service.set_event_loop(loop)

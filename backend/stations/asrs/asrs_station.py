@@ -44,6 +44,9 @@ class ASRSController:
         # Register callback for automatic shuttle tracking based on LED edge transitions
         self.led_service.register_callback(self._on_led_state_change)
 
+        # Register callback to persist LED changes to database
+        self.led_service.register_callback(self._on_led_state_change_db)
+
     # ------------------------------------------------------------------
     # Connection lifecycle
     # ------------------------------------------------------------------
@@ -230,3 +233,11 @@ class ASRSController:
                     else:
                         logging.info(f"[ASRSController] Retrieve operation complete. Returning shuttle to drop-off.")
                         self.shuttle.return_to_dropoff()
+
+    def _on_led_state_change_db(self, box_id: str, active: bool, prev: bool):
+        """Persist LED state change to database (fire-and-forget)."""
+        try:
+            from backend.database.sensor_data import write_led_change
+            write_led_change(box_id, active, prev)
+        except Exception as exc:
+            logging.error("[ASRSController] LED DB write failed: %s", exc)

@@ -17,6 +17,8 @@ class HydraulicBroadcaster:
         self.active_connections: Set[WebSocket] = set()
         self.is_broadcasting = False
         self.broadcast_task = None
+        self._read_count = 0
+        self._db_write_interval = 10  # write every 10 reads (10 * 500ms = 5 seconds)
         
     async def connect(self, websocket: WebSocket):
         """Register a new WebSocket connection"""
@@ -133,6 +135,12 @@ class HydraulicBroadcaster:
                     # Clean up disconnected clients
                     for conn in disconnected:
                         self.disconnect(conn)
+
+                    # Persist to database every N reads
+                    self._read_count += 1
+                    if self._read_count >= self._db_write_interval:
+                        self._read_count = 0
+                        self._write_to_db(data)
                 
                 # Wait before next update (500 ms — 2 Hz for responsive motion)
                 await asyncio.sleep(0.5)
@@ -144,6 +152,30 @@ class HydraulicBroadcaster:
         finally:
             self.is_broadcasting = False
             logger.info("Hydraulic broadcast loop stopped")
+
+    def _write_to_db(self, data: dict):
+        """Write hydraulic reading to database (fire-and-forget)."""
+        try:
+            from backend.database.sensor_data import write_hydraulic_reading
+            assembly = data.get("assembly", {})
+            position = data.get("position", {})
+            vice = data.get("vice", {})
+            safety = data.get("safety", {})
+            lights = safety.get("lights", {})
+            write_hydraulic_reading({
+                "bearing": assembly.get("bearing", False),
+                "shaft": assembly.get("shaft", False),
+                "displacement_mm": position.get("displacement_mm", 0.0),
+                "vice_open": vice.get("open", False),
+                "vice_close": vice.get("close", False),
+                "buzzer": safety.get("buzzer", False),
+                "curtain": safety.get("curtain", False),
+                "lights": lights,
+                "connected": data.get("connected", False),
+            })
+        except Exception as exc:
+            logger.error("[HydraulicBroadcaster] DB write failed: %s", exc)
+
 
 # Global broadcaster instance
 hydraulic_broadcaster = HydraulicBroadcaster()

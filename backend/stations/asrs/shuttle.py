@@ -101,9 +101,7 @@ class ShuttleState:
                 logging.error(f"[Shuttle] Callback error: {e}")
 
     def set_moving(self, column_letter, row_num, command):
-        """
-        Set shuttle to busy state at target position (LED is active).
-        """
+        """Set shuttle to busy state at target position (LED is active)."""
         with self.lock:
             logging.info(f"[Shuttle] Setting position and state to BUSY: {column_letter}{row_num}, command={command}")
             self.column_letter = column_letter
@@ -112,6 +110,7 @@ class ShuttleState:
             self.state = "busy"
         self.save_to_db()
         self._notify_callbacks()
+        self._persist_state()
 
     def set_idle(self):
         """
@@ -123,6 +122,7 @@ class ShuttleState:
             self.active_command = None
         self.save_to_db()
         self._notify_callbacks()
+        self._persist_state()
 
     def set_error(self):
         """Set shuttle to error state (operation failed)"""
@@ -131,6 +131,7 @@ class ShuttleState:
             self.state = "error"
         self.save_to_db()
         self._notify_callbacks()
+        self._persist_state()
 
     def reset_home(self):
         """
@@ -144,6 +145,7 @@ class ShuttleState:
             self.active_command = None
         self.save_to_db()
         self._notify_callbacks()
+        self._persist_state()
 
     def return_to_dropoff(self):
         """
@@ -159,3 +161,17 @@ class ShuttleState:
             self.active_command = None
         self.save_to_db()
         self._notify_callbacks()
+        self._persist_state()
+
+    # ------------------------------------------------------------------
+    # Sensor data persistence
+    # ------------------------------------------------------------------
+
+    def _persist_state(self):
+        """Write current shuttle state to sensor history table (fire-and-forget)."""
+        try:
+            from backend.database.sensor_data import write_shuttle_state
+            snap = self.snapshot()
+            write_shuttle_state(snap["row"], snap["column"], snap["state"], snap["command"])
+        except Exception as exc:
+            logging.error("[Shuttle] Sensor DB write failed: %s", exc)
