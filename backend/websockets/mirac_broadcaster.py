@@ -12,17 +12,26 @@ logger = logging.getLogger(__name__)
 # VibIT Modbus Configuration — from central settings (override via .env)
 VIBIT_HOST    = settings.VIBIT_HOST
 VIBIT_PORT    = settings.VIBIT_PORT
-VIBIT_UNIT_ID = settings.VIBIT_UNIT_ID
 
 class MiracBroadcaster:
     def __init__(self):
         self.active_connections: Set[WebSocket] = set()
         self.is_broadcasting = False
         self.broadcast_task = None
-        self.vibit_reader = VibitModbusReader(
-            host=VIBIT_HOST,
-            port=VIBIT_PORT,
-            device_id=VIBIT_UNIT_ID,
+        self.vibit_reader_1 = VibitModbusReader(
+            host=settings.VIBIT_HOST,
+            port=settings.VIBIT_PORT,
+            device_id=settings.VIBIT_UNIT_ID,
+        )
+        self.vibit_reader_2 = VibitModbusReader(
+            host=settings.VIBIT_HOST,
+            port=settings.VIBIT_PORT,
+            device_id=settings.VIBIT_UNIT_ID_2,
+        )
+        self.vibit_reader_3 = VibitModbusReader(
+            host=settings.VIBIT_HOST,
+            port=settings.VIBIT_PORT,
+            device_id=settings.VIBIT_UNIT_ID_3,
         )
         
     async def connect(self, websocket: WebSocket):
@@ -67,24 +76,40 @@ class MiracBroadcaster:
         """Build unified payload for frontend without exposing source details."""
         try:
             plc_data = await self._read_plc_data()
-            vibit_data = self.vibit_reader.read_snapshot() or {}
+            
+            # Read all three VibIT snapshots
+            vibit1_data = self.vibit_reader_1.read_snapshot() or {}
+            vibit2_data = self.vibit_reader_2.read_snapshot() or {}
+            vibit3_data = self.vibit_reader_3.read_snapshot() or {}
 
-            vibit_temp = vibit_data.get("temperature")
-            vibit_rpm = vibit_data.get("rpm")
-            vibit_rms_vel = [
-                vibit_data.get("x_rms_vel"),
-                vibit_data.get("y_rms_vel"),
-                vibit_data.get("z_rms_vel"),
+            # 1. Spindle metrics (from VIBIT 1)
+            vibit1_temp = vibit1_data.get("temperature")
+            vibit1_rpm = vibit1_data.get("rpm")
+            vibit1_rms_vel = [
+                vibit1_data.get("x_rms_vel"),
+                vibit1_data.get("y_rms_vel"),
+                vibit1_data.get("z_rms_vel"),
             ]
-            vibit_peak_vel = [
-                vibit_data.get("x_peak_vel"),
-                vibit_data.get("y_peak_vel"),
-                vibit_data.get("z_peak_vel"),
-            ]
-            rms_vel_values = [v for v in vibit_rms_vel if v is not None]
-            peak_vel_values = [v for v in vibit_peak_vel if v is not None]
+            rms_vel_1_values = [v for v in vibit1_rms_vel if v is not None]
 
-            led_status = vibit_data.get("led_status")
+            # 2. Tool metrics (from VIBIT 2)
+            vibit2_temp = vibit2_data.get("temperature")
+            vibit2_peak_vel = [
+                vibit2_data.get("x_peak_vel"),
+                vibit2_data.get("y_peak_vel"),
+                vibit2_data.get("z_peak_vel"),
+            ]
+            peak_vel_2_values = [v for v in vibit2_peak_vel if v is not None]
+
+            # 3. Axes metrics (from VIBIT 3)
+            vibit3_rms_vel = [
+                vibit3_data.get("x_rms_vel"),
+                vibit3_data.get("y_rms_vel"),
+                vibit3_data.get("z_rms_vel"),
+            ]
+            rms_vel_3_values = [v for v in vibit3_rms_vel if v is not None]
+
+            led_status = vibit1_data.get("led_status")
             green_on = bool(led_status) if led_status is not None else bool(plc_data.get("led_green", False))
             red_on = (not green_on) if led_status is not None else bool(plc_data.get("led_red", False))
             yellow_on = bool(plc_data.get("led_yellow", False))
@@ -101,14 +126,14 @@ class MiracBroadcaster:
                     "pneumatic_chuck": plc_data.get("pneumatic_chuck", False)
                 },
                 "spindle": {
-                    "speed": vibit_rpm if vibit_rpm is not None else plc_data.get("spindle_speed", 0.0),
-                    "temperature": vibit_temp if vibit_temp is not None else plc_data.get("spindle_temp", 0.0),
-                    "vibration": max(rms_vel_values) if rms_vel_values else plc_data.get("spindle_vibration", 0.0)
+                    "speed": vibit1_rpm if vibit1_rpm is not None else plc_data.get("spindle_speed", 0.0),
+                    "temperature": vibit1_temp if vibit1_temp is not None else plc_data.get("spindle_temp", 0.0),
+                    "vibration": max(rms_vel_1_values) if rms_vel_1_values else plc_data.get("spindle_vibration", 0.0)
                 },
                 "tool": {
                     "number": plc_data.get("tool_number", 0),
-                    "temperature": vibit_temp if vibit_temp is not None else plc_data.get("tool_temp", 0.0),
-                    "vibration": max(peak_vel_values) if peak_vel_values else plc_data.get("tool_vibration", 0.0)
+                    "temperature": vibit2_temp if vibit2_temp is not None else plc_data.get("tool_temp", 0.0),
+                    "vibration": max(peak_vel_2_values) if peak_vel_2_values else plc_data.get("tool_vibration", 0.0)
                 },
                 "axes": {
                     "x": {
@@ -118,7 +143,8 @@ class MiracBroadcaster:
                     "z": {
                         "value": plc_data.get("z_axis_value", 0.0),
                         "feed": plc_data.get("z_axis_feed", 0.0)
-                    }
+                    },
+                    "vibration": max(rms_vel_3_values) if rms_vel_3_values else 0.0
                 }
             }
         except Exception as e:
@@ -159,7 +185,9 @@ class MiracBroadcaster:
         except Exception as e:
             logger.error(f"Mirac broadcast loop error: {e}")
         finally:
-            self.vibit_reader.close()
+            self.vibit_reader_1.close()
+            self.vibit_reader_2.close()
+            self.vibit_reader_3.close()
             self.is_broadcasting = False
             logger.info("Mirac broadcast loop stopped")
 

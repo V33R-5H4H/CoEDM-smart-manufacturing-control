@@ -76,6 +76,8 @@ class MIRACDataGateway:
         self.client = None
         self.state: Dict[str, VIBITMetrics] = {
             "vibit1": VIBITMetrics(timestamp=datetime.now().isoformat()),
+            "vibit2": VIBITMetrics(timestamp=datetime.now().isoformat()),
+            "vibit3": VIBITMetrics(timestamp=datetime.now().isoformat()),
         }
         self.is_connected = False
         self.read_interval = 0.1  # 100ms = industrial safe value
@@ -166,24 +168,27 @@ class MIRACDataGateway:
         # return result.registers
         raise NotImplementedError("Use pymodbus for actual Modbus reads")
 
-    def update_state(self, metrics: Dict) -> None:
-        """Update global state with decoded metrics"""
+    def update_state(self, sensor: str, metrics: Dict) -> None:
+        """Update global state with decoded metrics for a specific sensor"""
         if not metrics:
             return
         
         with self._lock:
-            current = self.state["vibit1"]
-            for key, value in metrics.items():
-                if hasattr(current, key):
-                    setattr(current, key, value)
-            current.timestamp = datetime.now().isoformat()
-
-    def get_state(self, sensor: str = "vibit1") -> Optional[Dict]:
-        """Get current sensor state"""
-        with self._lock:
             if sensor in self.state:
-                return asdict(self.state[sensor])
-        return None
+                current = self.state[sensor]
+                for key, value in metrics.items():
+                    if hasattr(current, key):
+                        setattr(current, key, value)
+                current.timestamp = datetime.now().isoformat()
+
+    def get_state(self, sensor: str = None) -> Optional[Dict]:
+        """Get current sensor state. If sensor is None, returns all sensors combined."""
+        with self._lock:
+            if sensor:
+                if sensor in self.state:
+                    return asdict(self.state[sensor])
+                return None
+            return {k: asdict(v) for k, v in self.state.items()}
 
     async def start_reading(self, client) -> None:
         """Start continuous Modbus reads at safe interval"""
@@ -217,9 +222,9 @@ class MIRACDataGateway:
 mirac_gateway = MIRACDataGateway()
 
 
-def get_vibit_data() -> Optional[Dict]:
+def get_vibit_data(sensor: str = None) -> Optional[Dict]:
     """API endpoint to get current VIBIT metrics"""
-    return mirac_gateway.get_state("vibit1")
+    return mirac_gateway.get_state(sensor)
 
 
 def set_read_interval(interval_ms: int) -> None:

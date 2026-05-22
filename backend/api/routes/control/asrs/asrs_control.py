@@ -144,9 +144,10 @@ async def led_status_websocket(websocket: WebSocket):
     await led_ws_manager.connect(websocket)
     logging.info(f"[ASRS] WebSocket client connected from {websocket.client}")
     
-    # Send initial snapshot of all LED states
+    # Send initial snapshot of all LED states and safety curtain state
     led_states = controller.led_service.get_all_states()
-    await led_ws_manager.send_snapshot(websocket, led_states)
+    safety_curtain = getattr(controller.led_service, "safety_curtain", False)
+    await led_ws_manager.send_snapshot(websocket, led_states, safety_curtain)
     
     try:
         # Keep the connection alive and listen for client messages

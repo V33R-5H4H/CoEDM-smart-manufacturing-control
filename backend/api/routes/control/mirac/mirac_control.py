@@ -23,19 +23,15 @@ router = APIRouter(prefix="/api/control/mirac", tags=["MIRAC"])
 
 
 @router.get("/vibit-data")
-async def get_vibit_metrics():
+async def get_vibit_metrics(sensor: str = None):
     """
     Get current VIBIT sensor metrics
     
-    Returns:
-        {
-            "timestamp": "2026-03-25T10:30:45.123456",
-            "x_rms_acceleration": 2.34,
-            "y_rms_acceleration": 1.56,
-            ...
-        }
+    Args:
+        sensor: Optional sensor ID (vibit1, vibit2, vibit3) to query a specific sensor.
+                If not specified, all sensors are returned combined.
     """
-    data = get_vibit_data()
+    data = get_vibit_data(sensor)
     if not data:
         raise HTTPException(status_code=503, detail="VIBIT data unavailable")
     return data
