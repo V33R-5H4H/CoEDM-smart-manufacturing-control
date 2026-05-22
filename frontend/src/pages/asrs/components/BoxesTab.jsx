@@ -344,6 +344,12 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
 
   const highlightColor = getHighlightColor();
 
+  const baseBackground = isBlinking
+    ? 'rgba(234, 179, 8, 0.15)'
+    : isSelected
+      ? 'var(--bg-secondary)'
+      : 'var(--bg-elevated)';
+
   const borderStyle = isSelected
     ? '2px solid var(--primary)'
     : `1px solid ${highlightColor}aa`;

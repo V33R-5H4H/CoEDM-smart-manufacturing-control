@@ -95,7 +95,12 @@ const ShuttleRail = ({ shuttle }) => {
         overflow: 'visible' // Allow carriage to go to dropoff outside grid
       }}
     >
-      <style>{styles}</style>
+      <style>{`
+        @keyframes roller-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
 
       {/* CARRIAGE - Industrial trolley */}
       <div

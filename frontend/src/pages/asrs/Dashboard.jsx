@@ -17,6 +17,7 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState("boxes");
   const [isConnected, setIsConnected] = useState(false);
   const [isStatusExpanded, setIsStatusExpanded] = useState(false);
+  const [safetyCurtainActive, setSafetyCurtainActive] = useState(false);
   const { shuttleState, connected: ledConnected, ledStates } = useLEDMonitoring();
   const { resolved: theme } = useTheme();
 
