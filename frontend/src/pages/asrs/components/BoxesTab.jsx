@@ -7,7 +7,7 @@ import { useLEDMonitoring } from '../hooks/useLEDMonitoring';
 import { useOperationShadowState } from '../hooks/useOperationShadowState';
 import { toast } from 'react-toastify';
 
-function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = null, ledConnected = false, operationMode: propOperationMode }) {
+function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = null, ledConnected = false }) {
 
   // Open delete modal for a box
   const openDeleteModal = (boxId) => {
@@ -34,14 +34,12 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
     }
   };
   const [boxes, setBoxes] = useState([]);
+  const [subcompartments, setSubcompartments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [boxToDelete, setBoxToDelete] = useState(null);
   const [selectedBox, setSelectedBox] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
-  const [localOperationMode, setLocalOperationMode] = useState('store');
-  const operationMode = propOperationMode !== undefined ? propOperationMode : localOperationMode;
-  const setOperationMode = propOperationMode !== undefined ? () => {} : setLocalOperationMode;
   const connected = ledConnected;
 
   // Frontend Operation Shadow State - decouples physical LED truth from visual storytelling
@@ -70,11 +68,16 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
     console.log("fetchBoxes called");
     try {
       setLoading(true);
-      const response = await BoxService.getAllBoxes();
+      const [boxResponse, subResponse] = await Promise.all([
+        BoxService.getAllBoxes(),
+        import('../services/subCompartmentService').then(m => m.default.getAllSubCompartments())
+      ]);
 
-      // Backend now returns { success: true, data: [...] }
-      const boxData = response.data.data || response.data;
+      const boxData = boxResponse.data?.data || boxResponse.data || boxResponse;
       setBoxes(boxData);
+
+      const subData = subResponse.data?.data || subResponse.data || subResponse;
+      setSubcompartments(subData);
     } catch (error) {
       if (error.response && error.response.status === 503) {
         toast.error('PLC/OPC UA server is offline or unreachable. Please check the connection.');
@@ -91,11 +94,33 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
   return (
     <div style={{
       display: 'flex',
-      gap: '1.5rem',
+      flexDirection: 'column',
+      gap: '1rem',
       height: '100%',
       overflow: 'hidden',
-      padding: '1rem 1.5rem'
+      padding: '1rem 1.5rem',
+      position: 'relative'
     }}>
+      {/* Inject slideUp and fadeIn keyframes styles */}
+      <style>{`
+        @keyframes slideUp {
+          from {
+            transform: translateY(100%);
+          }
+          to {
+            transform: translateY(0);
+          }
+        }
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+      `}</style>
+
       {/* Main Grid View */}
       <div style={{
         flex: '1 1 auto',
@@ -105,6 +130,7 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
       }}>
         <RackView
           boxes={boxes}
+          subcompartments={subcompartments}
           ledStates={ledStates}
           getEffectiveLEDState={getEffectiveLEDState}
           isSourceBlinking={isSourceBlinking}
@@ -113,14 +139,12 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
             setShowDetails(true);
           }}
           shuttle={visualShuttle}
-          operationMode={operationMode}
-          setOperationMode={setOperationMode}
           operationPhase={operationPhase}
           selectedBoxId={selectedBox?.box_id}
         />
       </div>
 
-      {/* Side Panel - Operations */}
+      {/* Sleek Bottom Panel - Operations */}
       {showDetails && selectedBox && (
         <OperationsPanel
           box={selectedBox}
@@ -130,7 +154,6 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
             setSelectedBox(null);
           }}
           onRefresh={fetchBoxes}
-          operationMode={operationMode}
         />
       )}
 
@@ -149,14 +172,14 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
 }
 
 // Reusable Box Card Component - Industrial Storage Drawer Style with Capacity Visuals & Availability Highlighting
-function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking, isSelected }) {
+function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking, isSelected }) {
   if (!box) {
     return (
       <div style={{
         border: '1px dashed var(--border)',
         borderRadius: '4px',
         padding: '8px',
-        height: '80px',
+        height: '84px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -168,42 +191,30 @@ function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking
   }
 
   const CAPACITY = 6;
-  const filledCount = box.filled_count || 0;
+  const filledCount = boxSubs.filter(s => s.status === 'Occupied').length;
   const isEmpty = filledCount === 0;
   const isFull = filledCount === CAPACITY;
   const isBlinking = isSourceBlinking;
 
-  // Determine availability based on current operation mode
-  const isAvailable = operationMode === 'store' ? !isFull : !isEmpty;
-
-  // Compute color based on capacity level for premium dashboard look
-  const getCapacityColor = () => {
-    if (isEmpty) return 'var(--text-disabled)';
-    if (isFull) return 'var(--status-error)'; // Red when full
-    if (filledCount >= 4) return 'var(--status-warn)'; // Orange/amber when almost full
-    return 'var(--status-ok)'; // Green when low-to-mid capacity
+  // Compute highlight color based on percentage of subcompartment occupation
+  const getHighlightColor = () => {
+    if (isEmpty) return '#ef4444'; // Red if empty
+    if (isFull) return '#10b981'; // Green if full
+    if (filledCount <= 2) return '#f97316'; // Orange
+    return '#eab308'; // Yellow
   };
 
-  // Availability highlight styles
+  const highlightColor = getHighlightColor();
+
   const borderStyle = isSelected 
-    ? '1px solid var(--primary)' 
-    : isAvailable 
-      ? (operationMode === 'store' 
-          ? '1px solid rgba(121, 218, 166, 0.6)'  // Emerald green border for store-available
-          : '1px solid rgba(235, 165, 80, 0.6)')   // Amber orange border for retrieve-available
-      : '1px solid var(--border)';
+    ? '2px solid var(--primary)' 
+    : `1px solid ${highlightColor}aa`;
 
-  const shadowStyle = isBlinking 
-    ? 'inset 0 0 20px rgba(121,218,166,0.15)' 
-    : isSelected 
-      ? '0 0 8px rgba(188,199,221,0.2)' 
-      : isAvailable 
-        ? (operationMode === 'store'
-            ? '0 0 8px rgba(121, 218, 166, 0.15)' 
-            : '0 0 8px rgba(235, 165, 80, 0.15)')
-        : 'none';
+  const shadowStyle = isSelected 
+    ? `0 0 12px ${highlightColor}44`
+    : `0 0 8px ${highlightColor}15`;
 
-  const opacityStyle = isAvailable ? 1.0 : 0.35;
+  const subLabels = ['a', 'b', 'c', 'd', 'e', 'f'];
 
   return (
     <button
@@ -212,144 +223,131 @@ function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking
         background: 'var(--bg-hover)',
         border: borderStyle,
         borderRadius: '4px',
-        padding: '8px',
-        height: '80px',
+        padding: '6px 8px',
+        height: '84px',
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'row',
         justifyContent: 'space-between',
+        alignItems: 'stretch',
         textAlign: 'left',
         cursor: 'pointer',
         position: 'relative',
-        transition: 'all 150ms ease-out',
+        transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
         boxShadow: shadowStyle,
-        opacity: opacityStyle,
-        width: '100%'
+        opacity: 1.0,
+        width: '100%',
+        overflow: 'hidden',
+        gap: '6px'
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.background = 'var(--bg-elevated)';
         if (!isSelected) {
-          e.currentTarget.style.borderColor = isAvailable
-            ? (operationMode === 'store' ? 'rgba(121, 218, 166, 0.8)' : 'rgba(235, 165, 80, 0.8)')
-            : 'var(--border-lighter)';
+          e.currentTarget.style.borderColor = highlightColor;
+          e.currentTarget.style.boxShadow = `0 0 12px ${highlightColor}33`;
         }
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = 'var(--bg-hover)';
         if (!isSelected) {
-          e.currentTarget.style.borderColor = isAvailable
-            ? (operationMode === 'store' ? 'rgba(121, 218, 166, 0.6)' : 'rgba(235, 165, 80, 0.6)')
-            : 'var(--border)';
+          e.currentTarget.style.borderColor = `${highlightColor}aa`;
+          e.currentTarget.style.boxShadow = shadowStyle;
         }
       }}
     >
-      {/* Top row: Box ID and LED dot */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-        <span style={{
+      {/* Left Column: Metadata */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        flex: 1,
+        overflow: 'hidden',
+        height: '100%'
+      }}>
+        {/* Row 1: Box ID and LED dot */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '4px' }}>
+          <span style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '11px',
+            fontWeight: 700,
+            color: isSelected ? 'var(--primary-light)' : 'var(--text-primary)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}>
+            BOX-{box.row_number}0{box.column_name === 'A' ? '1' : box.column_name === 'B' ? '2' : box.column_name === 'C' ? '3' : box.column_name === 'D' ? '4' : '5'}
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+            {isBlinking && (
+              <span style={{ fontSize: '7px', color: 'var(--status-ok)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>ACC</span>
+            )}
+            <div style={{
+              width: '7px',
+              height: '7px',
+              borderRadius: '50%',
+              background: rawLED ? 'var(--status-ok)' : (isEmpty ? 'var(--border)' : 'var(--accent)'),
+              boxShadow: rawLED ? '0 0 6px var(--status-ok)' : 'none',
+              animation: isBlinking ? 'pulse 1s infinite' : 'none'
+            }} />
+          </div>
+        </div>
+
+        {/* Row 2: numeric representation */}
+        <div style={{
           fontFamily: 'var(--font-mono)',
-          fontSize: '13px',
-          fontWeight: 700,
-          color: isSelected ? 'var(--primary-light)' : 'var(--text-primary)',
+          fontSize: '9px',
+          color: isEmpty ? 'var(--text-disabled)' : 'var(--text-secondary)',
+          fontWeight: 600,
+          lineHeight: 1.1
         }}>
-          BOX-{box.row_number}0{box.column_name === 'A' ? '1' : box.column_name === 'B' ? '2' : box.column_name === 'C' ? '3' : box.column_name === 'D' ? '4' : '5'}
-        </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          {isAvailable && (
-            <span style={{ 
-              fontSize: '8px', 
-              color: operationMode === 'store' ? 'var(--status-ok)' : 'var(--status-warn)', 
-              fontWeight: 800, 
-              fontFamily: 'var(--font-mono)',
-              border: `1px solid ${operationMode === 'store' ? 'rgba(121, 218, 166, 0.3)' : 'rgba(235, 165, 80, 0.3)'}`,
-              padding: '1px 4px',
-              borderRadius: '2px',
-              background: operationMode === 'store' ? 'rgba(121, 218, 166, 0.08)' : 'rgba(235, 165, 80, 0.08)',
-              letterSpacing: '0.05em'
-            }}>
-              {operationMode === 'store' ? 'STORE OK' : 'STOCK'}
-            </span>
-          )}
-          {isBlinking && (
-            <span style={{ fontSize: '9px', color: 'var(--status-ok)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>ACCESS</span>
-          )}
-          <div style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            background: rawLED ? 'var(--status-ok)' : (isEmpty ? 'var(--border)' : 'var(--accent)'),
-            boxShadow: rawLED ? '0 0 8px var(--status-ok)' : 'none',
-            animation: isBlinking ? 'pulse 1s infinite' : 'none'
-          }} />
+          {filledCount}/6 UNITS
+        </div>
+
+        {/* Row 3: status badge */}
+        <div>
+          <span style={{
+            fontSize: '8px',
+            fontFamily: 'var(--font-mono)',
+            padding: '1px 4px',
+            borderRadius: '2px',
+            background: `${highlightColor}12`,
+            color: highlightColor,
+            fontWeight: 700,
+            border: `1px solid ${highlightColor}25`,
+            letterSpacing: '0.02em',
+            display: 'inline-block'
+          }}>
+            {isFull ? 'FULL' : isEmpty ? 'EMPTY' : 'PARTIAL'}
+          </span>
         </div>
       </div>
 
-      {/* Middle row: visual segmented progress representing 6 slots */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%', margin: '2px 0' }}>
-        <div style={{ display: 'flex', gap: '3px', width: '100%' }}>
-          {Array.from({ length: CAPACITY }).map((_, idx) => {
-            const isFilled = idx < filledCount;
-            return (
-              <div
-                key={idx}
-                style={{
-                  flex: 1,
-                  height: '6px',
-                  borderRadius: '1px',
-                  background: isFilled ? getCapacityColor() : 'rgba(255,255,255,0.05)',
-                  border: isFilled ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                  transition: 'background 200ms'
-                }}
-              />
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Bottom row: numeric representation / status badge */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-        <span style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: '10px',
-          color: isEmpty ? 'var(--text-disabled)' : 'var(--text-secondary)'
-        }}>
-          {filledCount} / {CAPACITY} UNITS
-        </span>
-        {isFull ? (
-          <span style={{
-            fontSize: '9px',
-            fontFamily: 'var(--font-mono)',
-            padding: '1px 4px',
-            borderRadius: '2px',
-            background: 'rgba(255, 180, 171, 0.15)',
-            color: 'var(--status-error)',
-            fontWeight: 700
-          }}>
-            FULL
-          </span>
-        ) : isEmpty ? (
-          <span style={{
-            fontSize: '9px',
-            fontFamily: 'var(--font-mono)',
-            padding: '1px 4px',
-            borderRadius: '2px',
-            background: 'rgba(255, 255, 255, 0.05)',
-            color: 'var(--text-muted)',
-            fontWeight: 500
-          }}>
-            EMPTY
-          </span>
-        ) : (
-          <span style={{
-            fontSize: '9px',
-            fontFamily: 'var(--font-mono)',
-            padding: '1px 4px',
-            borderRadius: '2px',
-            background: 'rgba(121, 218, 166, 0.08)',
-            color: 'var(--status-ok)',
-            fontWeight: 500
-          }}>
-            ACTIVE
-          </span>
-        )}
+      {/* Right Column: Vertical 3x2 minimap */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: '3px',
+        width: '24px',
+        height: '100%',
+        flexShrink: 0
+      }}>
+        {subLabels.map((label) => {
+          const sub = boxSubs.find(s => s.sub_id === label);
+          const isOccupied = sub?.status === 'Occupied';
+          const cellColor = isOccupied ? '#10b981' : '#ef4444';
+          
+          return (
+            <div
+              key={label}
+              title={`Sub ${label.toUpperCase()}: ${isOccupied ? 'Occupied' : 'Empty'}`}
+              style={{
+                borderRadius: '1px',
+                background: cellColor,
+                transition: 'background 250ms ease-out',
+                boxShadow: isOccupied ? '0 0 4px rgba(16,185,129,0.3)' : 'none'
+              }}
+            />
+          );
+        })}
       </div>
     </button>
   );
@@ -358,18 +356,17 @@ function BoxCard({ box, active, rawLED, onClick, operationMode, isSourceBlinking
 // Grid View Component with Rack Container structure
 function RackView({
   boxes,
+  subcompartments = [],
   ledStates,
   getEffectiveLEDState,
   isSourceBlinking,
   setSelectedBox,
   shuttle,
-  operationMode,
-  setOperationMode,
   operationPhase,
   selectedBoxId
 }) {
   const columns = ['A', 'B', 'C', 'D', 'E'];
-  const rows = [7, 6, 5, 4, 3, 2, 1]; // Render from top to bottom (7 -> 1)
+  const rows = [1, 2, 3, 4, 5, 6, 7]; // Render from top to bottom (1 -> 7)
 
   // Create a map for quick lookup
   const boxMap = {};
@@ -407,11 +404,11 @@ function RackView({
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--bg-hover)', border: '1px solid var(--border)' }} />
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Occupied</span>
+            <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#10b981' }} />
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Full</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '2px', border: '1px dashed var(--border)' }} />
+            <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#ef4444' }} />
             <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Empty</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -425,6 +422,8 @@ function RackView({
       <div style={{
         flex: 1,
         padding: '16px',
+        paddingBottom: selectedBoxId ? '370px' : '16px',
+        transition: 'padding-bottom 300ms cubic-bezier(0.4, 0, 0.2, 1)',
         overflow: 'auto',
         background: 'var(--bg-secondary)',
         backgroundImage: 'radial-gradient(var(--bg-hover) 1px, transparent 0)',
@@ -477,6 +476,9 @@ function RackView({
                 const blinking = isSourceBlinking(id);
                 const isSelected = box && box.box_id === selectedBoxId;
                 
+                // Get subcompartments for this specific box
+                const boxSubs = subcompartments.filter(s => s.box_id === id);
+                
                 // Overlay Shuttle if it's currently at this position
                 const hasShuttle = shuttle && shuttle.position === id;
 
@@ -484,12 +486,12 @@ function RackView({
                   <div key={id} style={{ position: 'relative' }}>
                     <BoxCard
                       box={box}
+                      boxSubs={boxSubs}
                       active={active}
                       rawLED={rawLED}
                       isSourceBlinking={blinking}
                       isSelected={isSelected}
                       onClick={() => box && setSelectedBox(box)}
-                      operationMode={operationMode}
                     />
                     {hasShuttle && (
                       <div style={{
@@ -536,8 +538,7 @@ function RackView({
   );
 }
 
-// Operations Panel Component - Side panel for store/retrieve operations
-function OperationsPanel({ box, ledStates, onClose, onRefresh, operationMode }) {
+function OperationsPanel({ box, ledStates, onClose, onRefresh }) {
   const [selectedSubId, setSelectedSubId] = useState(null);
   const [subCompartments, setSubCompartments] = useState([]);
   const [items, setItems] = useState([]);
@@ -734,213 +735,388 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, operationMode }) 
   };
 
   const filledCount = subCompartments.filter(s => s.status === 'Occupied').length;
-  const totalCount = subCompartments.length;
+  const totalCount = 6;
+  const isEmpty = filledCount === 0;
+  const isFull = filledCount === totalCount;
+
+  const getStatusInfo = () => {
+    if (isEmpty) return { color: '#ef4444', text: '#ffffff', name: 'EMPTY' };
+    if (isFull) return { color: '#10b981', text: '#ffffff', name: 'FULL' };
+    if (filledCount <= 2) return { color: '#f97316', text: '#ffffff', name: 'PARTIAL' };
+    return { color: '#eab308', text: '#1c1917', name: 'PARTIAL' };
+  };
+
+  const statusInfo = getStatusInfo();
+  
+  const colName = box.column_name;
+  const colNum = colName === 'A' ? '1' : colName === 'B' ? '2' : colName === 'C' ? '3' : colName === 'D' ? '4' : '5';
+  const boxName = `BOX-${box.row_number}0${colNum}`;
+
+  const selectedSub = subCompartments.find(s => s.sub_id === selectedSubId);
+  const isSelectedOccupied = selectedSub ? !!selectedSub.item_id : false;
 
   return (
     <div style={{
-      position: 'fixed',
-      inset: 0,
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: '350px',
+      background: 'var(--bg-elevated)',
+      borderTop: '1px solid var(--border)',
+      boxShadow: '0 -8px 24px rgba(0,0,0,0.4)',
+      borderTopLeftRadius: '12px',
+      borderTopRightRadius: '12px',
       zIndex: 100,
-      background: 'rgba(16, 19, 25, 0.8)',
-      backdropFilter: 'blur(4px)',
       display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '16px'
+      flexDirection: 'column',
+      overflow: 'hidden',
+      animation: 'slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
     }}>
+      {/* Top Ribbon Header */}
       <div style={{
-        background: 'var(--bg-elevated)',
-        border: '1px solid var(--border)',
-        borderRadius: '8px',
-        boxShadow: 'var(--shadow-xl)',
-        width: '100%',
-        maxWidth: '672px',
+        padding: '12px 16px',
+        background: statusInfo.color,
+        color: statusInfo.text,
         display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden'
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        height: '48px',
+        flexShrink: 0,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
       }}>
-        {/* Modal Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>inventory_2</span>
+          <span style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '14px',
+            fontWeight: 700,
+            letterSpacing: '0.05em'
+          }}>
+            {boxName} • {statusInfo.name} ({filledCount}/{totalCount} OCCUPIED)
+          </span>
+        </div>
+        
+        <button
+          onClick={onClose}
+          style={{
+            color: 'inherit',
+            background: 'rgba(0,0,0,0.08)',
+            border: 'none',
+            padding: '4px',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'background 150ms ease-out'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.15)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.08)'}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+        </button>
+      </div>
+
+      {/* Main Panel Content */}
+      <div style={{
+        display: 'flex',
+        flex: 1,
+        overflow: 'hidden',
+        background: 'var(--bg-primary)'
+      }}>
+        {/* Left Side: 2x3 Grid of Subcompartments */}
         <div style={{
-          padding: '12px 16px',
-          borderBottom: '1px solid var(--border)',
+          flex: '1 1 50%',
+          padding: '16px',
+          borderRight: '1px solid var(--border)',
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          background: 'var(--bg-tertiary)'
+          flexDirection: 'column',
+          justifyContent: 'center',
+          overflowY: 'auto'
         }}>
-          <div>
-            <h3 style={{ fontFamily: 'var(--font-mono)', fontSize: '20px', color: 'var(--text-primary)', fontWeight: 700, margin: 0 }}>
-              BOX-{box.row_number}0{box.column_name === 'A' ? '1' : box.column_name === 'B' ? '2' : box.column_name === 'C' ? '3' : box.column_name === 'D' ? '4' : '5'} details
-            </h3>
-            <p style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '4px 0 0 0' }}>
-              Loc: Z-BAY 01, L{box.row_number}-{box.column_name} • {filledCount}/{totalCount || 6} Occupied
-            </p>
+          <h4 style={{
+            fontSize: '11px',
+            color: 'var(--text-muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            marginBottom: '10px',
+            fontWeight: 700
+          }}>Select Subcompartment Slot</h4>
+          
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: '8px',
+            maxWidth: '340px',
+            width: '100%',
+            margin: '0 auto'
+          }}>
+            {['a', 'b', 'c', 'd', 'e', 'f'].map((label) => {
+              const sub = subCompartments.find((s) => s.sub_id === label);
+              const isOccupied = sub ? !!sub.item_id : false;
+              const isSelected = selectedSubId === label;
+
+              return (
+                <div
+                  key={label}
+                  onClick={() => {
+                    setSelectedSubId(label);
+                    if (!isOccupied) {
+                      setSelectedItemId(null);
+                    }
+                  }}
+                  style={{
+                    border: isSelected
+                      ? '2px solid var(--primary)'
+                      : isOccupied
+                        ? '1px solid #10b981'
+                        : '1px dashed var(--border)',
+                    background: isSelected
+                      ? 'var(--bg-hover)'
+                      : isOccupied
+                        ? 'rgba(16,185,129,0.04)'
+                        : 'var(--bg-secondary)',
+                    borderRadius: '6px',
+                    padding: '8px 10px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    height: '80px',
+                    cursor: 'pointer',
+                    transition: 'all 150ms ease-out',
+                    position: 'relative',
+                    boxShadow: isSelected ? '0 0 10px rgba(249,115,22,0.15)' : 'none'
+                  }}
+                >
+                  {isOccupied && (
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: '#10b981', borderRadius: '6px 6px 0 0' }} />
+                  )}
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <span style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '11px',
+                      color: isSelected ? 'var(--primary-light)' : 'var(--text-secondary)',
+                      fontWeight: 700
+                    }}>
+                      SUB-{box.column_name}{box.row_number}{label.toUpperCase()}
+                    </span>
+                    <div style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      background: isOccupied ? '#10b981' : 'transparent',
+                      border: isOccupied ? 'none' : '1px solid var(--border)',
+                      boxShadow: isOccupied ? '0 0 6px #10b981' : 'none'
+                    }} />
+                  </div>
+                  
+                  <div style={{
+                    fontSize: '10px',
+                    color: isOccupied ? 'var(--text-primary)' : 'var(--text-disabled)',
+                    fontWeight: isOccupied ? 600 : 400,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    marginTop: '4px'
+                  }}>
+                    {isOccupied ? (sub.item_name || 'Item') : 'EMPTY'}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              color: 'var(--text-muted)',
-              background: 'transparent',
-              border: 'none',
-              padding: '4px',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>close</span>
-          </button>
         </div>
 
-        {/* Modal Content (2x3 Grid) */}
+        {/* Right Side: Binary Tab Changing UI */}
         <div style={{
-          padding: '12px',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '8px',
-          background: 'var(--bg-primary)'
+          flex: '1 1 50%',
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          background: 'var(--bg-secondary)',
+          overflowY: 'auto'
         }}>
-          {['a', 'b', 'c', 'd', 'e', 'f'].map((label, index) => {
-            const sub = subCompartments.find((s) => s.sub_id === label);
-            const hasItem = sub?.item_id;
-            const isOccupied = !!hasItem;
-            const isSelected = selectedSubId === label;
-
-            return (
-              <div
-                key={label}
-                onClick={() => {
-                  if (operationMode === 'store' && !isOccupied) setSelectedSubId(label);
-                  if (operationMode === 'retrieve' && isOccupied) setSelectedSubId(label);
-                }}
-                style={{
-                  border: isOccupied ? '1px solid var(--status-ok)' : '1px dashed var(--border)',
-                  background: isOccupied ? 'var(--bg-hover)' : 'var(--bg-secondary)',
-                  borderRadius: '4px',
-                  padding: '12px',
+          {!selectedSubId ? (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              color: 'var(--text-muted)',
+              height: '100%',
+              gap: '8px'
+            }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '36px', opacity: 0.4 }}>click_to_select</span>
+              <p style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0, fontWeight: 700 }}>
+                SELECT A SLOT TO OPERATE
+              </p>
+              <p style={{ fontSize: '11px', margin: 0, maxWidth: '260px' }}>
+                Binary subcompartment logic determines actions automatically: empty slots allow storing, occupied slots allow retrieving.
+              </p>
+            </div>
+          ) : (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              height: '100%',
+              justifyContent: 'space-between',
+              animation: 'fadeIn 0.25s ease-out'
+            }}>
+              <div>
+                {/* Active Tab Header */}
+                <div style={{
                   display: 'flex',
-                  flexDirection: 'column',
-                  height: '128px',
-                  position: 'relative',
-                  opacity: (!isOccupied && operationMode === 'retrieve') || (isOccupied && operationMode === 'store') ? 0.5 : 1,
-                  cursor: (operationMode === 'store' && !isOccupied) || (operationMode === 'retrieve' && isOccupied) ? 'pointer' : 'default',
-                  outline: isSelected ? '2px solid var(--primary)' : 'none'
-                }}
-              >
-                {isOccupied && (
-                  <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: 'var(--status-ok)', borderRadius: '4px 4px 0 0' }} />
-                )}
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', marginTop: '4px' }}>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', fontWeight: 700 }}>
-                    Sub {box.column_name}{box.row_number}{label}
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  borderBottom: '1px solid var(--border)',
+                  paddingBottom: '8px',
+                  marginBottom: '16px'
+                }}>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: 'var(--text-primary)',
+                    fontFamily: 'var(--font-mono)'
+                  }}>
+                    SLOT: {box.column_name}{box.row_number}{selectedSubId.toUpperCase()}
                   </span>
-                  <div style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    background: isOccupied ? 'var(--status-ok)' : 'transparent',
-                    border: isOccupied ? 'none' : '1px solid var(--border)',
-                    boxShadow: isOccupied ? '0 0 8px rgba(121,218,166,0.8)' : 'none'
-                  }} />
+                  
+                  <span style={{
+                    fontSize: '9px',
+                    fontFamily: 'var(--font-mono)',
+                    padding: '2px 6px',
+                    borderRadius: '3px',
+                    background: isSelectedOccupied ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                    color: isSelectedOccupied ? '#10b981' : '#ef4444',
+                    border: `1px solid ${isSelectedOccupied ? '#10b98133' : '#ef444433'}`,
+                    fontWeight: 700
+                  }}>
+                    {isSelectedOccupied ? 'OCCUPIED' : 'EMPTY'}
+                  </span>
                 </div>
 
-                <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', alignItems: isOccupied ? 'flex-start' : 'center', justifyContent: isOccupied ? 'flex-end' : 'center', height: '100%' }}>
-                  {isOccupied ? (
-                    <>
-                      <p style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px', margin: 0 }}>Contents</p>
-                      <p style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.2, margin: 0 }}>{sub.item_name || 'Unknown Item'}</p>
-                    </>
-                  ) : (
-                    <p style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', margin: 0 }}>Empty</p>
-                  )}
-                </div>
-                
-                {/* Retrieve Button Overlay */}
-                {operationMode === 'retrieve' && isOccupied && isSelected && (
+                {/* Binary Tab Content */}
+                {!isSelectedOccupied ? (
+                  /* Store Tab Panel */
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
+                      Slot is empty. Select an inventory item below to dispatch the shuttle for a <strong>Store</strong> operation.
+                    </p>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <label style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                        Inventory Product
+                      </label>
+                      <select
+                        value={selectedItemId || ''}
+                        onChange={(e) => setSelectedItemId(e.target.value)}
+                        disabled={loading}
+                        style={{
+                          background: 'var(--bg-primary)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '4px',
+                          padding: '10px',
+                          color: 'var(--text-primary)',
+                          fontSize: '12px',
+                          width: '100%',
+                          outline: 'none',
+                          fontFamily: 'var(--font-mono)'
+                        }}
+                      >
+                        <option value="">Select item...</option>
+                        {items.map(item => (
+                          <option key={item.item_id} value={item.item_id}>
+                            [{item.item_id}] {item.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ) : (
+                  /* Retrieve Tab Panel */
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
+                      Slot is occupied. Click retrieve to dispatch the shuttle to execute a <strong>Retrieve</strong> operation.
+                    </p>
+                    
+                    <div style={{
+                      background: 'var(--bg-primary)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '4px',
+                      padding: '12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px'
+                    }}>
+                      <span style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+                        Current Contents
+                      </span>
+                      <span style={{ fontSize: '14px', color: 'var(--text-primary)', fontWeight: 700 }}>
+                        {selectedSub?.item_name || 'Unknown Item'}
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                        ITEM ID: #{selectedSub?.item_id}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Button Container */}
+              <div style={{ marginTop: '16px' }}>
+                {!isSelectedOccupied ? (
                   <button
-                    onClick={(e) => { e.stopPropagation(); handleRetrieveOperation(); }}
-                    disabled={loading}
+                    onClick={handleStoreOperation}
+                    disabled={!selectedItemId || loading}
                     style={{
-                      position: 'absolute',
-                      bottom: '8px',
-                      right: '8px',
-                      background: 'var(--warning)',
+                      background: 'var(--primary)',
                       color: 'var(--bg-primary)',
                       border: 'none',
                       borderRadius: '4px',
-                      padding: '4px 8px',
-                      fontSize: '10px',
+                      padding: '12px',
+                      fontSize: '11px',
                       fontWeight: 700,
                       textTransform: 'uppercase',
-                      cursor: 'pointer'
+                      width: '100%',
+                      cursor: (!selectedItemId || loading) ? 'not-allowed' : 'pointer',
+                      opacity: (!selectedItemId || loading) ? 0.5 : 1,
+                      transition: 'all 150ms ease-out',
+                      boxShadow: selectedItemId && !loading ? '0 4px 12px rgba(249,115,22,0.2)' : 'none'
                     }}
                   >
-                    Retrieve
+                    {loading ? 'Executing Store...' : 'Execute Store'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleRetrieveOperation}
+                    disabled={loading}
+                    style={{
+                      background: '#ef4444',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '12px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      width: '100%',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      opacity: loading ? 0.5 : 1,
+                      transition: 'all 150ms ease-out',
+                      boxShadow: !loading ? '0 4px 12px rgba(239,68,68,0.2)' : 'none'
+                    }}
+                  >
+                    {loading ? 'Executing Retrieve...' : 'Execute Retrieve'}
                   </button>
                 )}
               </div>
-            );
-          })}
+            </div>
+          )}
         </div>
-
-        {/* Modal Actions - Store Mode Only */}
-        {operationMode === 'store' && selectedSubId && (
-          <div style={{
-            padding: '12px 16px',
-            borderTop: '1px solid var(--border)',
-            background: 'var(--bg-secondary)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px'
-          }}>
-            <select
-              value={selectedItemId || ''}
-              onChange={(e) => setSelectedItemId(e.target.value)}
-              disabled={loading}
-              style={{
-                flex: 1,
-                background: 'var(--bg-primary)',
-                border: '1px solid var(--border)',
-                borderRadius: '4px',
-                padding: '8px',
-                color: 'var(--text-primary)',
-                fontSize: '12px',
-                fontFamily: 'var(--font-mono)'
-              }}
-            >
-              <option value="">Select item to store...</option>
-              {items.map(item => (
-                <option key={item.item_id} value={item.item_id}>
-                  [{item.item_id}] {item.name}
-                </option>
-              ))}
-            </select>
-            
-            <button
-              onClick={handleStoreOperation}
-              disabled={!selectedItemId || loading}
-              style={{
-                background: 'var(--primary)',
-                color: 'var(--bg-primary)',
-                border: 'none',
-                borderRadius: '4px',
-                padding: '8px 16px',
-                fontSize: '11px',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                cursor: (!selectedItemId || loading) ? 'not-allowed' : 'pointer',
-                opacity: (!selectedItemId || loading) ? 0.5 : 1
-              }}
-            >
-              Execute Store
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
