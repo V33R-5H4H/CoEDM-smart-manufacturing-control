@@ -50,3 +50,8 @@ reference/
 
 #Stitch Designs
 stitch_designs/
+
+*.zip
+
+*.exe
+

@@ -6,6 +6,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import '../components/industrial-ui.css';
 import PageHeader from '../components/PageHeader';
 import { useTheme } from '../theme/ThemeContext';
+import AssemblyStatusRibbon from './asrs/components/AssemblyStatusRibbon';
 // recharts imports kept for future graph tab (currently commented out in render)
 import {
   LineChart,
@@ -23,6 +24,7 @@ export default function Assembly() {
   const [isLoading, setIsLoading] = useState(false);
   const [lastCommand, setLastCommand] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [isWsConnected, setIsWsConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
   const [plantData, setPlantData] = useState(null);
   const [activeTab, setActiveTab] = useState('monitoring');
@@ -71,7 +73,7 @@ export default function Assembly() {
 
     ws.onopen = () => {
       console.log('[Assembly] Hydraulic WebSocket connected');
-      setIsConnected(true);
+      setIsWsConnected(true);
     };
 
     ws.onmessage = (e) => {
@@ -142,12 +144,12 @@ export default function Assembly() {
 
     ws.onerror = (err) => {
       console.error('[Assembly] Hydraulic WebSocket error', err);
-      setIsConnected(false);
+      setIsWsConnected(false);
     };
 
     ws.onclose = () => {
       console.warn('[Assembly] Hydraulic WebSocket closed, reconnecting in 3s...');
-      setIsConnected(false);
+      setIsWsConnected(false);
       // Exponential backoff not needed for a local LAN connection — 3 s flat retry
       reconnectTimerRef.current = setTimeout(() => {
         if (wsRef.current?.readyState !== WebSocket.OPEN) connectWS();
@@ -393,17 +395,24 @@ export default function Assembly() {
       <PageHeader
         title="Assembly"
         subtitle="Hydraulic station"
-        status={isConnected ? "System active" : "Idle"}
         actions={
-          isConnected ? (
-            <button type="button" onClick={handleDisconnect} className="btn btn-error btn-sm" disabled={statusLoading}>
-              {statusLoading ? "Disconnecting…" : "Disconnect"}
-            </button>
-          ) : (
-            <button type="button" onClick={handleConnect} className="btn btn-success btn-sm" disabled={statusLoading}>
-              {statusLoading ? "Connecting…" : "Connect"}
-            </button>
-          )
+          <>
+            <AssemblyStatusRibbon
+              plcConnected={isConnected}
+              wsConnected={isWsConnected}
+              plantData={plantData}
+              smoothedPosition={smoothedPosition}
+            />
+            {isConnected ? (
+              <button type="button" onClick={handleDisconnect} className="btn btn-error btn-sm" disabled={statusLoading}>
+                {statusLoading ? "Disconnecting…" : "Disconnect"}
+              </button>
+            ) : (
+              <button type="button" onClick={handleConnect} className="btn btn-success btn-sm" disabled={statusLoading}>
+                {statusLoading ? "Connecting…" : "Connect"}
+              </button>
+            )}
+          </>
         }
       />
 

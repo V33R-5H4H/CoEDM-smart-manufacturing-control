@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import BoxesTab from "./components/BoxesTab";
 import ItemsTab from "./components/ItemsTab";
 import TransactionsTab from "./components/TransactionsTab";
-import SystemStatusChip from "./components/SystemStatusChip";
-import StatusPanel from "./components/StatusPanel";
+import TopStatusRibbon from "./components/TopStatusRibbon";
 import PageHeader from "../../components/PageHeader";
 import { useLEDMonitoring } from "./hooks/useLEDMonitoring";
 import { useTheme } from "../../theme/ThemeContext";
@@ -11,13 +10,12 @@ import { ToastContainer, toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import "react-toastify/dist/ReactToastify.css";
 
-const API_BASE = `http://${window.location.hostname}:8000/api/control/asrs`;
+const API_BASE = `${import.meta.env.VITE_API_URL || "/api"}/control/asrs`;
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState("boxes");
   const [isConnected, setIsConnected] = useState(false);
-  const [isStatusExpanded, setIsStatusExpanded] = useState(false);
-  const [safetyCurtainActive, setSafetyCurtainActive] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
   const { shuttleState, connected: ledConnected, ledStates } = useLEDMonitoring();
   const { resolved: theme } = useTheme();
 
@@ -103,6 +101,7 @@ function Dashboard() {
   }, []);
 
   const handleDisconnect = async () => {
+    setStatusLoading(true);
     try {
       const response = await fetch(`${API_BASE}/disconnect`, { method: "POST" });
       const result = await response.json();
@@ -114,10 +113,13 @@ function Dashboard() {
       }
     } catch {
       toast.error("Failed to disconnect from OPC-UA server.");
+    } finally {
+      setStatusLoading(false);
     }
   };
 
   const handleConnect = async () => {
+    setStatusLoading(true);
     try {
       const response = await fetch(`${API_BASE}/connect`, { method: "POST" });
       const result = await response.json();
@@ -129,6 +131,8 @@ function Dashboard() {
       }
     } catch {
       toast.error("Failed to connect to OPC-UA server.");
+    } finally {
+      setStatusLoading(false);
     }
   };
 
@@ -151,7 +155,6 @@ function Dashboard() {
       <PageHeader
         title="AS/RS"
         subtitle="Inventory"
-        status={safetyCurtainActive ? "SAFETY BREACH" : (isConnected ? "System active" : "Idle")}
         actions={
           <>
             {isConnected && (
@@ -184,27 +187,11 @@ function Dashboard() {
                 Reset A7
               </button>
             )}
-            <div
-              className="status-cluster"
-              style={{ position: 'relative' }}
-              onMouseEnter={() => setIsStatusExpanded(true)}
-              onMouseLeave={() => setIsStatusExpanded(false)}
-            >
-              <SystemStatusChip
-                plcConnected={isConnected}
-                ledConnected={ledConnected}
-                shuttleState={shuttleState}
-                isExpanded={isStatusExpanded}
-                safetyCurtainActive={safetyCurtainActive}
-              />
-              <StatusPanel
-                plcConnected={isConnected}
-                ledConnected={ledConnected}
-                shuttleState={shuttleState}
-                isExpanded={isStatusExpanded}
-                safetyCurtainActive={safetyCurtainActive}
-              />
-            </div>
+            <TopStatusRibbon
+              plcConnected={isConnected}
+              ledConnected={ledConnected}
+              shuttleState={shuttleState}
+            />
             {isConnected ? (
               <button
                 type="button"
@@ -220,11 +207,12 @@ function Dashboard() {
                   border: 'none',
                   padding: '4px 12px',
                   borderRadius: '2px',
-                  cursor: safetyCurtainActive ? 'not-allowed' : 'pointer',
-                  opacity: safetyCurtainActive ? 0.6 : 1,
+                  cursor: 'pointer',
+                  opacity: statusLoading ? 0.7 : 1,
                 }}
+                disabled={statusLoading}
               >
-                Disconnect
+                {statusLoading ? "Disconnecting…" : "Disconnect"}
               </button>
             ) : (
               <button
@@ -241,11 +229,12 @@ function Dashboard() {
                   border: 'none',
                   padding: '4px 12px',
                   borderRadius: '2px',
-                  cursor: safetyCurtainActive ? 'not-allowed' : 'pointer',
-                  opacity: safetyCurtainActive ? 0.6 : 1,
+                  cursor: 'pointer',
+                  opacity: statusLoading ? 0.7 : 1,
                 }}
+                disabled={statusLoading}
               >
-                Connect
+                {statusLoading ? "Connecting…" : "Connect"}
               </button>
             )}
           </>

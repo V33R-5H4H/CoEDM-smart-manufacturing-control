@@ -165,7 +165,8 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
 
   const handleHomeShuttle = async () => {
     try {
-      const res = await fetch('http://100.97.200.68:8000/api/control/asrs/home', { method: "POST" });
+      const API_BASE = `${import.meta.env.VITE_API_URL || "/api"}/control/asrs`;
+      const res = await fetch(`${API_BASE}/home`, { method: "POST" });
       if (res.ok) {
         toast.info("Resetting shuttle to Home (A7)…");
       } else {

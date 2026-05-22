@@ -4,18 +4,14 @@ import { toast } from "react-toastify";
 import MiracControlService from "../services/MiracControl";
 import MiracMachineView from "../components/MiracMachineView";
 import PageHeader from "../components/PageHeader";
-import "./Mirac.css";
+import MiracStatusRibbon from "./asrs/components/MiracStatusRibbon";
 
-const API = "http://localhost:8000/api/control/mirac";
-
-// ── Connectivity hook ──────────────────────────────────────────────────────
-const useConnectivity = () => {
-  const [conn, setConn] = useState({
-    vibit1: { connected: false, unit_id: 1, label: "Spindle sensor" },
-    vibit2: { connected: false, unit_id: 2, label: "Tool / bearing sensor" },
-    opcua:  { connected: false },
-    any_connected: false,
-  });
+// --- Custom Hook for MIRAC WebSocket Data ---
+const useMiracData = () => {
+  const [data, setData] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState("connecting");
+  const pollRef = useRef(null);
+  const hookInstanceRef = useRef(Math.random().toString(36).slice(2, 9));
 
   useEffect(() => {
     let stopped = false;
@@ -25,7 +21,7 @@ const useConnectivity = () => {
         if (!res.ok) return;
         const data = await res.json();
         if (!stopped) setConn(data);
-      } catch (_) {}
+      } catch (_) { }
     };
     poll();
     const id = setInterval(poll, 2000);
@@ -48,7 +44,7 @@ const useVibitData = () => {
 
     const connectWebSocket = () => {
       ws = new WebSocket("ws://localhost:8000/api/control/mirac/ws/vibit-data");
-      
+
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
@@ -59,7 +55,7 @@ const useVibitData = () => {
           console.error("Failed to parse WebSocket data", e);
         }
       };
-      
+
       ws.onclose = () => {
         console.log("WebSocket connection closed, reconnecting in 2s...");
         if (isComponentMounted) {
@@ -75,7 +71,7 @@ const useVibitData = () => {
 
     connectWebSocket();
 
-    return () => { 
+    return () => {
       isComponentMounted = false;
       clearTimeout(reconnectTimeout);
       if (ws) ws.close();
@@ -111,9 +107,9 @@ const ConnBadge = ({ connected, label, unitId }) => (
 
 const StatusLed = ({ active, color }) => {
   const colors = {
-    green:  { on: "#4ade80", glow: "rgba(74,222,128,0.55)" },
+    green: { on: "#4ade80", glow: "rgba(74,222,128,0.55)" },
     yellow: { on: "#fbbf24", glow: "rgba(251,191,36,0.55)" },
-    red:    { on: "#ef4444", glow: "rgba(239,68,68,0.55)" },
+    red: { on: "#ef4444", glow: "rgba(239,68,68,0.55)" },
   }[color] || {};
   return (
     <div style={{
@@ -355,26 +351,14 @@ const Mirac = () => {
       <PageHeader
         title="MIRAC-PC"
         subtitle="CNC Machine Control"
-        status={isConnected ? "SYSTEM ACTIVE" : "IDLE"}
         actions={
-          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
-            {/* Connectivity badges */}
-            <ConnBadge
-              connected={conn.vibit1?.connected}
-              label="VIBIT Spindle"
-              unitId={conn.vibit1?.unit_id}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <MiracStatusRibbon
+              plcConnected={isConnected}
+              wsStatus={wsStatus}
+              spindleSpeed={data?.spindle?.speed}
+              cycleStart={data?.status?.cycle_start}
             />
-            <ConnBadge
-              connected={conn.vibit2?.connected}
-              label="VIBIT Tool"
-              unitId={conn.vibit2?.unit_id}
-            />
-            <ConnBadge
-              connected={conn.opcua?.connected}
-              label="OPC-UA"
-            />
-
-            {/* Demo toggle */}
             <button
               onClick={() => setDemoMode(!demoMode)}
               className={demoMode ? "btn btn-warning btn-sm" : "btn btn-ghost btn-sm"}
@@ -426,8 +410,8 @@ const Mirac = () => {
         }}>
           {[
             { key: "overview", label: "Overview" },
-            { key: "unit1",    label: "VIBIT Unit 1 — Spindle" },
-            { key: "unit2",    label: "VIBIT Unit 2 — Tool" },
+            { key: "unit1", label: "VIBIT Unit 1 — Spindle" },
+            { key: "unit2", label: "VIBIT Unit 2 — Tool" },
           ].map(t => (
             <button
               key={t.key}
@@ -492,7 +476,7 @@ const Mirac = () => {
                 }}>
                   <StatusLed active={ledStatus === 1.0 || merged?.led_green} color="green" />
                   <StatusLed active={ledStatus === 0.0 || merged?.led_yellow} color="yellow" />
-                  <StatusLed active={ledStatus === 2.0 || merged?.led_red}   color="red" />
+                  <StatusLed active={ledStatus === 2.0 || merged?.led_red} color="red" />
                 </div>
               </div>
 
@@ -546,8 +530,8 @@ const Mirac = () => {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                     {[
                       { label: "Cycle Start", val: merged?.cycle_start },
-                      { label: "Cycle Stop",  val: merged?.cycle_stop },
-                      { label: "Chuck",       val: merged?.pneumatic_chuck },
+                      { label: "Cycle Stop", val: merged?.cycle_stop },
+                      { label: "Chuck", val: merged?.pneumatic_chuck },
                     ].map(({ label, val }) => (
                       <div key={label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <div style={{
