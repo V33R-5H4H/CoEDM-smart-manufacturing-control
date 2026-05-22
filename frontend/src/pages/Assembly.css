@@ -1,168 +1,686 @@
 /* ============================================================
-   Assembly.css — Clean minimalist hydraulic press
+   Assembly.css — Premium Industrial SCADA Style
    ============================================================ */
-.asm-page { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+.asm-page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
 
 .asm-header {
-  flex-shrink: 0; height: 52px; padding: 0 20px;
+  flex-shrink: 0;
+  height: 52px;
+  padding: 0 20px;
   border-bottom: 1px solid var(--border);
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
-.asm-header h1 { font-size: 0.9rem; font-weight: 600; display: flex; align-items: baseline; gap: 8px; }
+.asm-header h1 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
 .asm-header h1 .accent { color: var(--primary); }
 .asm-header h1 span { font-size: 0.72rem; font-weight: 500; color: var(--text-muted); }
-.asm-header__status {
-  font-size: 0.65rem; font-weight: 600; text-transform: uppercase;
-  display: flex; align-items: center; gap: 5px; color: var(--text-muted);
-}
-.asm-header__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-disabled); }
-.asm-header__dot--on { background: var(--success); box-shadow: 0 0 6px var(--success); }
 
 /* Buttons */
 .asm-btn {
-  height: 28px; font-size: 0.68rem; font-weight: 600; padding: 0 12px;
-  border: 1px solid var(--border); border-radius: var(--radius-sm);
-  cursor: pointer; font-family: var(--font-sans);
-  background: transparent; color: var(--text-secondary);
+  height: 28px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  background: transparent;
+  color: var(--text-secondary);
   transition: all var(--transition-fast);
 }
 .asm-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-.asm-btn--connect { color: var(--success); border-color: var(--success); }
-.asm-btn--disconnect { color: var(--error); border-color: var(--error); }
-.asm-btn--bearing { color: var(--success); border-color: var(--success); background: rgba(16,185,129,0.06); }
-.asm-btn--shaft { color: var(--accent); border-color: var(--accent); background: rgba(14,165,233,0.06); }
-.asm-btn--clear { color: var(--text-muted); font-size: 0.6rem; height: 24px; padding: 0 8px; }
+.asm-btn--bearing {
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.05);
+}
+.asm-btn--bearing:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+}
+.asm-btn--shaft {
+  color: #0ea5e9;
+  border-color: rgba(14, 165, 233, 0.4);
+  background: rgba(14, 165, 233, 0.05);
+}
+.asm-btn--shaft:hover:not(:disabled) {
+  background: rgba(14, 165, 233, 0.15);
+  border-color: #0ea5e9;
+  box-shadow: 0 0 8px rgba(14, 165, 233, 0.3);
+}
+.asm-btn--clear {
+  color: var(--text-muted);
+  font-size: 0.6rem;
+  height: 24px;
+  padding: 0 8px;
+}
 
 /* Body */
-.asm-body { flex: 1; overflow: hidden; display: flex; min-height: 0; }
+.asm-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  min-height: 0;
+}
 
 /* Sidebar */
 .asm-sidebar {
-  width: 220px; flex-shrink: 0;
+  width: 220px;
+  flex-shrink: 0;
   border-right: 1px solid var(--border);
-  overflow-y: auto; padding: 16px;
-  display: flex; flex-direction: column; gap: 20px;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 .asm-side__section h3 {
-  font-size: 0.62rem; font-weight: 700; color: var(--text-muted);
-  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
 }
 
 /* LEDs */
 .asm-leds { display: flex; gap: 12px; }
 .asm-led { display: flex; align-items: center; gap: 6px; }
-.asm-led__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-disabled); transition: all 0.3s ease; }
-.asm-led__dot--green { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.5); }
-.asm-led__dot--orange { background: #f59e0b; box-shadow: 0 0 6px rgba(245,158,11,0.5); }
-.asm-led__dot--red { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.5); }
+.asm-led__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-disabled);
+  transition: all 0.3s ease;
+}
+.asm-led__dot--green { background: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
+.asm-led__dot--orange { background: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.6); }
+.asm-led__dot--red { background: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.6); }
 .asm-led__label { font-size: 0.62rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
 
-/* Safety */
+/* Safety items */
 .asm-safety-item {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 6px 10px; border-radius: var(--radius-sm);
-  font-size: 0.72rem; font-weight: 600; color: var(--text-muted);
-  border: 1px solid var(--border); margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  margin-bottom: 4px;
 }
-.asm-safety-item--danger { border-color: rgba(239,68,68,0.3); color: #fca5a5; background: rgba(239,68,68,0.04); }
-.asm-pulse-dot { width: 6px; height: 6px; border-radius: 50%; background: #ef4444; animation: asm-pulse 1s ease-in-out infinite; }
-@keyframes asm-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+.asm-safety-item--danger {
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.04);
+}
+.asm-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: asm-pulse 1s ease-in-out infinite;
+  box-shadow: 0 0 6px #ef4444;
+}
+@keyframes asm-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.15); }
+}
 
-/* Readouts */
-.asm-val { margin-bottom: 8px; }
-.asm-val__label { font-size: 0.58rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
-.asm-val__num { font-family: var(--font-mono); font-size: 1.4rem; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
-.asm-val__num--sm { font-size: 0.9rem; }
-.asm-val__unit { font-size: 0.65rem; color: var(--text-muted); font-family: var(--font-sans); margin-left: 2px; }
+/* Glassmorphic HUD Panel Style */
+.asm-hud-card {
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.asm-hud-header {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 6px;
+}
+
+.asm-val {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.asm-val__label {
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.asm-val__num {
+  font-family: var(--font-mono);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.05);
+}
+.asm-val__num--sm {
+  font-size: 0.88rem;
+}
+.asm-val__num--glowing-blue {
+  color: #38bdf8;
+  text-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+}
+.asm-val__num--glowing-green {
+  color: #4ade80;
+  text-shadow: 0 0 8px rgba(74, 222, 128, 0.3);
+}
+.asm-val__unit {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  margin-left: 2px;
+}
 
 /* Main */
-.asm-main { flex: 1; overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.asm-main {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
 
 .asm-viz {
-  flex: 1; min-height: 400px;
+  flex: 1;
+  min-height: 400px;
   background: var(--bg-machine);
-  border: 1px solid var(--border); border-radius: var(--radius-lg);
-  position: relative; overflow: hidden; display: flex; flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .asm-viz__bar {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
 }
-.asm-viz__bar span { font-size: 0.65rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.asm-viz__bar span {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
 .asm-workpiece-badge {
-  font-family: var(--font-mono); font-size: 0.62rem; font-weight: 600;
-  padding: 2px 8px; border-radius: 3px;
-  border: 1px solid var(--border); color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
 }
-.asm-workpiece-badge--bearing { color: var(--success); border-color: var(--success); }
-.asm-workpiece-badge--shaft { color: var(--accent); border-color: var(--accent); }
+.asm-workpiece-badge--bearing { color: #ff6b6b; border-color: rgba(255, 107, 107, 0.3); background: rgba(255, 107, 107, 0.04); }
+.asm-workpiece-badge--shaft { color: #38bdf8; border-color: rgba(56, 189, 248, 0.3); background: rgba(56, 189, 248, 0.04); }
 
 /* Press schematic */
-.asm-press-area { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; padding: 16px; }
-.asm-press-container { display: flex; flex-direction: column; align-items: center; transition: opacity 0.3s ease; }
-.asm-press-container--dimmed { opacity: 0.12; pointer-events: none; }
+.asm-press-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 24px;
+  background: 
+    radial-gradient(circle at center, rgba(17, 24, 39, 0.5) 0%, rgba(3, 7, 18, 0.9) 100%),
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 100% 100%, 20px 20px, 20px 20px;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
 
-.asm-flange { width: 110px; height: 14px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 3px; display: flex; align-items: center; justify-content: center; gap: 14px; z-index: 2; }
-.asm-flange__bolt { width: 4px; height: 4px; border-radius: 50%; background: var(--text-disabled); }
+.asm-grid-container {
+  display: grid;
+  grid-template-columns: 200px 1fr 200px;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 820px;
+  align-items: center;
+}
 
-.asm-cylinder { width: 100px; height: 200px; position: relative; display: flex; justify-content: space-between; }
-.asm-cylinder__wall { width: 22px; height: 100%; border-radius: 2px; }
-.asm-cylinder__wall--left { background: linear-gradient(90deg, #1a3a1a, #2d5a2d); border: 1px solid #2d5a2d; }
-.asm-cylinder__wall--right { background: linear-gradient(270deg, #1a3a1a, #2d5a2d); border: 1px solid #2d5a2d; }
-.asm-piston-track { width: 34px; height: 100%; position: relative; display: flex; justify-content: center; }
-.asm-piston-rod { width: 28px; background: linear-gradient(90deg, #9ca3af, #d1d5db, #9ca3af); border: 1px solid #9ca3af; border-radius: 2px; min-height: 2px; transition: height 0.05s linear; }
+/* Machine cylinder alignment wrapper */
+.asm-cylinder-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 
+.asm-flange {
+  width: 160px;
+  height: 22px;
+  background: linear-gradient(180deg, #475569 0%, #1e293b 40%, #0f172a 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 3px solid rgba(0, 0, 0, 0.6);
+  border-radius: 6px 6px 3px 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  z-index: 10;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+.asm-flange__bolt {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #f3f4f6, #4b5563);
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  box-shadow: inset -1px -1px 2px rgba(255, 255, 255, 0.1);
+}
+
+.asm-cylinder {
+  width: 140px;
+  height: 260px;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  background: rgba(15, 23, 42, 0.3);
+  border-bottom: 2px dashed rgba(255, 255, 255, 0.06);
+}
+.asm-cylinder__wall {
+  width: 28px;
+  height: 100%;
+  z-index: 2;
+}
+.asm-cylinder__wall--left {
+  background: linear-gradient(90deg, #0f172a 0%, #334155 15%, #64748b 45%, #94a3b8 55%, #1e293b 85%, #0f172a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 1px 1px 2px rgba(255, 255, 255, 0.15), inset -2px -2px 4px rgba(0, 0, 0, 0.6);
+}
+.asm-cylinder__wall--right {
+  background: linear-gradient(270deg, #0f172a 0%, #334155 15%, #64748b 45%, #94a3b8 55%, #1e293b 85%, #0f172a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset -1px 1px 2px rgba(255, 255, 255, 0.15), inset 2px -2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.asm-piston-track {
+  width: 84px;
+  height: 100%;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  z-index: 1;
+}
+.asm-piston-rod {
+  width: 36px;
+  background: linear-gradient(90deg, #6b7280 0%, #d1d5db 20%, #f9fafb 45%, #ffffff 55%, #9ca3af 80%, #374151 100%);
+  border-left: 1px solid rgba(0, 0, 0, 0.5);
+  border-right: 1px solid rgba(0, 0, 0, 0.5);
+  box-shadow: inset 1.5px 0 3px rgba(255, 255, 255, 0.25), 0 0 15px rgba(255, 255, 255, 0.04);
+}
+
+/* Press Head with Hazard Strips */
 .asm-press-head {
-  width: 90px; height: 24px; background: linear-gradient(180deg, #7f1d1d, #450a0a);
-  border: 1px solid #991b1b; border-radius: 3px;
-  display: flex; align-items: center; justify-content: center;
-  position: absolute; top: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  z-index: 3; transition: transform 0.05s linear;
+  width: 136px;
+  height: 32px;
+  background: linear-gradient(180deg, #dc2626 0%, #991b1b 50%, #450a0a 100%);
+  border: 1px solid #7f1d1d;
+  border-top: 1.5px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  position: absolute;
+  top: 14px;
+  left: 2px;
+  right: 2px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55), inset 0 1px 2px rgba(255, 255, 255, 0.2);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 3px 0;
+  box-sizing: border-box;
 }
-.asm-press-head__groove { width: 70%; height: 2px; background: rgba(255,255,255,0.1); border-radius: 1px; }
 
-.asm-vice { width: 160px; height: 70px; position: relative; display: flex; align-items: center; justify-content: center; margin-top: 4px; }
-.asm-jaw {
-  width: 32px; height: 60px; border: 1px solid var(--border);
-  border-radius: 3px; position: absolute; display: flex; flex-direction: column;
-  gap: 6px; padding: 6px 4px;
-  transition: transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 0.9);
+/* Industrial Black/Yellow Hazard Warning Line */
+.asm-press-head__hazard {
+  width: 100%;
+  height: 6px;
+  background: repeating-linear-gradient(
+    -45deg,
+    #fbbf24,
+    #fbbf24 4px,
+    #172554 4px,
+    #172554 8px
+  );
+  border-top: 1px solid rgba(0,0,0,0.4);
+  border-bottom: 1px solid rgba(0,0,0,0.4);
+  opacity: 0.85;
 }
-.asm-jaw--left { left: 16px; background: var(--bg-tertiary); }
-.asm-jaw--right { right: 16px; background: var(--bg-tertiary); }
-.asm-jaw__groove { width: 100%; height: 1.5px; background: var(--text-disabled); border-radius: 1px; }
+
+.asm-press-head__groove {
+  width: 75%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 1px;
+  margin: 0 auto;
+}
+
+.asm-press-head__glow {
+  position: absolute;
+  bottom: 0;
+  left: 6px;
+  right: 6px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 1px;
+  transition: all 0.25s ease;
+}
+
+/* Scaled up vice assembly */
+.asm-vice {
+  width: 220px;
+  height: 80px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+  background: rgba(15, 23, 42, 0.2);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.asm-jaw {
+  width: 50px;
+  height: 72px;
+  border: 1.5px solid rgba(0, 0, 0, 0.6);
+  border-radius: 5px;
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 6px;
+  box-sizing: border-box;
+  box-shadow: 
+    inset 1px 1px 2px rgba(255, 255, 255, 0.08),
+    inset -2px -2px 4px rgba(0, 0, 0, 0.4),
+    0 4px 10px rgba(0, 0, 0, 0.4);
+  z-index: 4;
+}
+.asm-jaw--left {
+  left: 12px;
+  background: linear-gradient(90deg, #1e293b 0%, #475569 65%, #334155 85%, #1e293b 100%);
+  border-right: 3px solid rgba(255, 255, 255, 0.2);
+}
+.asm-jaw--right {
+  right: 12px;
+  background: linear-gradient(270deg, #1e293b 0%, #475569 65%, #334155 85%, #1e293b 100%);
+  border-left: 3px solid rgba(255, 255, 255, 0.2);
+}
+.asm-jaw__groove {
+  width: 100%;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 1px;
+}
+
+/* Hydraulic Pipe Feed lines on the sides */
+.asm-pipe {
+  position: absolute;
+  width: 8px;
+  background: linear-gradient(90deg, #334155, #64748b, #1e293b);
+  border: 1px solid rgba(0,0,0,0.5);
+  box-shadow: inset 1px 0 1px rgba(255,255,255,0.1);
+  z-index: 1;
+}
+.asm-pipe--left {
+  left: -20px;
+  top: -10px;
+  height: 270px;
+}
+.asm-pipe--right {
+  right: -20px;
+  top: -10px;
+  height: 270px;
+}
+.asm-pipe__fluid {
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  height: 100%;
+  opacity: 0.15;
+  transition: all 0.3s ease;
+}
+.asm-pipe__fluid--active-bearing {
+  background: linear-gradient(180deg, transparent, #ff6b6b, transparent);
+  background-size: 8px 40px;
+  animation: asm-fluid-flow 1.5s linear infinite;
+  opacity: 0.75;
+  filter: drop-shadow(0 0 4px #ff6b6b);
+}
+.asm-pipe__fluid--active-shaft {
+  background: linear-gradient(180deg, transparent, #38bdf8, transparent);
+  background-size: 8px 40px;
+  animation: asm-fluid-flow 1.5s linear infinite;
+  opacity: 0.75;
+  filter: drop-shadow(0 0 4px #38bdf8);
+}
+@keyframes asm-fluid-flow {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 80px; }
+}
+
+/* Measurement Ruler styling */
+.asm-ruler {
+  position: absolute;
+  left: -52px;
+  top: 14px;
+  height: 185px; /* travel distance in pixels (scaling factor 1.0) */
+  width: 28px;
+  border-right: 1.5px solid var(--border);
+  box-sizing: border-box;
+  z-index: 3;
+}
+.asm-ruler__tick {
+  position: absolute;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+  transform: translateY(-50%);
+}
+.asm-ruler__tick-line {
+  width: 6px;
+  height: 1px;
+  background: var(--text-muted);
+}
+.asm-ruler__tick-line--major {
+  width: 11px;
+  height: 1.5px;
+  background: var(--text-secondary);
+}
+.asm-ruler__label {
+  font-family: var(--font-mono);
+  font-size: 7.5px;
+  color: var(--text-muted);
+  margin-right: 4px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.asm-ruler__pointer {
+  position: absolute;
+  right: -1.5px;
+  width: 0;
+  height: 0;
+  border-top: 4.5px solid transparent;
+  border-bottom: 4.5px solid transparent;
+  border-left: 6px solid var(--primary);
+  transform: translate(100%, -50%);
+  filter: drop-shadow(0 0 3px var(--primary));
+  z-index: 10;
+  transition: border-left-color 0.25s ease;
+}
+
+/* Bearing workpiece visual */
+.asm-workpiece--bearing-item {
+  border-radius: 50%;
+  background: radial-gradient(circle, #4b5563 15%, #1f2937 35%, #9ca3af 55%, #374151 75%, #111827 100%);
+  border: 2px solid rgba(0, 0, 0, 0.85);
+  box-shadow: 
+    0 5px 12px rgba(0, 0, 0, 0.5), 
+    inset 0 1px 2.5px rgba(255, 255, 255, 0.25),
+    0 0 15px rgba(239, 68, 68, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.asm-workpiece--bearing-item::before {
+  content: '';
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(255, 255, 255, 0.2);
+  position: absolute;
+}
+.asm-workpiece--bearing-item::after {
+  content: '';
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fbbf24 0%, #d97706 65%, #78350f 100%);
+  border: 1.5px solid rgba(0, 0, 0, 0.85);
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+}
+
+/* Shaft workpiece visual */
+.asm-workpiece--shaft-item {
+  background: linear-gradient(90deg, #475569 0%, #cbd5e1 25%, #ffffff 50%, #94a3b8 75%, #1e293b 100%);
+  border: 1.5px solid rgba(0, 0, 0, 0.8);
+  border-radius: 3px 3px 2px 2px;
+  box-shadow: 
+    0 5px 12px rgba(0, 0, 0, 0.5), 
+    inset 1px 0 1.5px rgba(255, 255, 255, 0.3),
+    0 0 15px rgba(56, 189, 248, 0.2);
+  position: relative;
+}
+.asm-workpiece--shaft-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -1px;
+  right: -1px;
+  height: 8px;
+  background: linear-gradient(90deg, #94a3b8, #ffffff, #475569);
+  border-bottom: 1.5px solid rgba(0, 0, 0, 0.85);
+}
 
 /* Controls */
 .asm-cmd {
-  display: flex; gap: 8px; padding: 10px 16px;
-  background: var(--bg-elevated); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); flex-shrink: 0; align-items: center;
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
+  align-items: center;
 }
-.asm-cmd__label { font-size: 0.62rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-right: auto; }
+.asm-cmd__label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-right: auto;
+}
 
 /* Safety overlay */
 .asm-safety-overlay {
-  position: absolute; inset: 0;
-  background: rgba(0,0,0,0.85); display: flex;
-  align-items: center; justify-content: center; gap: 24px;
-  border-radius: var(--radius-lg); z-index: 20;
-  border: 1px solid rgba(239,68,68,0.2); padding: 32px;
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  border-radius: var(--radius-lg);
+  z-index: 20;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  padding: 32px;
 }
 .asm-safety-overlay__icon { animation: asm-blink 1.2s ease-in-out infinite; }
 @keyframes asm-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-.asm-safety-overlay__title { font-size: 2rem; font-weight: 800; color: #ef4444; text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--font-mono); line-height: 1.2; }
-.asm-safety-overlay__sub { font-size: 0.8rem; font-weight: 500; color: #fca5a5; font-family: var(--font-mono); margin-top: 4px; }
-.asm-safety-overlay__badge { font-size: 0.68rem; font-weight: 700; color: #ef4444; text-transform: uppercase; padding: 4px 12px; border: 1px solid rgba(239,68,68,0.3); font-family: var(--font-mono); margin-top: 8px; display: inline-block; }
-
-/* Graph */
-.asm-graph {
-  background: var(--bg-elevated); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: 10px 16px; height: 180px; flex-shrink: 0;
+.asm-safety-overlay__title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #ef4444;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: var(--font-mono);
+  line-height: 1.2;
 }
-.asm-graph__bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.asm-graph__title { font-size: 0.62rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
-.asm-graph__live { font-size: 0.58rem; color: var(--success); font-weight: 600; margin-left: 6px; }
+.asm-safety-overlay__sub {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #fca5a5;
+  font-family: var(--font-mono);
+  margin-top: 4px;
+}
+.asm-safety-overlay__badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #ef4444;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  font-family: var(--font-mono);
+  margin-top: 8px;
+  display: inline-block;
+}
 
 /* Buzzer ring */
-.asm-buzzer-ring { position: fixed; inset: 0; pointer-events: none; z-index: 100; border: 2px solid #ef4444; animation: asm-ring 0.6s ease-in-out infinite; }
-@keyframes asm-ring { 0%, 100% { opacity: 0; border-width: 2px; } 50% { opacity: 0.5; border-width: 4px; } }
+.asm-buzzer-ring {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  border: 2px solid #ef4444;
+  animation: asm-ring 0.6s ease-in-out infinite;
+}
+@keyframes asm-ring {
+  0%, 100% { opacity: 0; border-width: 2px; }
+  50% { opacity: 0.5; border-width: 4px; }
+}
