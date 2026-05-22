@@ -106,135 +106,6 @@ export function useOperationShadowState(ledStates, shuttleState) {
   // Track which LEDs are physically ON (ground truth)
   const previousLEDsRef = useRef({});
 
-  useEffect(() => {
-    if (shuttleState?.col === undefined || shuttleState?.row === undefined) {
-      return;
-    }
-    const position =
-      shuttleState.row === 0
-        ? 'DROP_OFF'
-        : `${shuttleState.col}${shuttleState.row}`;
-    if (lastKnownPositionRef.current !== position) {
-      prevShuttlePositionRef.current = lastKnownPositionRef.current;
-      lastKnownPositionRef.current = position;
-      console.log(
-        '[ShadowState] Shuttle position update:',
-        'current =', position,
-        'previous =', prevShuttlePositionRef.current
-      );
-    }
-  }, [shuttleState]);
-
-  useEffect(() => {
-    // 🚨 CRITICAL GUARD: Don't detect operation until shuttle position is known
-    if (!lastKnownPositionRef.current) {
-      previousLEDsRef.current = { ...ledStates };
-      return;
-    }
-
-    // Guard against re-entry during operation
-    if (operationPhase !== 'IDLE') {
-      previousLEDsRef.current = { ...ledStates };
-      return;
-    }
-
-    // Detect new LED turning ON (this is our operation trigger)
-    const newLEDOn = Object.entries(ledStates).find(
-      ([cell, isOn]) => isOn && !previousLEDsRef.current[cell]
-    );
-
-    if (newLEDOn) {
-      const [targetCell] = newLEDOn;
-      let sourceCell = prevShuttlePositionRef.current || lastKnownPositionRef.current;
-      if (sourceCell !== targetCell) {
-        startOperation(sourceCell, targetCell);
-      }
-    } else {
-      setVisualLEDs(ledStates);
-    }
-
-    previousLEDsRef.current = { ...ledStates };
-  }, [ledStates, operationPhase]);
-
-  const startOperation = async (sourceCell, targetCell) => {
-    console.log('[ShadowState] ========== OPERATION START ==========');
-    console.log('[ShadowState] Source:', sourceCell);
-    console.log('[ShadowState] Target:', targetCell);
-
-    if (!sourceCell || !targetCell) {
-      console.log('[ShadowState] ERROR: Missing source or target');
-      return;
-    }
-
-    pendingOperationRef.current = { sourceCell, targetCell };
-
-    // PHASE 1: Acknowledgement
-    // Don't show destination LED yet, even though it's physically ON
-    console.log('[ShadowState] PHASE 1: Acknowledgement');
-    setOperationPhase('ACKNOWLEDGEMENT');
-    await sleep(PHASE_DURATIONS.ACKNOWLEDGEMENT);
-
-    // PHASE 2: Source Departure
-    // Visual-only source blink (NOT the physical LED)
-    setOperationPhase('SOURCE_DEPARTURE');
-    setSourceBlink(sourceCell);
-    await sleep(PHASE_DURATIONS.SOURCE_BLINK);
-    setSourceBlink(null);
-
-    // PHASE 2.5: Go to Drop-off (for STORE operations)
-    // Determine operation type from shuttle command, NOT from position.
-    // Store commands end with 'S' (e.g. "A1S"), retrieve commands don't (e.g. "A1").
-    const currentCommand = shuttleState?.command || '';
-    const isStoreOperation = currentCommand.endsWith('S');
-
-    console.log('[ShadowState] Checking operation type...');
-    console.log('[ShadowState]   command:', currentCommand);
-    console.log('[ShadowState]   isStoreOperation:', isStoreOperation);
-
-    if (isStoreOperation) {
-      console.log('[ShadowState] PHASE 2.5: STORE - Going to drop-off station');
-      setOperationPhase('PICKUP_TRANSIT');
-
-      // Animate shuttle from source to DROP_OFF
-      console.log('[ShadowState] Starting animation from', sourceCell, 'to DROP_OFF');
-      await animateToDropOff(sourceCell);
-
-      // Wait at drop-off for pickup (simulating item being loaded)
-      console.log('[ShadowState] Waiting at drop-off for', PHASE_DURATIONS.PICKUP_TRANSIT, 'ms');
-      await sleep(PHASE_DURATIONS.PICKUP_TRANSIT);
-
-      console.log('[ShadowState] Finished waiting at drop-off, now heading to destination');
-    } else {
-      console.log('[ShadowState] RETRIEVE operation - skipping drop-off phase');
-    }
-
-    // PHASE 3: Transit
-    // Move shuttle from drop-off (or current position) to destination
-    console.log('[ShadowState] PHASE 3: Transit to destination');
-    setOperationPhase('TRANSIT');
-    const startPoint = isStoreOperation ? 'DROP_OFF' : sourceCell;
-    console.log('[ShadowState] Transit from', startPoint, 'to', targetCell);
-    await animateShuttleTransit(startPoint, targetCell);
-
-    // PHASE 4: Arrival Sync
-    // NOW reveal the destination LED (it was always ON, we just hid it)
-    setOperationPhase('ARRIVAL');
-    await sleep(PHASE_DURATIONS.ARRIVAL_HOLD);
-
-    // Sync complete - show physical truth (always use latest)
-    setVisualLEDs(latestLEDsRef.current);
-    previousLEDsRef.current = { ...latestLEDsRef.current };
-
-    // Release visual shuttle override so backend state (e.g. A0 after retrieve)
-    // becomes the single source of truth once animation sequence completes.
-    setVisualShuttle(null);
-
-    setOperationPhase('IDLE');
-    pendingOperationRef.current = null;
-
-    console.log('[ShadowState] Operation complete');
-  };
-
   const animateToDropOff = async (fromCell) => {
     console.log('[animateToDropOff] Starting from:', fromCell);
     const fromCol = fromCell[0];
@@ -345,6 +216,135 @@ export function useOperationShadowState(ledStates, shuttleState) {
     });
     console.log('[animateShuttleTransit] Transit complete');
   };
+
+  async function startOperation(sourceCell, targetCell) {
+    console.log('[ShadowState] ========== OPERATION START ==========');
+    console.log('[ShadowState] Source:', sourceCell);
+    console.log('[ShadowState] Target:', targetCell);
+
+    if (!sourceCell || !targetCell) {
+      console.log('[ShadowState] ERROR: Missing source or target');
+      return;
+    }
+
+    pendingOperationRef.current = { sourceCell, targetCell };
+
+    // PHASE 1: Acknowledgement
+    // Don't show destination LED yet, even though it's physically ON
+    console.log('[ShadowState] PHASE 1: Acknowledgement');
+    setOperationPhase('ACKNOWLEDGEMENT');
+    await sleep(PHASE_DURATIONS.ACKNOWLEDGEMENT);
+
+    // PHASE 2: Source Departure
+    // Visual-only source blink (NOT the physical LED)
+    setOperationPhase('SOURCE_DEPARTURE');
+    setSourceBlink(sourceCell);
+    await sleep(PHASE_DURATIONS.SOURCE_BLINK);
+    setSourceBlink(null);
+
+    // PHASE 2.5: Go to Drop-off (for STORE operations)
+    // Determine operation type from shuttle command, NOT from position.
+    // Store commands end with 'S' (e.g. "A1S"), retrieve commands don't (e.g. "A1").
+    const currentCommand = shuttleState?.command || '';
+    const isStoreOperation = currentCommand.endsWith('S');
+
+    console.log('[ShadowState] Checking operation type...');
+    console.log('[ShadowState]   command:', currentCommand);
+    console.log('[ShadowState]   isStoreOperation:', isStoreOperation);
+
+    if (isStoreOperation) {
+      console.log('[ShadowState] PHASE 2.5: STORE - Going to drop-off station');
+      setOperationPhase('PICKUP_TRANSIT');
+
+      // Animate shuttle from source to DROP_OFF
+      console.log('[ShadowState] Starting animation from', sourceCell, 'to DROP_OFF');
+      await animateToDropOff(sourceCell);
+
+      // Wait at drop-off for pickup (simulating item being loaded)
+      console.log('[ShadowState] Waiting at drop-off for', PHASE_DURATIONS.PICKUP_TRANSIT, 'ms');
+      await sleep(PHASE_DURATIONS.PICKUP_TRANSIT);
+
+      console.log('[ShadowState] Finished waiting at drop-off, now heading to destination');
+    } else {
+      console.log('[ShadowState] RETRIEVE operation - skipping drop-off phase');
+    }
+
+    // PHASE 3: Transit
+    // Move shuttle from drop-off (or current position) to destination
+    console.log('[ShadowState] PHASE 3: Transit to destination');
+    setOperationPhase('TRANSIT');
+    const startPoint = isStoreOperation ? 'DROP_OFF' : sourceCell;
+    console.log('[ShadowState] Transit from', startPoint, 'to', targetCell);
+    await animateShuttleTransit(startPoint, targetCell);
+
+    // PHASE 4: Arrival Sync
+    // NOW reveal the destination LED (it was always ON, we just hid it)
+    setOperationPhase('ARRIVAL');
+    await sleep(PHASE_DURATIONS.ARRIVAL_HOLD);
+
+    // Sync complete - show physical truth (always use latest)
+    setVisualLEDs(latestLEDsRef.current);
+    previousLEDsRef.current = { ...latestLEDsRef.current };
+
+    // Release visual shuttle override so backend state (e.g. A0 after retrieve)
+    // becomes the single source of truth once animation sequence completes.
+    setVisualShuttle(null);
+
+    setOperationPhase('IDLE');
+    pendingOperationRef.current = null;
+
+    console.log('[ShadowState] Operation complete');
+  }
+
+  useEffect(() => {
+    if (shuttleState?.col === undefined || shuttleState?.row === undefined) {
+      return;
+    }
+    const position =
+      shuttleState.row === 0
+        ? 'DROP_OFF'
+        : `${shuttleState.col}${shuttleState.row}`;
+    if (lastKnownPositionRef.current !== position) {
+      prevShuttlePositionRef.current = lastKnownPositionRef.current;
+      lastKnownPositionRef.current = position;
+      console.log(
+        '[ShadowState] Shuttle position update:',
+        'current =', position,
+        'previous =', prevShuttlePositionRef.current
+      );
+    }
+  }, [shuttleState]);
+
+  useEffect(() => {
+    // 🚨 CRITICAL GUARD: Don't detect operation until shuttle position is known
+    if (!lastKnownPositionRef.current) {
+      previousLEDsRef.current = { ...ledStates };
+      return;
+    }
+
+    // Guard against re-entry during operation
+    if (operationPhase !== 'IDLE') {
+      previousLEDsRef.current = { ...ledStates };
+      return;
+    }
+
+    // Detect new LED turning ON (this is our operation trigger)
+    const newLEDOn = Object.entries(ledStates).find(
+      ([cell, isOn]) => isOn && !previousLEDsRef.current[cell]
+    );
+
+    if (newLEDOn) {
+      const [targetCell] = newLEDOn;
+      let sourceCell = prevShuttlePositionRef.current || lastKnownPositionRef.current;
+      if (sourceCell !== targetCell) {
+        startOperation(sourceCell, targetCell);
+      }
+    } else {
+      setVisualLEDs(ledStates);
+    }
+
+    previousLEDsRef.current = { ...ledStates };
+  }, [ledStates, operationPhase]);
 
   const getEffectiveLEDState = (cellId) => {
     // During operation, hide destination LED until arrival

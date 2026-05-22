@@ -17,8 +17,6 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState("boxes");
   const [isConnected, setIsConnected] = useState(false);
   const [isStatusExpanded, setIsStatusExpanded] = useState(false);
-  const [safetyCurtainActive, setSafetyCurtainActive] = useState(false);
-  
   const { shuttleState, connected: ledConnected, ledStates } = useLEDMonitoring();
   const { resolved: theme } = useTheme();
 
@@ -253,7 +251,7 @@ function Dashboard() {
         }
       />
 
-      {/* Sub-nav: Tabs + Mode toggle — Stitch pattern */}
+      {/* Sub-nav: Tabs — Stitch pattern */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -276,8 +274,8 @@ function Dashboard() {
                 fontWeight: activeTab === tab ? 700 : 600,
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
-                color: safetyCurtainActive 
-                  ? 'var(--text-muted)' 
+                color: safetyCurtainActive
+                  ? 'var(--text-muted)'
                   : (activeTab === tab ? 'var(--primary)' : 'var(--text-muted)'),
                 background: 'none',
                 border: 'none',
@@ -292,7 +290,6 @@ function Dashboard() {
             </button>
           ))}
         </div>
-
       </div>
 
       {/* Workspace — fills remaining space */}
