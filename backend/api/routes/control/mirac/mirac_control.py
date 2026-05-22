@@ -152,23 +152,30 @@ async def set_read_rate(
 
 @router.websocket("/ws/vibit-data")
 async def vibit_data_websocket(websocket: WebSocket):
-    """Real-time merged VIBIT metrics stream (500ms cadence)."""
+    """Real-time merged VIBIT metrics stream (10Hz cadence)."""
     await websocket.accept()
     logger.info("VIBIT WebSocket client connected")
     try:
-        prev = None
         while True:
             try:
-                current = get_vibit_data()
-                if current != prev:
-                    await websocket.send_text(json.dumps(current, default=str))
-                    prev = current
-                await asyncio.sleep(0.5)
+                payload = {
+                    "merged": get_vibit_data(),
+                    "unit1": get_vibit_unit_data(1),
+                    "unit2": get_vibit_unit_data(2),
+                }
+                await websocket.send_text(json.dumps(payload, default=str))
+                await asyncio.sleep(0.1)
             except asyncio.CancelledError:
                 break
+            except RuntimeError as e:
+                if "close message has been sent" in str(e) or "Unexpected state" in str(e):
+                    break
+                logger.error(f"WebSocket RuntimeError: {e}")
+                break
             except Exception as e:
-                logger.warning(f"WebSocket loop error: {e}")
-                await asyncio.sleep(0.5)
+                import traceback
+                logger.error(f"WebSocket loop error: {e}\n{traceback.format_exc()}")
+                break
     except WebSocketDisconnect:
         logger.info("VIBIT WebSocket client disconnected")
     except Exception as e:

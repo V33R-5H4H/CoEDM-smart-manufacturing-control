@@ -138,9 +138,7 @@ class VibitModbusReader:
             try:
                 resp = fn(address=base, count=count, slave=device_id)
                 if not resp.isError():
-                    regs = resp.registers
-                    if any(r != 0 for r in regs):
-                        return regs
+                    return resp.registers
             except Exception as exc:
                 logger.debug("VibIT %s read failed @%s+%s unit=%s: %s", fn_name, base, count, device_id, exc)
 

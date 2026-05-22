@@ -42,34 +42,44 @@ const useVibitData = () => {
   const [merged, setMerged] = useState(null);
 
   useEffect(() => {
-    let stopped = false;
+    let ws;
+    let reconnectTimeout;
+    let isComponentMounted = true;
 
-    const fetchAll = async () => {
-      // Merged data (used for machine view + OPC-UA tags)
-      try {
-        const r = await fetch(`${API}/vibit-data`, { cache: "no-store" });
-        if (r.ok && !stopped) {
-          const d = await r.json();
-          setMerged(d);
+    const connectWebSocket = () => {
+      ws = new WebSocket("ws://localhost:8000/api/control/mirac/ws/vibit-data");
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.merged) setMerged(data.merged);
+          if (data.unit1) setUnit1(data.unit1);
+          if (data.unit2) setUnit2(data.unit2);
+        } catch (e) {
+          console.error("Failed to parse WebSocket data", e);
         }
-      } catch (_) {}
+      };
+      
+      ws.onclose = () => {
+        console.log("WebSocket connection closed, reconnecting in 2s...");
+        if (isComponentMounted) {
+          reconnectTimeout = setTimeout(connectWebSocket, 2000);
+        }
+      };
 
-      // Unit 1 raw
-      try {
-        const r = await fetch(`${API}/vibit-data/unit/1`, { cache: "no-store" });
-        if (r.ok && !stopped) setUnit1(await r.json());
-      } catch (_) {}
-
-      // Unit 2 raw
-      try {
-        const r = await fetch(`${API}/vibit-data/unit/2`, { cache: "no-store" });
-        if (r.ok && !stopped) setUnit2(await r.json());
-      } catch (_) {}
+      ws.onerror = (err) => {
+        console.error("WebSocket error:", err);
+        ws.close();
+      };
     };
 
-    fetchAll();
-    const id = setInterval(fetchAll, 1000);
-    return () => { stopped = true; clearInterval(id); };
+    connectWebSocket();
+
+    return () => { 
+      isComponentMounted = false;
+      clearTimeout(reconnectTimeout);
+      if (ws) ws.close();
+    };
   }, []);
 
   return { unit1, unit2, merged };
@@ -561,6 +571,8 @@ const Mirac = () => {
               <MiracMachineView
                 spindleRPM={rpm}
                 carriagePositionPct={carriagePct}
+                xAxisValue={merged?.x_axis_value}
+                zAxisValue={merged?.z_axis_value}
                 spindleRunning={merged?.cycle_start || rpm > 0}
                 alarmActive={!isConnected}
                 toolEngaged={false}

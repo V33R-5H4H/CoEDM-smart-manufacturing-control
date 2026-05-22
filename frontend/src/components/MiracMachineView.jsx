@@ -25,6 +25,8 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 const MiracMachineView = ({
   spindleRPM = 0,
   carriagePositionPct = 50,
+  xAxisValue = 0,
+  zAxisValue = 0,
   spindleRunning = false,
   toolEngaged = false,
   alarmActive = false,
@@ -107,10 +109,15 @@ const MiracMachineView = ({
     };
   }, [demoMode]);
 
+  // Map Real Z (0 to 100 max mapped) to Carriage pos, Map Real X to Tool Y.
+  const realZPositionPct = Math.max(0, Math.min(100, zAxisValue));
+  const realToolY = Math.max(0, Math.min(20, xAxisValue)); // Max plunge ~ 20px
+
   // When demo mode is active, use demo values; when play button is active, use demo speed; otherwise use real data
   const effectiveRPM = isAnimationPlaying ? 1000 : spindleRPM;
   const effectiveSpindleRunning = isAnimationPlaying ? true : spindleRunning;
-  const effectiveCarriagePos = demoMode ? ((demoCarriageX - 280) / 340) * 100 : carriagePositionPct;
+  const effectiveCarriagePos = demoMode ? ((demoCarriageX - 280) / 340) * 100 : realZPositionPct;
+  const effectiveToolY = demoMode ? demoToolY : realToolY;
 
   // Calculate chuck rotation duration from RPM: 60 / RPM = seconds per revolution
   const spinDuration = useMemo(() => {
@@ -132,8 +139,9 @@ const MiracMachineView = ({
   const bellowsRightWidth = Math.max(15, positionClamped * 0.8); // 15–80px
 
   // Tool contact point (left face of carriage, slightly forward)
+  // Shift tool position downwards according to xAxisValue
   const toolContactX = carriageX - 5;
-  const toolContactY = 280;
+  const toolContactY = 280 + effectiveToolY;
 
   // Animation play state
   const chuckAnimState = effectiveSpindleRunning ? 'running' : 'paused';

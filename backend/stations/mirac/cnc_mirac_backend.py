@@ -233,7 +233,11 @@ class MIRACDataGateway:
         """
         from backend.communication.vibit_modbus import VibitModbusReader
         from backend.stations.mirac.cnc_mirac_station import opcua_connection, MIRAC_DATA_TAGS
+        from backend.database.sensor_data import write_vibit_reading, write_mirac_plc_reading
         import math, random
+
+        # Throttle DB writes to ~1 Hz (every 10 ticks)
+        self._db_tick = 0
 
         # Use ONE shared reader to prevent Modbus TCP connection limits
         reader = VibitModbusReader(host=self.host, port=self.port)
@@ -252,15 +256,14 @@ class MIRACDataGateway:
                 opc_connected = False
                 if opcua_connection.connected:
                     try:
-                        for tag_name, node_id in MIRAC_DATA_TAGS.items():
-                            try:
-                                node = opcua_connection.client.get_node(node_id)
-                                opc_data[tag_name] = node.read_value()
-                            except Exception:
-                                pass
+                        nodes = [opcua_connection.client.get_node(nid) for nid in MIRAC_DATA_TAGS.values()]
+                        values = opcua_connection.client.read_values(nodes)
+                        for tag_name, value in zip(MIRAC_DATA_TAGS.keys(), values):
+                            if value is not None:
+                                opc_data[tag_name] = value
                         opc_connected = bool(opc_data)
                     except Exception as e:
-                        logger.warning(f"OPC-UA read error: {e}")
+                        logger.warning(f"OPC-UA bulk read error: {e}")
 
                 with self._lock:
                     self._connectivity["opcua"] = opc_connected
@@ -322,6 +325,19 @@ class MIRACDataGateway:
                         s2.rpm                 = data2.get("rpm", 0.0)
                         s2.reboot_count        = data2.get("reboot_count", 0.0)
                         s2.led_status          = data2.get("led_status", 0.0)
+
+                # ── Database Persistence ─────────────────────────────
+                self._db_tick += 1
+                if self._db_tick >= 10:
+                    self._db_tick = 0
+                    if data1: write_vibit_reading(data1)
+                    if data2: write_vibit_reading(data2)
+                    if opc_connected: write_mirac_plc_reading(opc_data, connected=True)
+
+                # Wait for next tick (~10Hz base rate)
+                elapsed = (datetime.now() - datetime.fromisoformat(now)).total_seconds()
+                import time
+                time.sleep(max(0.01, 0.1 - elapsed))
 
             except Exception as e:
                 logger.error(f"Error in MIRAC dual-slave read loop: {e}")
