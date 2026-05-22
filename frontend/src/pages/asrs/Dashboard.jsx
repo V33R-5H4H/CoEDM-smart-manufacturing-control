@@ -2,8 +2,7 @@ import React, { useState, useEffect } from "react";
 import BoxesTab from "./components/BoxesTab";
 import ItemsTab from "./components/ItemsTab";
 import TransactionsTab from "./components/TransactionsTab";
-import SystemStatusChip from "./components/SystemStatusChip";
-import StatusPanel from "./components/StatusPanel";
+import TopStatusRibbon from "./components/TopStatusRibbon";
 import PageHeader from "../../components/PageHeader";
 import { useLEDMonitoring } from "./hooks/useLEDMonitoring";
 import { useTheme } from "../../theme/ThemeContext";
@@ -15,7 +14,6 @@ const API_BASE = "http://100.97.200.68:8000/api/control/asrs";
 function Dashboard() {
   const [activeTab, setActiveTab] = useState("boxes");
   const [isConnected, setIsConnected] = useState(false);
-  const [isStatusExpanded, setIsStatusExpanded] = useState(false);
   const { shuttleState, connected: ledConnected, ledStates } = useLEDMonitoring();
   const { resolved: theme } = useTheme();
 
@@ -80,7 +78,6 @@ function Dashboard() {
       <PageHeader
         title="AS/RS"
         subtitle="Inventory"
-        status={isConnected ? "System active" : "Idle"}
         actions={
           <>
             {isConnected && (
@@ -111,25 +108,11 @@ function Dashboard() {
                 Reset A7
               </button>
             )}
-            <div
-              className="status-cluster"
-              style={{ position: 'relative' }}
-              onMouseEnter={() => setIsStatusExpanded(true)}
-              onMouseLeave={() => setIsStatusExpanded(false)}
-            >
-              <SystemStatusChip
-                plcConnected={isConnected}
-                ledConnected={ledConnected}
-                shuttleState={shuttleState}
-                isExpanded={isStatusExpanded}
-              />
-              <StatusPanel
-                plcConnected={isConnected}
-                ledConnected={ledConnected}
-                shuttleState={shuttleState}
-                isExpanded={isStatusExpanded}
-              />
-            </div>
+            <TopStatusRibbon
+              plcConnected={isConnected}
+              ledConnected={ledConnected}
+              shuttleState={shuttleState}
+            />
             {isConnected ? (
               <button
                 type="button"
