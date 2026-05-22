@@ -5,10 +5,13 @@ export function useLEDMonitoring() {
   const [shuttleState, setShuttleState] = useState({ col: 'A', row: 7, state: 'idle', command: null });
   const [connected, setConnected] = useState(false);
 <<<<<<< HEAD
+<<<<<<< HEAD
   const [safetyCurtain, setSafetyCurtain] = useState(false);
 =======
   const [safetyCurtainActive, setSafetyCurtainActive] = useState(false);
 >>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
+=======
+>>>>>>> parent of 2ea1e21 (feat: implement backend web-socket broadcasters and sensor monitoring for ASRS and MIRAC stations)
   const wsRef = useRef(null);
 
   useEffect(() => {
@@ -16,7 +19,7 @@ export function useLEDMonitoring() {
     const httpBase = apiBase.startsWith('http') ? apiBase : `${window.location.origin}${apiBase}`;
     const wsBase = import.meta.env.VITE_WS_URL || httpBase.replace(/^http/, 'ws');
 
-    const wsUrl = `${wsBase}/api/control/asrs/ws/led-status`;
+    const wsUrl = `${wsBase}/control/asrs/ws/led-status`;
     const shuttleStateUrl = `${httpBase}/control/asrs/shuttle_state`;
 
     function connect() {
@@ -58,6 +61,7 @@ export function useLEDMonitoring() {
             console.log('LED snapshot received:', data.states);
             setLedStates(data.states);
 <<<<<<< HEAD
+<<<<<<< HEAD
             if (data.safety) {
               setSafetyCurtain(!!data.safety.curtain);
 =======
@@ -65,6 +69,8 @@ export function useLEDMonitoring() {
               setSafetyCurtainActive(data.safety);
 >>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
             }
+=======
+>>>>>>> parent of 2ea1e21 (feat: implement backend web-socket broadcasters and sensor monitoring for ASRS and MIRAC stations)
             break;
 
           case 'led':
@@ -88,6 +94,7 @@ export function useLEDMonitoring() {
             }));
             break;
 
+<<<<<<< HEAD
           case 'safety':
 <<<<<<< HEAD
             // Safety curtain update
@@ -99,6 +106,8 @@ export function useLEDMonitoring() {
 >>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
             break;
 
+=======
+>>>>>>> parent of 2ea1e21 (feat: implement backend web-socket broadcasters and sensor monitoring for ASRS and MIRAC stations)
           default:
             console.warn('Unknown message type:', data.type);
         }
@@ -124,8 +133,12 @@ export function useLEDMonitoring() {
   }, []);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   return { ledStates, shuttleState, connected, safetyCurtain };
 =======
   return { ledStates, shuttleState, connected, safetyCurtainActive };
 >>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
+=======
+  return { ledStates, shuttleState, connected };
+>>>>>>> parent of 2ea1e21 (feat: implement backend web-socket broadcasters and sensor monitoring for ASRS and MIRAC stations)
 }

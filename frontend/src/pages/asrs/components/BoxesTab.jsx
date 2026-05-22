@@ -73,9 +73,6 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
         itemId: Number(itemId)
       });
 
-      // Instantly refresh inventory list to reflect database changes
-      fetchBoxes();
-
       // 3. Show persistent background transition toast
       toast.info('Store operation initiated. Shuttle dispatching...', { autoClose: false, toastId: 'store-wait' });
 
@@ -132,9 +129,6 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
         itemId,
         quantity: 1
       });
-
-      // Instantly refresh inventory list to reflect database changes
-      fetchBoxes();
 
       // 3. Show persistent background transition toast
       toast.info('Retrieve operation initiated. Shuttle dispatching...', { autoClose: false, toastId: 'retrieve-wait' });

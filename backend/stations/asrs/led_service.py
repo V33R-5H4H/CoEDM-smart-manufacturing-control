@@ -34,18 +34,13 @@ class LEDService:
         # Set of callback functions to notify on LED changes
         self._callbacks: Set[Callable] = set()
         
-        # Safety curtain state (from PLC 'saftey' tag)
-        self.safety_curtain = False
-        self.prev_safety_curtain = False
-        self._safety_callbacks: Set[Callable] = set()
-        
         # Maps OPC-UA node IDs to tag names (e.g., node_id -> "ledA1")
         self.node_to_tag: Dict[str, str] = {}
         
         # FastAPI event loop reference for scheduling async callbacks from sync context
         self.loop: asyncio.AbstractEventLoop = None
         
-        logging.info("[LED Service] Initialized with 35 box locations and safety monitoring")
+        logging.info("[LED Service] Initialized with 35 box locations")
     
     def set_event_loop(self, loop: asyncio.AbstractEventLoop):
         """
@@ -146,36 +141,4 @@ class LEDService:
             List of box IDs where LED is ON
         """
         return [box for box, active in self.led_state.items() if active]
-
-    def register_safety_callback(self, callback: Callable):
-        """
-        Register a callback function to be notified when the safety curtain state changes.
-        
-        Callback signature: callback(active: bool, prev: bool)
-        """
-        self._safety_callbacks.add(callback)
-        logging.info(f"[LED Service] Registered safety callback: {callback.__name__}")
-
-    def update_safety(self, active: bool):
-        """
-        Update safety curtain state and notify all registered safety callbacks.
-        """
-        prev = self.safety_curtain
-        self.prev_safety_curtain = prev
-        self.safety_curtain = active
-        
-        if prev != active:
-            logging.info(f"[LED Service] Safety Curtain transition: {prev} → {active}")
-            self._notify_safety_callbacks(active, prev)
-
-    def _notify_safety_callbacks(self, active: bool, prev: bool):
-        """
-        Notify all registered safety callbacks.
-        """
-        for callback in self._safety_callbacks:
-            try:
-                callback(active, prev)
-            except Exception as e:
-                logging.error(f"[LED Service] Safety callback error: {e}", exc_info=True)
-
 

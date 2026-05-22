@@ -49,12 +49,16 @@ class ASRSController:
     # ------------------------------------------------------------------
 
     def connect(self):
-        """Connect to PLC and start LED monitoring."""
+        """Connect to PLC, enforce A7 home baseline, and start LED monitoring."""
         logging.info("[ASRS] connect() called")
         asrs_connection.connect()
 
+        # Hardware limitation: true shuttle position is not readable on startup.
+        # Always re-baseline logical state to Home (A7) on every connect.
+        self.shuttle.reset_home()
+
         self._subscribe_to_leds()
-        logging.info("[ASRS] Connected and LED subscription active.")
+        logging.info("[ASRS] Connected, shuttle reset to Home (A7), and LED subscription active.")
 
     def disconnect(self):
         """Stop LED monitoring and disconnect from PLC."""
@@ -92,13 +96,10 @@ class ASRSController:
         # Determine operation type
         if cmd == "HOME":
             operation = "HOME"
-            pulse_tag = "Home"
         elif cmd.endswith("S"):
             operation = "STORE"
-            pulse_tag = cmd
         else:
             operation = "RETRIEVE"
-            pulse_tag = cmd
 
         # Update shuttle position BEFORE pulsing (so frontend sees "moving" immediately)
         if cmd != "HOME":
@@ -108,8 +109,8 @@ class ASRSController:
             self.shuttle.set_moving(col, row, cmd)
 
         # Pulse the PLC node
-        logging.info(f"[ASRS] Pulsing node '{pulse_tag}'")
-        asrs_connection.pulse_node(pulse_tag)
+        logging.info(f"[ASRS] Pulsing node '{cmd}'")
+        asrs_connection.pulse_node(cmd)
         logging.info(f"[ASRS] {operation} command '{cmd}' executed successfully.")
 
         return {
@@ -168,6 +169,7 @@ class ASRSController:
                             logging.warning(f"[ASRS] LED {tag} unavailable: {e}")
 
 <<<<<<< HEAD
+<<<<<<< HEAD
                 # Also subscribe to the native ASRS saftey curtain node
                 safety_tag = "saftey"
                 safety_node_id = f"ns={PLC_NAMESPACE};s={safety_tag}"
@@ -198,6 +200,8 @@ class ASRSController:
                     logging.warning(f"[ASRS] Safety curtain tag {saftcy_tag} unavailable: {e}")
 >>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
 
+=======
+>>>>>>> parent of 2ea1e21 (feat: implement backend web-socket broadcasters and sensor monitoring for ASRS and MIRAC stations)
                 if not led_nodes:
                     logging.error("[ASRS] No LED nodes found!")
                     return

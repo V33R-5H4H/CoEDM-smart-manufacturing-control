@@ -84,6 +84,7 @@ class MIRACDataGateway:
         self.state: Dict[str, VIBITMetrics] = {
 <<<<<<< HEAD
             "vibit1": VIBITMetrics(timestamp=datetime.now().isoformat()),
+<<<<<<< HEAD
             "vibit2": VIBITMetrics(timestamp=datetime.now().isoformat()),
             "vibit3": VIBITMetrics(timestamp=datetime.now().isoformat()),
 =======
@@ -96,6 +97,8 @@ class MIRACDataGateway:
                 unit_id=self.unit_id_2
             ),
 >>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
+=======
+>>>>>>> parent of 2ea1e21 (feat: implement backend web-socket broadcasters and sensor monitoring for ASRS and MIRAC stations)
         }
 
         # Connectivity tracking — per slave + OPC-UA
@@ -196,8 +199,8 @@ class MIRACDataGateway:
         # return result.registers
         raise NotImplementedError("Use pymodbus for actual Modbus reads")
 
-    def update_state(self, sensor: str, metrics: Dict) -> None:
-        """Update global state with decoded metrics for a specific sensor"""
+    def update_state(self, metrics: Dict) -> None:
+        """Update global state with decoded metrics"""
         if not metrics:
             return
         
@@ -210,21 +213,18 @@ class MIRACDataGateway:
         """Get current metrics for one slave (vibit1 or vibit2)."""
 >>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
         with self._lock:
-            if sensor in self.state:
-                current = self.state[sensor]
-                for key, value in metrics.items():
-                    if hasattr(current, key):
-                        setattr(current, key, value)
-                current.timestamp = datetime.now().isoformat()
+            current = self.state["vibit1"]
+            for key, value in metrics.items():
+                if hasattr(current, key):
+                    setattr(current, key, value)
+            current.timestamp = datetime.now().isoformat()
 
-    def get_state(self, sensor: str = None) -> Optional[Dict]:
-        """Get current sensor state. If sensor is None, returns all sensors combined."""
+    def get_state(self, sensor: str = "vibit1") -> Optional[Dict]:
+        """Get current sensor state"""
         with self._lock:
-            if sensor:
-                if sensor in self.state:
-                    return asdict(self.state[sensor])
-                return None
-            return {k: asdict(v) for k, v in self.state.items()}
+            if sensor in self.state:
+                return asdict(self.state[sensor])
+        return None
 
     def get_merged_state(self) -> Dict:
         """
@@ -468,6 +468,7 @@ mirac_gateway = MIRACDataGateway()
 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 def get_vibit_data(sensor: str = None) -> Optional[Dict]:
     """API endpoint to get current VIBIT metrics"""
     return mirac_gateway.get_state(sensor)
@@ -487,6 +488,11 @@ def get_vibit_connectivity() -> Dict:
     """Get per-device connectivity status."""
     return mirac_gateway.get_connectivity()
 >>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
+=======
+def get_vibit_data() -> Optional[Dict]:
+    """API endpoint to get current VIBIT metrics"""
+    return mirac_gateway.get_state("vibit1")
+>>>>>>> parent of 2ea1e21 (feat: implement backend web-socket broadcasters and sensor monitoring for ASRS and MIRAC stations)
 
 
 def set_read_interval(interval_ms: int) -> None:

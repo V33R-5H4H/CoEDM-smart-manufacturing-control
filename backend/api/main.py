@@ -19,14 +19,20 @@ from backend.api.routes.control.assembly import assembly_control
 from backend.api.routes.control.mirac import mirac_control
 from backend.api.routes.control.asrs.shuttle import router as shuttle_router
 from backend.api.routes.data.asrs.asrs_data import router as asrs_data_router
+<<<<<<< HEAD
 from backend.api.routes import sensor_data
+=======
+>>>>>>> parent of 2ea1e21 (feat: implement backend web-socket broadcasters and sensor monitoring for ASRS and MIRAC stations)
 from backend.stations.asrs.asrs_singleton import asrs_controller
 from backend.websockets.assembly_broadcaster import hydraulic_broadcaster
 from backend.websockets.mirac_broadcaster import mirac_broadcaster
 from backend.websockets.asrs_broadcaster import led_ws_manager
 from backend.stations.assembly.hydraulic_station import opcua_connection as hydraulic_opcua_connection
 from backend.stations.mirac.cnc_mirac_station import opcua_connection as mirac_opcua_connection
+<<<<<<< HEAD
 from backend.stations.triac import triac_opcua_connection
+=======
+>>>>>>> parent of 2ea1e21 (feat: implement backend web-socket broadcasters and sensor monitoring for ASRS and MIRAC stations)
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -58,7 +64,10 @@ app.include_router(assembly_control.router)
 app.include_router(mirac_control.router)
 app.include_router(shuttle_router)
 app.include_router(asrs_data_router)
+<<<<<<< HEAD
 app.include_router(sensor_data.router)
+=======
+>>>>>>> parent of 2ea1e21 (feat: implement backend web-socket broadcasters and sensor monitoring for ASRS and MIRAC stations)
 
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -103,6 +112,7 @@ async def startup_event():
     asrs_controller.shuttle.register_callback(_shuttle_callback)
     logger.info("[Startup] ✓ Shuttle broadcast callback registered")
 
+<<<<<<< HEAD
     # 5. Safety state-change → WebSocket broadcast
     def _safety_callback(active: bool, prev: bool):
         asyncio.run_coroutine_threadsafe(
@@ -113,6 +123,8 @@ async def startup_event():
     asrs_controller.led_service.register_safety_callback(_safety_callback)
     logger.info("[Startup] ✓ Safety broadcast callback registered")
 
+=======
+>>>>>>> parent of 2ea1e21 (feat: implement backend web-socket broadcasters and sensor monitoring for ASRS and MIRAC stations)
     logger.info(
         "[Startup] Application ready  host=%s  port=%s  debug=%s  log=%s",
         settings.API_HOST, settings.API_PORT, settings.DEBUG, settings.LOG_LEVEL,
@@ -128,7 +140,10 @@ async def shutdown_event():
         ("ASRS",      asrs_controller),
         ("Hydraulic", hydraulic_opcua_connection),
         ("MIRAC",     mirac_opcua_connection),
+<<<<<<< HEAD
         ("TRIAC",     triac_opcua_connection),
+=======
+>>>>>>> parent of 2ea1e21 (feat: implement backend web-socket broadcasters and sensor monitoring for ASRS and MIRAC stations)
     ]:
         try:
             if name == "ASRS":
@@ -152,7 +167,10 @@ async def health_check():
     - ASRS OPC-UA connection
     - Hydraulic OPC-UA connection
     - MIRAC OPC-UA connection
+<<<<<<< HEAD
     - TRIAC OPC-UA connection
+=======
+>>>>>>> parent of 2ea1e21 (feat: implement backend web-socket broadcasters and sensor monitoring for ASRS and MIRAC stations)
     """
     db = verify_db()
 
@@ -176,6 +194,7 @@ async def health_check():
                 "connected": mirac_opcua_connection.connected,
                 "url": settings.MIRAC_OPCUA_URL,
             },
+<<<<<<< HEAD
             "triac": {
                 "connected": triac_opcua_connection.connected,
                 "url": settings.TRIAC_OPCUA_URL,
@@ -216,3 +235,14 @@ async def health_check():
             }
         },
     }
+=======
+        },
+        "modbus": {
+            "vibit": {
+                "host": settings.VIBIT_HOST,
+                "port": settings.VIBIT_PORT,
+                "unit_id": settings.VIBIT_UNIT_ID,
+            }
+        },
+    }
+>>>>>>> parent of 2ea1e21 (feat: implement backend web-socket broadcasters and sensor monitoring for ASRS and MIRAC stations)

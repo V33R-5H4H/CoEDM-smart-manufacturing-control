@@ -22,22 +22,92 @@ function Dashboard() {
   const [isConnected, setIsConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
 <<<<<<< HEAD
+<<<<<<< HEAD
   const { shuttleState, connected: ledConnected, ledStates, safetyCurtain } = useLEDMonitoring();
+=======
+  const { shuttleState, connected: ledConnected, ledStates } = useLEDMonitoring();
+>>>>>>> parent of 2ea1e21 (feat: implement backend web-socket broadcasters and sensor monitoring for ASRS and MIRAC stations)
   const { resolved: theme } = useTheme();
 
-  const prevSafetyCurtainRef = useRef(false);
+  // Safety telemetry state synced from cell automation
+  const [safetyState, setSafetyState] = useState({
+    curtain: false,
+    buzzer: false,
+    lights: { red: false, orange: false, green: false }
+  });
 
-  // Trigger edge-triggered toast notifications for ASRS Safety Curtain status
+  const prevSafetyRef = useRef({ curtain: false, buzzer: false });
+
+  // Connect to the central cell-wide safety curtain & buzzer telemetry channel
   useEffect(() => {
-    if (safetyCurtain && !prevSafetyCurtainRef.current) {
-      toast.error("⚠️ SAFETY CURTAIN TRIGGERED — Human presence detected!", {
-        toastId: "asrs-curtain-alert",
-        autoClose: false,
-        closeOnClick: false,
-      });
-    } else if (!safetyCurtain && prevSafetyCurtainRef.current) {
-      toast.dismiss("asrs-curtain-alert");
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const apiBase = import.meta.env.VITE_API_URL || "/api";
+    const httpBase = apiBase.startsWith("http") ? apiBase : `${window.location.origin}${apiBase}`;
+    const wsBase = import.meta.env.VITE_WS_URL || httpBase.replace(/^http/, "ws");
+    const wsUrl = `${wsBase}/control/assembly/ws/hydraulic-data`;
+
+    let ws;
+    let reconnectTimer;
+
+    function connect() {
+      console.log("[ASRS Dashboard] Subscribing to safety telemetry:", wsUrl);
+      ws = new WebSocket(wsUrl);
+
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.safety) {
+            setSafetyState({
+              curtain: !!data.safety.curtain,
+              buzzer: !!data.safety.buzzer,
+              lights: {
+                red: !!data.safety.lights?.red,
+                orange: !!data.safety.lights?.orange,
+                green: !!data.safety.lights?.green
+              }
+            });
+
+            // Edge-triggered safety alerts to avoid spamming toast notifications
+            const prev = prevSafetyRef.current;
+            if (data.safety.curtain && !prev.curtain) {
+              toast.error("⚠️ SAFETY CURTAIN TRIGGERED — Human presence detected!", {
+                toastId: "asrs-curtain-alert",
+                autoClose: false,
+                closeOnClick: false,
+              });
+            }
+            if (data.safety.buzzer && !prev.buzzer) {
+              toast.error("🔔 BUZZER ACTIVE — Emergency condition!", {
+                toastId: "asrs-buzzer-alert",
+                autoClose: false,
+                closeOnClick: false,
+              });
+            }
+
+            // Dismiss alerts when conditions return to normal
+            if (!data.safety.curtain && prev.curtain) toast.dismiss("asrs-curtain-alert");
+            if (!data.safety.buzzer && prev.buzzer) toast.dismiss("asrs-buzzer-alert");
+
+            prevSafetyRef.current = {
+              curtain: !!data.safety.curtain,
+              buzzer: !!data.safety.buzzer,
+            };
+          }
+        } catch (err) {
+          console.error("[ASRS Dashboard] Error parsing safety ws data:", err);
+        }
+      };
+
+      ws.onclose = () => {
+        console.warn("[ASRS Dashboard] Safety WS closed. Reconnecting in 3s...");
+        reconnectTimer = setTimeout(connect, 3000);
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
     }
+<<<<<<< HEAD
     prevSafetyCurtainRef.current = safetyCurtain;
   }, [safetyCurtain]);
 =======
@@ -61,6 +131,16 @@ function Dashboard() {
     prevSafetyRef.current = safetyCurtainActive;
   }, [safetyCurtainActive]);
 >>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
+=======
+
+    connect();
+
+    return () => {
+      clearTimeout(reconnectTimer);
+      ws?.close();
+    };
+  }, []);
+>>>>>>> parent of 2ea1e21 (feat: implement backend web-socket broadcasters and sensor monitoring for ASRS and MIRAC stations)
 
   useEffect(() => {
     const checkConnection = async () => {
@@ -112,7 +192,7 @@ function Dashboard() {
   };
 
   // Derive status tower light conditions: Green (RUN), Orange (BUSY), Red (FLT)
-  const isSafetyInterrupted = safetyCurtain;
+  const isSafetyInterrupted = safetyState.curtain || safetyState.buzzer;
   const greenActive = isConnected && !isSafetyInterrupted && shuttleState?.state !== "moving" && shuttleState?.state !== "busy";
   const orangeActive = isConnected && !isSafetyInterrupted && (shuttleState?.state === "moving" || shuttleState?.state === "busy");
   const redActive = isSafetyInterrupted || shuttleState?.state === "error" || shuttleState?.state === "fault";
@@ -387,7 +467,10 @@ function Dashboard() {
                   SAFETY<br />INTERRUPT
                 </div>
                 <div className="asm-safety-overlay__sub" style={{ maxWidth: "420px", fontSize: "0.85rem", margin: 0 }}>
-                  Human presence detected in ASRS area (safety curtain breached).
+                  {safetyState.curtain
+                    ? "Human presence detected in cell area (hydraulic curtain breached)."
+                    : "Emergency active (buzzer sound active)."
+                  }
                 </div>
                 <div className="asm-safety-overlay__badge">
                   ASRS Operations Locked Out
@@ -400,6 +483,7 @@ function Dashboard() {
 
 <<<<<<< HEAD
       {/* BUZZER ALARM VIEWPORT RING */}
+<<<<<<< HEAD
       {safetyCurtain && <div className="asm-buzzer-ring" />}
 =======
       {/* SAFETY INTERRUPT OVERLAY */}
@@ -524,6 +608,9 @@ function Dashboard() {
         )}
       </AnimatePresence>
 >>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
+=======
+      {safetyState.buzzer && <div className="asm-buzzer-ring" />}
+>>>>>>> parent of 2ea1e21 (feat: implement backend web-socket broadcasters and sensor monitoring for ASRS and MIRAC stations)
 
       <ToastContainer
         position="bottom-right"

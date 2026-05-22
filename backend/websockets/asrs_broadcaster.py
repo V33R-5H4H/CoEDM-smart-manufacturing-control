@@ -140,17 +140,17 @@ class LEDWebSocketManager:
         for conn in disconnected:
             self.disconnect(conn)
     
-    async def send_snapshot(self, websocket: WebSocket, led_states: dict, safety_curtain: bool = False):
+    async def send_snapshot(self, websocket: WebSocket, led_states: dict):
         """
         Send current state of all LEDs to a specific client (initial sync).
         
         Args:
             websocket: WebSocket connection to send to
             led_states: Dictionary of all LED states
-            safety_curtain: Current safety curtain status
         """
         message = json.dumps({
             "type": "snapshot",
+<<<<<<< HEAD
             "states": led_states,
 <<<<<<< HEAD
             "safety": {
@@ -159,31 +159,12 @@ class LEDWebSocketManager:
 =======
             "safety": led_states.get("saftcy", False)
 >>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
+=======
+            "states": led_states
+>>>>>>> parent of 2ea1e21 (feat: implement backend web-socket broadcasters and sensor monitoring for ASRS and MIRAC stations)
         })
         await websocket.send_text(message)
-        logging.info(f"[ASRS WebSocket] Sent snapshot (with safety={safety_curtain}) to client")
-
-    async def broadcast_safety_change(self, active: bool):
-        """
-        Broadcast safety curtain state change to all connected WebSocket clients.
-        
-        Args:
-            active: Current safety curtain active status
-        """
-        logging.info(f"[WS BROADCAST] Safety Curtain active={active} | Clients: {len(self.active_connections)}")
-        
-        if not self.active_connections:
-            return
-        
-        # Prepare message with typed envelope
-        message = json.dumps({
-            "type": "safety",
-            "payload": {
-                "curtain": active
-            }
-        })
-        
-        await self._send_to_all(message)
+        logging.info(f"[ASRS WebSocket] Sent snapshot to client")
 
 # Global singleton instance for ASRS WebSocket management
 led_ws_manager = LEDWebSocketManager()
