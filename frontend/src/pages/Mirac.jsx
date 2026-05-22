@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import MiracControlService from "../services/MiracControl";
 import MiracMachineView from "../components/MiracMachineView";
 import PageHeader from "../components/PageHeader";
+import MiracStatusRibbon from "./asrs/components/MiracStatusRibbon";
 
 // --- Custom Hook for MIRAC WebSocket Data ---
 const useMiracData = () => {
@@ -238,9 +239,14 @@ const Mirac = () => {
       <PageHeader
         title="MIRAC-PC"
         subtitle="CNC Machine Control"
-        status={isConnected ? 'SYSTEM ACTIVE' : 'IDLE'}
         actions={
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <MiracStatusRibbon
+              plcConnected={isConnected}
+              wsStatus={wsStatus}
+              spindleSpeed={data?.spindle?.speed}
+              cycleStart={data?.status?.cycle_start}
+            />
             <button
               onClick={() => setDemoMode(!demoMode)}
               className={demoMode ? 'btn btn-warning btn-sm' : 'btn btn-ghost btn-sm'}

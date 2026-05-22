@@ -9,11 +9,12 @@ import { useTheme } from "../../theme/ThemeContext";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const API_BASE = "http://100.97.200.68:8000/api/control/asrs";
+const API_BASE = `${import.meta.env.VITE_API_URL || "/api"}/control/asrs`;
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState("boxes");
   const [isConnected, setIsConnected] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
   const { shuttleState, connected: ledConnected, ledStates } = useLEDMonitoring();
   const { resolved: theme } = useTheme();
 
@@ -31,6 +32,7 @@ function Dashboard() {
   }, []);
 
   const handleDisconnect = async () => {
+    setStatusLoading(true);
     try {
       const response = await fetch(`${API_BASE}/disconnect`, { method: "POST" });
       const result = await response.json();
@@ -42,10 +44,13 @@ function Dashboard() {
       }
     } catch {
       toast.error("Failed to disconnect from OPC-UA server.");
+    } finally {
+      setStatusLoading(false);
     }
   };
 
   const handleConnect = async () => {
+    setStatusLoading(true);
     try {
       const response = await fetch(`${API_BASE}/connect`, { method: "POST" });
       const result = await response.json();
@@ -57,6 +62,8 @@ function Dashboard() {
       }
     } catch {
       toast.error("Failed to connect to OPC-UA server.");
+    } finally {
+      setStatusLoading(false);
     }
   };
 
@@ -128,9 +135,11 @@ function Dashboard() {
                   padding: '4px 12px',
                   borderRadius: '2px',
                   cursor: 'pointer',
+                  opacity: statusLoading ? 0.7 : 1,
                 }}
+                disabled={statusLoading}
               >
-                Disconnect
+                {statusLoading ? "Disconnecting…" : "Disconnect"}
               </button>
             ) : (
               <button
@@ -147,9 +156,11 @@ function Dashboard() {
                   padding: '4px 12px',
                   borderRadius: '2px',
                   cursor: 'pointer',
+                  opacity: statusLoading ? 0.7 : 1,
                 }}
+                disabled={statusLoading}
               >
-                Connect
+                {statusLoading ? "Connecting…" : "Connect"}
               </button>
             )}
           </>
