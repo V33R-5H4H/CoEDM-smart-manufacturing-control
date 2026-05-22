@@ -60,6 +60,9 @@ class HydraulicBroadcaster:
                     node = opcua_connection.get_node(node_id)
                     value = node.get_value()
                     data[tag_name] = value
+                    
+                    from backend.database.sensor_data import queue_opcua_reading
+                    queue_opcua_reading("hydraulic", tag_name, value)
                 except Exception as e:
                     logger.warning(f"Failed to read {tag_name}: {e}")
                     data[tag_name] = None

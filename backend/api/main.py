@@ -69,14 +69,21 @@ async def startup_event():
     2. Inject event loop into LED service for async callbacks.
     3. Register LED and shuttle state-change → WebSocket broadcast callbacks.
     """
+    from backend.database.models import init_db
+    from backend.database.sensor_data import batch_writer_loop
+
     loop = asyncio.get_event_loop()
 
-    # 1. DB health check
+    # 1. DB health check & Init
+    init_db()
     db_status = verify_db()
     if not db_status["ok"]:
         logger.error("[Startup] ⚠ Database is unreachable: %s", db_status["message"])
     else:
         logger.info("[Startup] ✓ Database OK")
+
+    # Start sensor database background batch writer
+    asyncio.create_task(batch_writer_loop())
 
     # 2. Set event loop on LED service (needed for bridge from OPC-UA thread)
     asrs_controller.led_service.set_event_loop(loop)

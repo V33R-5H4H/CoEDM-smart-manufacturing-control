@@ -202,8 +202,10 @@ class MIRACDataGateway:
                 
                 # Update state (thread-safe)
                 if metrics:
-                    self.update_state(metrics)
+                    self.update_state(sensor="vibit1", metrics=metrics)
                     logger.debug(f"Updated state: {len(metrics)} metrics")
+                    from backend.database.sensor_data import queue_vibit_reading
+                    queue_vibit_reading("vibit1", metrics)
                 
                 # Wait before next read
                 await asyncio.sleep(self.read_interval)
