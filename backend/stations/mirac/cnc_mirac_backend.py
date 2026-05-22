@@ -256,7 +256,7 @@ class MIRACDataGateway:
                     try:
                         # Bulk read all nodes in a single network request for ultra-low latency
                         nodes = [opcua_connection.client.get_node(node_id) for node_id in MIRAC_DATA_TAGS.values()]
-                        values = opcua_connection.client.get_values(nodes)
+                        values = opcua_connection.client.read_values(nodes)
                         for tag_name, value in zip(MIRAC_DATA_TAGS.keys(), values):
                             opc_data[tag_name] = value
                         opc_connected = bool(opc_data)

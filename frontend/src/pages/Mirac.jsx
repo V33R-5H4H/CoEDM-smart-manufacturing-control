@@ -42,25 +42,43 @@ const useVibitData = () => {
   const [merged, setMerged] = useState(null);
 
   useEffect(() => {
-    let ws = new WebSocket("ws://localhost:8000/api/control/mirac/ws/vibit-data");
-    
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.merged) setMerged(data.merged);
-        if (data.unit1) setUnit1(data.unit1);
-        if (data.unit2) setUnit2(data.unit2);
-      } catch (e) {
-        console.error("Failed to parse WebSocket data", e);
-      }
-    };
-    
-    ws.onclose = () => {
-      console.log("WebSocket connection closed");
+    let ws;
+    let reconnectTimeout;
+    let isComponentMounted = true;
+
+    const connectWebSocket = () => {
+      ws = new WebSocket("ws://localhost:8000/api/control/mirac/ws/vibit-data");
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.merged) setMerged(data.merged);
+          if (data.unit1) setUnit1(data.unit1);
+          if (data.unit2) setUnit2(data.unit2);
+        } catch (e) {
+          console.error("Failed to parse WebSocket data", e);
+        }
+      };
+      
+      ws.onclose = () => {
+        console.log("WebSocket connection closed, reconnecting in 2s...");
+        if (isComponentMounted) {
+          reconnectTimeout = setTimeout(connectWebSocket, 2000);
+        }
+      };
+
+      ws.onerror = (err) => {
+        console.error("WebSocket error:", err);
+        ws.close(); // Triggers onclose to reconnect
+      };
     };
 
+    connectWebSocket();
+
     return () => { 
-      ws.close();
+      isComponentMounted = false;
+      clearTimeout(reconnectTimeout);
+      if (ws) ws.close();
     };
   }, []);
 

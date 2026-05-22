@@ -134,11 +134,15 @@ async def shutdown_event():
         try:
             if name == "ASRS":
                 conn.disconnect()           # ASRSController.disconnect()
+            elif name == "MIRAC":
+                from backend.stations.mirac.cnc_mirac_backend import mirac_gateway
+                mirac_gateway.disconnect()  # Stops background thread and Modbus
+                conn.disconnect()           # OPCUAConnection.disconnect()
             else:
                 conn.disconnect()           # OPCUAConnection.disconnect()
             logger.info("[Shutdown] ✓ %s disconnected", name)
         except Exception as exc:
-            logger.error("[Shutdown] %s disconnect error: %s", name, exc)
+            logger.error("[Shutdown] ✗ Failed to disconnect %s: %s", name, exc)
 
 
 # ── Health endpoint ───────────────────────────────────────────────────────────
