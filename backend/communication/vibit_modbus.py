@@ -42,11 +42,28 @@ _REGISTER_GROUPS: List[Tuple[int, int, List[Tuple[int, str]]]] = [
 
 
 class VibitModbusReader:
-    def __init__(self, host: str, port: int = 502, device_id: int = 1):
+    def __init__(self, host: str, port: int = 502, device_id: int = 1, timeout: float = 0.5):
         self.host = host
         self.port = port
         self.device_id = device_id
-        self.client = ModbusTcpClient(host, port=port)
+        self.client = ModbusTcpClient(host, port=port, timeout=timeout)
+        self._last_log_time = {}
+
+    def _log_throttled(self, key: str, msg: str, *args, level=logging.WARNING, exc_info=None):
+        import time
+        now = time.time()
+        # Log to stdout at the warning/error level at most once every 30 seconds per key.
+        # Otherwise, log at DEBUG level.
+        if now - self._last_log_time.get(key, 0.0) > 30.0:
+            self._last_log_time[key] = now
+            if level == logging.ERROR:
+                logger.error(msg, *args, exc_info=exc_info)
+            elif level == logging.WARNING:
+                logger.warning(msg, *args, exc_info=exc_info)
+            else:
+                logger.log(level, msg, *args, exc_info=exc_info)
+        else:
+            logger.debug(msg, *args, exc_info=exc_info)
 
     def close(self) -> None:
         try:
@@ -63,16 +80,39 @@ class VibitModbusReader:
             if connected:
                 logger.info("Connected to VibIT Modbus at %s:%s", self.host, self.port)
             else:
-                logger.warning("Unable to connect to VibIT Modbus at %s:%s", self.host, self.port)
+                self._log_throttled(
+                    "connect_fail",
+                    "Unable to connect to VibIT Modbus at %s:%s (Unit ID %s)",
+                    self.host,
+                    self.port,
+                    self.device_id,
+                    level=logging.WARNING
+                )
             return bool(connected)
-        except Exception:
-            logger.exception("Failed connecting to VibIT Modbus")
+        except Exception as e:
+            self._log_throttled(
+                "connect_exception",
+                "Exception connecting to VibIT Modbus at %s:%s: %s",
+                self.host,
+                self.port,
+                str(e),
+                level=logging.ERROR
+            )
             return False
 
     def read_snapshot(self) -> Dict[str, float] | None:
         """Read current VibIT metrics. Returns None if disconnected/fatal failure."""
         if not self._ensure_connected():
             return None
+
+        def _is_comm_error(error_msg: str) -> bool:
+            err_lower = error_msg.lower()
+            return (
+                "no response" in err_lower
+                or "gateway" in err_lower
+                or "timeout" in err_lower
+                or "connection" in err_lower
+            )
 
         values: Dict[str, float] = {}
 
@@ -83,20 +123,50 @@ class VibitModbusReader:
                     count=count,
                     device_id=self.device_id,
                 )
-            except Exception:
-                logger.exception("Exception while reading VibIT block %s+%s", base, count)
+            except Exception as e:
+                err_str = str(e)
+                self._log_throttled(
+                    f"read_exception_{base}_{self.device_id}",
+                    "Exception while reading VibIT block %s+%s (Unit ID %s): %s",
+                    base,
+                    count,
+                    self.device_id,
+                    err_str,
+                    level=logging.WARNING
+                )
+                if _is_comm_error(err_str):
+                    break
                 continue
 
             if res.isError():
-                logger.error("Modbus error reading VibIT block %s+%s: %s", base, count, res)
+                err_str = str(res)
+                self._log_throttled(
+                    f"read_error_{base}_{self.device_id}",
+                    "Modbus error reading VibIT block %s+%s (Unit ID %s): %s",
+                    base,
+                    count,
+                    self.device_id,
+                    err_str,
+                    level=logging.WARNING
+                )
+                if _is_comm_error(err_str):
+                    break
                 continue
 
             regs = res.registers
             for offset, key in fields:
                 try:
                     values[key] = _decode_vibit_float(regs[offset], regs[offset + 1])
-                except Exception:
-                    logger.exception("Failed decoding VibIT key '%s' in block %s", key, base)
+                except Exception as e:
+                    self._log_throttled(
+                        f"decode_error_{key}_{self.device_id}",
+                        "Failed decoding VibIT key '%s' in block %s (Unit ID %s): %s",
+                        key,
+                        base,
+                        self.device_id,
+                        str(e),
+                        level=logging.ERROR
+                    )
 
         if not values:
             return None

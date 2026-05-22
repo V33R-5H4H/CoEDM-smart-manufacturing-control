@@ -13,6 +13,12 @@ from backend.stations.mirac.cnc_mirac_backend import (
     get_vibit_data,
     set_read_interval,
 )
+from backend.stations.mirac.cnc_mirac_station import (
+    connect_mirac,
+    disconnect_mirac,
+    get_mirac_status,
+)
+from backend.websockets.mirac_broadcaster import mirac_broadcaster
 import asyncio
 import json
 import logging
@@ -67,20 +73,29 @@ async def set_read_rate(
 
 @router.get("/connection-status")
 async def get_connection_status():
-    """Check VIBIT data gateway connection status"""
+    """Check OPC UA and VIBIT data gateway connection status"""
+    status = get_mirac_status()
     return {
-        "connected": mirac_gateway.is_connected,
+        "connected": status.get("connected", False),
         "is_reading": mirac_gateway.is_reading,
-        "read_interval_ms": int(mirac_gateway.read_interval * 1000),
+        "read_interval_ms": int(mirac_gateway.read_interval * 1000) if mirac_gateway.read_interval else 100,
         "host": mirac_gateway.host,
         "port": mirac_gateway.port,
     }
 
 @router.post("/connect")
-async def connect_mirac():
+async def connect_mirac_endpoint():
     try:
-        result = mirac_gateway.connect()
-        return {"success": True, "message": "MIRAC connected", "result": result}
+        success, message = connect_mirac()
+        return {"success": success, "message": message}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/disconnect")
+async def disconnect_mirac_endpoint():
+    try:
+        success, message = disconnect_mirac()
+        return {"success": success, "message": message}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -88,38 +103,16 @@ async def connect_mirac():
 @router.websocket("/ws/vibit-data")
 async def vibit_data_websocket(websocket: WebSocket):
     """
-    WebSocket endpoint for real-time VIBIT metrics streaming
-    
-    Sends metrics every 500ms or when values change significantly
+    WebSocket endpoint for real-time unified MIRAC CNC and VIBIT metrics streaming.
     """
-    await websocket.accept()
-    logger.info("VIBIT WebSocket client connected")
-    
+    await mirac_broadcaster.connect(websocket)
     try:
-        previous_state = None
-        update_interval = 0.5  # Send updates every 500ms
-        
         while True:
-            try:
-                # Get current state
-                current_state = get_vibit_data()
-                
-                # Only send if data changed or first message
-                if current_state != previous_state:
-                    message = json.dumps(current_state)
-                    await websocket.send_text(message)
-                    previous_state = current_state
-                
-                # Don't overwhelm the client
-                await asyncio.sleep(update_interval)
-                
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logger.warning(f"WebSocket error: {e}")
-                await asyncio.sleep(update_interval)
-                
+            # Keep connection open and receive optional messages
+            await websocket.receive_text()
     except WebSocketDisconnect:
-        logger.info("VIBIT WebSocket client disconnected")
+        mirac_broadcaster.disconnect(websocket)
     except Exception as e:
-        logger.error(f"VIBIT WebSocket error: {e}")
+        mirac_broadcaster.disconnect(websocket)
+        logger.error(f"MIRAC WebSocket error: {e}")
+        raise

@@ -1,202 +1,184 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "react-toastify";
 import MiracControlService from "../services/MiracControl";
 import MiracMachineView from "../components/MiracMachineView";
 import PageHeader from "../components/PageHeader";
 import MiracStatusRibbon from "./asrs/components/MiracStatusRibbon";
-
-// --- Custom Hook for MIRAC WebSocket Data ---
-const useMiracData = () => {
-  const [data, setData] = useState(null);
-  const [connectionStatus, setConnectionStatus] = useState("connecting");
-  const pollRef = useRef(null);
-  const hookInstanceRef = useRef(Math.random().toString(36).slice(2, 9));
-
-  useEffect(() => {
-    let stopped = false;
-    const endpoint = "http://127.0.0.1:1880/vibit";
-    const hookId = hookInstanceRef.current;
-    const POLL_INTERVAL_MS = 1000;
-
-    console.log(`[useMiracData:${hookId}] Effect mounted, setting up polling`);
-
-    async function fetchData() {
-      try {
-        const res = await fetch(endpoint, { cache: "no-store" });
-        if (!res.ok) throw new Error(`status ${res.status}`);
-        const payload = await res.json();
-        if (stopped) return;
-
-        // New VIBIT format nests telemetry under payload.data; keep old format as fallback.
-        const telemetry = payload?.data && typeof payload.data === "object" ? payload.data : payload;
-        const rpm = Number(telemetry?.calculated_rpm ?? telemetry?.spindle_rpm ?? 0);
-        const leadStatus = telemetry?.lead_status;
-
-        // Map flat VIBIT data to nested structure expected by UI
-        const mappedData = {
-          status: {
-            green: leadStatus === 1 || payload?.completeness === "complete",
-            yellow: leadStatus === 0 || payload?.completeness === "partial",
-            red: payload?.completeness === "error",
-            cycle_start: rpm > 0
-          },
-          spindle: {
-            speed: rpm,
-            temperature: telemetry?.sensor_1,
-            vibration: telemetry?.x_rms_acceleration || 0
-          },
-          tool: {
-            number: 1,
-            temperature: telemetry?.sensor_1,
-            vibration: telemetry?.y_rms_acceleration || 0,
-            reboot_count: telemetry?.reboot_count || 0
-          },
-          axes: {
-            x: {
-              rms_accel: telemetry?.x_rms_acceleration || 0,
-              rms_velocity: telemetry?.x_rms_velocity || 0,
-              peak_accel: telemetry?.x_peak_acceleration || 0,
-              peak_velocity: telemetry?.x_peak_velocity || 0
-            },
-            y: {
-              rms_accel: telemetry?.y_rms_acceleration || 0,
-              rms_velocity: telemetry?.y_rms_velocity || 0,
-              peak_accel: telemetry?.y_peak_acceleration || 0,
-              peak_velocity: telemetry?.y_peak_velocity || 0
-            },
-            z: {
-              rms_accel: telemetry?.z_rms_acceleration || 0,
-              rms_velocity: telemetry?.z_rms_velocity || 0,
-              peak_accel: telemetry?.z_peak_acceleration || 0,
-              peak_velocity: telemetry?.z_peak_velocity || 0
-            }
-          }
-        };
-
-        setData(mappedData);
-        setConnectionStatus("connected");
-      } catch (err) {
-        if (stopped) return;
-        console.error(`[useMiracData:${hookId}] VIBIT poll error`, err);
-        setConnectionStatus("disconnected");
-      }
-    }
-
-    // Initial fetch
-    fetchData();
-
-    // Guard: only create ONE interval per hook instance
-    if (pollRef.current === null) {
-      console.log(`[useMiracData:${hookId}] Starting polling interval (${POLL_INTERVAL_MS}ms)`);
-      pollRef.current = window.setInterval(fetchData, POLL_INTERVAL_MS);
-    } else {
-      console.warn(`[useMiracData:${hookId}] Interval already exists, skipping duplicate`);
-    }
-
-    return () => {
-      stopped = true;
-      if (pollRef.current != null) {
-        console.log(`[useMiracData:${hookId}] Cleaning up polling interval`);
-        clearInterval(pollRef.current);
-        pollRef.current = null;
-      }
-    };
-  }, []);
-
-  return { data, connectionStatus };
-};
-
-// --- Helper: Normalize axis position to carriage percentage (0-100) ---
-// Uses X-axis position as proxy for carriage travel along bed
-const getCarriagePositionPct = (axisData) => {
-  if (!axisData?.x?.peak_velocity) return 50; // Default center
-  // Normalize: assume 0-2 mm/s range maps to 0-100% travel
-  return Math.min(100, Math.max(0, (axisData.x.peak_velocity / 2) * 100));
-};
-
-// --- Subcomponents for Clean Layout ---
-
-const HorizontalLamp = ({ active, colorVariant }) => {
-  let colors = { bg: '', glow: '' };
-  if (colorVariant === 'green') {
-    colors.bg = active ? 'radial-gradient(circle, #4ade80, #22c55e)' : 'radial-gradient(circle, #1a1a1a, #0a0a0a)';
-    colors.glow = active ? '0 0 12px rgba(74, 222, 128, 0.6), inset 0 1px 2px rgba(255,255,255,0.3)' : 'inset 0 1px 3px rgba(0,0,0,0.5)';
-  } else if (colorVariant === 'yellow') {
-    colors.bg = active ? 'radial-gradient(circle, #fbbf24, #f59e0b)' : 'radial-gradient(circle, #1a1a1a, #0a0a0a)';
-    colors.glow = active ? '0 0 12px rgba(251, 191, 36, 0.6), inset 0 1px 2px rgba(255,255,255,0.3)' : 'inset 0 1px 3px rgba(0,0,0,0.5)';
-  } else if (colorVariant === 'red') {
-    colors.bg = active ? 'radial-gradient(circle, #ef4444, #dc2626)' : 'radial-gradient(circle, #1a1a1a, #0a0a0a)';
-    colors.glow = active ? '0 0 12px rgba(239, 68, 68, 0.6), inset 0 1px 2px rgba(255,255,255,0.3)' : 'inset 0 1px 3px rgba(0,0,0,0.5)';
-  }
-
-  return (
-    <div style={{
-      width: '28px', height: '28px', borderRadius: '50%',
-      border: '2px solid #444',
-      background: colors.bg,
-      boxShadow: colors.glow,
-      transition: 'all 0.3s ease'
-    }} />
-  );
-};
-
-const OpPill = ({ label, active }) => (
-  <div style={{
-    padding: '0.4rem 0.6rem',
-    borderRadius: '4px',
-    fontSize: '0.7rem',
-    fontWeight: 600,
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    background: active ? 'rgba(74, 222, 128, 0.1)' : 'var(--bg-primary)',
-    color: active ? '#4ade80' : 'var(--text-muted)',
-    border: `1px solid ${active ? '#4ade80' : 'var(--border)'}`,
-    transition: 'all 0.2s',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px'
-  }}>
-    <div style={{ width: 6, height: 6, borderRadius: '50%', background: active ? '#4ade80' : '#444' }} />
-    {label}
-  </div>
-);
-
-const SmallMetric = ({ title, value, unit }) => (
-  <div>
-    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
-      {title}
-    </div>
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-      <span style={{ fontSize: '1.2rem', fontWeight: 500, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-        {value !== undefined && value !== null ? value.toFixed ? value.toFixed(2) : value : "---"}
-      </span>
-      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{unit}</span>
-    </div>
-  </div>
-);
+import "./Assembly.css";
+import "./Mirac.css";
 
 // --- Main Page Component ---
 const Mirac = () => {
-  const { data, connectionStatus: wsStatus } = useMiracData();
-  const [isConnected, setIsConnected] = useState(false);
+  const [data, setData] = useState(null);
+  const [isWsConnected, setIsWsConnected] = useState(false);
+  const [wsStatus, setWsStatus] = useState("disconnected"); // 'connected', 'connecting', 'disconnected'
+  const [isConnected, setIsConnected] = useState(false); // OPC-UA connectivity
   const [statusLoading, setStatusLoading] = useState(true);
-  const [demoMode, setDemoMode] = useState(false);
 
-  // Check OPC-UA status on mount
+  // Smooth position state for axis coordinate interpolation
+  const [smoothedX, setSmoothedX] = useState(0);
+  const [smoothedZ, setSmoothedZ] = useState(0);
+
+  // Refs for tracking target coordinates and physics state
+  const targetXRef = useRef(0);
+  const targetZRef = useRef(0);
+  const smoothedXRef = useRef(0);
+  const smoothedZRef = useRef(0);
+  const velocityXRef = useRef(0);
+  const velocityZRef = useRef(0);
+  const lastFrameTimeRef = useRef(performance.now());
+
+  // WebSocket references
+  const wsRef = useRef(null);
+  const reconnectTimerRef = useRef(null);
+
+  // Establish WebSocket connection to backend broadcaster
+  const connectWS = useCallback(() => {
+    setWsStatus("connecting");
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsBase = import.meta.env.VITE_WS_URL || `${protocol}//${window.location.host}`;
+    const wsUrl = `${wsBase}/api/control/mirac/ws/vibit-data`;
+
+    console.log("[Mirac] Connecting to MIRAC telemetry WebSocket:", wsUrl);
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log("[Mirac] MIRAC WebSocket connected");
+      setIsWsConnected(true);
+      setWsStatus("connected");
+    };
+
+    ws.onmessage = (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        if (payload) {
+          setData(payload);
+
+          // Capture raw coordinates instantly in refs for physics loop to bypass React lag
+          if (payload.axes?.x?.value !== undefined) {
+            targetXRef.current = payload.axes.x.value;
+          }
+          if (payload.axes?.z?.value !== undefined) {
+            targetZRef.current = payload.axes.z.value;
+          }
+        }
+      } catch (err) {
+        console.error("[Mirac] Error parsing WebSocket message:", err);
+      }
+    };
+
+    ws.onerror = (err) => {
+      console.error("[Mirac] MIRAC WebSocket error:", err);
+      setIsWsConnected(false);
+      setWsStatus("disconnected");
+    };
+
+    ws.onclose = () => {
+      console.warn("[Mirac] MIRAC WebSocket closed, reconnecting in 3s...");
+      setIsWsConnected(false);
+      setWsStatus("disconnected");
+      reconnectTimerRef.current = setTimeout(() => {
+        if (wsRef.current?.readyState !== WebSocket.OPEN) {
+          connectWS();
+        }
+      }, 3000);
+    };
+  }, []);
+
+  // Check OPC-UA status on mount and subscribe to WS
   useEffect(() => {
     const checkStatus = async () => {
       try {
         const res = await MiracControlService.getConnectionStatus();
-        setIsConnected(res.status === 'connected');
+        setIsConnected(!!res.connected);
       } catch (e) {
-        console.error(e);
+        console.error("[Mirac] Error getting connection status:", e);
         setIsConnected(false);
       } finally {
         setStatusLoading(false);
       }
     };
+
     checkStatus();
+    connectWS();
+
+    return () => {
+      clearTimeout(reconnectTimerRef.current);
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [connectWS]);
+
+  // RequestAnimationFrame physics-based smoothing loop (omega = 5.0)
+  useEffect(() => {
+    let animationFrameId;
+
+    const updateLoop = () => {
+      const now = performance.now();
+      let dt = (now - lastFrameTimeRef.current) / 1000;
+      lastFrameTimeRef.current = now;
+
+      // Guard against lag spikes and tab suspension
+      if (dt > 0.1) dt = 0.1;
+      if (dt < 0.005) dt = 0.005;
+
+      const omega = 5.0; // Spring frequency for axis interpolation
+
+      // Critically damped spring integration for X Axis
+      const targetX = targetXRef.current;
+      const prevX = smoothedXRef.current;
+      const prevVX = velocityXRef.current;
+      const x0 = prevX - targetX;
+      const expTermX = Math.exp(-omega * dt);
+      const AX = x0;
+      const BX = prevVX + omega * x0;
+      const nextX = targetX + (AX + BX * dt) * expTermX;
+      const nextVX = (BX - omega * (AX + BX * dt)) * expTermX;
+
+      if (Math.abs(nextX - targetX) < 0.05 && Math.abs(nextVX) < 0.1) {
+        smoothedXRef.current = targetX;
+        velocityXRef.current = 0;
+        setSmoothedX(targetX);
+      } else {
+        smoothedXRef.current = nextX;
+        velocityXRef.current = nextVX;
+        setSmoothedX(nextX);
+      }
+
+      // Critically damped spring integration for Z Axis
+      const targetZ = targetZRef.current;
+      const prevZ = smoothedZRef.current;
+      const prevVZ = velocityZRef.current;
+      const z0 = prevZ - targetZ;
+      const expTermZ = Math.exp(-omega * dt);
+      const AZ = z0;
+      const BZ = prevVZ + omega * z0;
+      const nextZ = targetZ + (AZ + BZ * dt) * expTermZ;
+      const nextVZ = (BZ - omega * (AZ + BZ * dt)) * expTermZ;
+
+      if (Math.abs(nextZ - targetZ) < 0.05 && Math.abs(nextVZ) < 0.1) {
+        smoothedZRef.current = targetZ;
+        velocityZRef.current = 0;
+        setSmoothedZ(targetZ);
+      } else {
+        smoothedZRef.current = nextZ;
+        velocityZRef.current = nextVZ;
+        setSmoothedZ(nextZ);
+      }
+
+      animationFrameId = requestAnimationFrame(updateLoop);
+    };
+
+    lastFrameTimeRef.current = performance.now();
+    animationFrameId = requestAnimationFrame(updateLoop);
+
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
   }, []);
 
   const handleConnect = async () => {
@@ -205,12 +187,12 @@ const Mirac = () => {
       const res = await MiracControlService.connect();
       if (res.success) {
         setIsConnected(true);
-        toast.success(res.message || "Connected to MIRAC-PC");
+        toast.success(res.message || "Connected to MIRAC-PC OPC-UA Gateway");
       } else {
-        toast.error(res.message);
+        toast.error(res.message || "Failed to connect to MIRAC-PC");
       }
     } catch (e) {
-      toast.error(e.message || 'Failed to connect');
+      toast.error(e.message || "Failed to establish connection");
     } finally {
       setStatusLoading(false);
     }
@@ -222,20 +204,20 @@ const Mirac = () => {
       const res = await MiracControlService.disconnect();
       if (res.success) {
         setIsConnected(false);
-        toast.success(res.message || "Disconnected from MIRAC-PC");
+        toast.success(res.message || "Disconnected from MIRAC-PC OPC-UA Gateway");
       } else {
-        toast.error(res.message);
+        toast.error(res.message || "Failed to disconnect");
       }
     } catch (e) {
-      toast.error(e.message || 'Failed to disconnect');
+      toast.error(e.message || "Failed to disconnect");
     } finally {
       setStatusLoading(false);
     }
   };
 
   return (
-    <div className="asrs-inventory module-layout">
-      {/* Header - Consistent with Assembly */}
+    <div className="asm-page">
+      {/* Header aligned with ASRS and Assembly modules */}
       <PageHeader
         title="MIRAC-PC"
         subtitle="CNC Machine Control"
@@ -247,179 +229,334 @@ const Mirac = () => {
               spindleSpeed={data?.spindle?.speed}
               cycleStart={data?.status?.cycle_start}
             />
-            <button
-              onClick={() => setDemoMode(!demoMode)}
-              className={demoMode ? 'btn btn-warning btn-sm' : 'btn btn-ghost btn-sm'}
-              style={{
-                height: '28px',
-                fontSize: '0.75rem',
-                padding: '0 0.75rem',
-                border: demoMode ? '1px solid rgba(251, 146, 60, 0.5)' : '1px solid rgba(255,255,255,0.2)'
-              }}
-              title="Toggle demo mode (pendulum motion)"
-            >
-              {demoMode ? 'Demo: ON' : 'Demo: OFF'}
-            </button>
-            {isConnected ? (
-              <button
-                onClick={handleDisconnect}
-                className="btn btn-error btn-sm"
-                style={{
-                  height: '28px',
-                  fontSize: '0.75rem',
-                  padding: '0 0.75rem'
-                }}
-                disabled={statusLoading}
-              >
-                {statusLoading ? 'Disconnecting...' : 'Disconnect'}
-              </button>
-            ) : (
-              <button
-                onClick={handleConnect}
-                className="btn btn-success btn-sm"
-                style={{
-                  height: '28px',
-                  fontSize: '0.75rem',
-                  padding: '0 0.75rem'
-                }}
-                disabled={statusLoading}
-              >
-                {statusLoading ? 'Connecting...' : 'Connect'}
-              </button>
-            )}
           </div>
         }
       />
 
-      {/* Main Layout Area */}
-      <div style={{
-        flex: 1,
-        overflow: 'hidden',
-        padding: '1rem',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
-        {/* 2-Column Layout: Data Sidebar + Machine Visualization */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(280px, 320px) 1fr',
-          gap: '1.5rem',
-          flex: 1,
-          minHeight: 0
-        }}>
-          {/* LEFT: Data Sidebar */}
-          <aside className="assembly-sidebar" style={{ overflowY: 'auto' }}>
-
-          {/* 1. Machine Status */}
-          <div className="sidebar-section" style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ fontSize: '0.7rem', fontWeight: 600, marginBottom: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              Machine Status
+      <div className="asm-body">
+        <div className="mirac-grid-container">
+          {/* COLUMN 1: LEFT HUD (Status LEDs, Vibit Sensors, Energy Meter) */}
+          <div className="mirac-column">
+            {/* Status Tower Lights */}
+            <div className="asm-hud-card">
+              <div className="asm-hud-header">
+                <span>Machine Status Indicators</span>
+                <span className="asm-hud-badge">TOWER</span>
+              </div>
+              <div className="asm-led-group">
+                <div className="asm-led-indicator">
+                  <div className={`asm-led-lamp asm-led-lamp--red ${data?.status?.red ? "active" : ""}`} />
+                  <span>Red</span>
+                </div>
+                <div className="asm-led-indicator">
+                  <div className={`asm-led-lamp asm-led-lamp--yellow ${data?.status?.yellow ? "active" : ""}`} />
+                  <span>Yellow</span>
+                </div>
+                <div className="asm-led-indicator">
+                  <div className={`asm-led-lamp asm-led-lamp--green ${data?.status?.green ? "active" : ""}`} />
+                  <span>Green</span>
+                </div>
+              </div>
             </div>
 
-            {/* Horizontal LEDs */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', gap: '1rem', padding: '0.5rem 0 1.25rem 0' }}>
-              <HorizontalLamp active={data?.status?.green} colorVariant="green" />
-              <HorizontalLamp active={data?.status?.yellow} colorVariant="yellow" />
-              <HorizontalLamp active={data?.status?.red} colorVariant="red" />
+            {/* Vibit Sensor 1: Spindle */}
+            <div className="asm-hud-card">
+              <div className="asm-hud-header">
+                <span>Vibit Spindle Sensor (U1)</span>
+                <span className={`asm-hud-badge ${data?.spindle?.speed > 0 ? "asm-hud-badge--active" : ""}`}>
+                  {data?.spindle?.speed > 0 ? "SPINNING" : "IDLE"}
+                </span>
+              </div>
+              <div className="asm-val-grid">
+                <div className="asm-val">
+                  <div className="asm-val__label">Vibration</div>
+                  <div className="asm-val__num asm-val__num--glowing-blue">
+                    {data?.spindle?.vibration != null ? data.spindle.vibration.toFixed(2) : "0.00"}
+                    <span className="asm-val__unit">mm/s</span>
+                  </div>
+                </div>
+                <div className="asm-val">
+                  <div className="asm-val__label">Temperature</div>
+                  <div className="asm-val__num">
+                    {data?.spindle?.temperature != null ? data.spindle.temperature.toFixed(1) : "0.0"}
+                    <span className="asm-val__unit">°C</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
+            {/* Vibit Sensor 2: Tool */}
+            <div className="asm-hud-card">
+              <div className="asm-hud-header">
+                <span>Vibit Tool Sensor (U2)</span>
+                <span className="asm-hud-badge">ACTIVE</span>
+              </div>
+              <div className="asm-val-grid">
+                <div className="asm-val">
+                  <div className="asm-val__label">Vibration</div>
+                  <div className="asm-val__num asm-val__num--glowing-orange">
+                    {data?.tool?.vibration != null ? data.tool.vibration.toFixed(2) : "0.00"}
+                    <span className="asm-val__unit">mm/s</span>
+                  </div>
+                </div>
+                <div className="asm-val">
+                  <div className="asm-val__label">Temperature</div>
+                  <div className="asm-val__num">
+                    {data?.tool?.temperature != null ? data.tool.temperature.toFixed(1) : "0.0"}
+                    <span className="asm-val__unit">°C</span>
+                  </div>
+                </div>
+              </div>
+              <div className="asm-val">
+                <div className="asm-val__label">Reboot Count</div>
+                <div className="asm-val__num asm-val__num--sm">
+                  {data?.tool?.reboot_count ?? 0}
+                </div>
+              </div>
+            </div>
 
+            {/* Energy Meter */}
+            <div className="asm-hud-card">
+              <div className="asm-hud-header">
+                <span>Energy Meter Diagnostics</span>
+                <span className="asm-hud-badge">POWER</span>
+              </div>
+              <div className="asm-val-grid">
+                <div className="asm-val">
+                  <div className="asm-val__label">Active Power</div>
+                  <div className="asm-val__num asm-val__num--glowing-green">
+                    {data?.energy_meter?.power != null ? data.energy_meter.power.toFixed(3) : "0.000"}
+                    <span className="asm-val__unit">kW</span>
+                  </div>
+                </div>
+                <div className="asm-val">
+                  <div className="asm-val__label">Total consumption</div>
+                  <div className="asm-val__num">
+                    {data?.energy_meter?.kwh != null ? data.energy_meter.kwh.toFixed(4) : "0.0000"}
+                    <span className="asm-val__unit">kWh</span>
+                  </div>
+                </div>
+              </div>
+              <div className="asm-val-grid">
+                <div className="asm-val">
+                  <div className="asm-val__label">Power Factor</div>
+                  <div className="asm-val__num asm-val__num--sm">
+                    {data?.energy_meter?.power_factor != null ? data.energy_meter.power_factor.toFixed(2) : "0.00"}
+                  </div>
+                </div>
+                <div className="asm-val">
+                  <div className="asm-val__label">Frequency</div>
+                  <div className="asm-val__num asm-val__num--sm">
+                    {data?.energy_meter?.frequency != null ? data.energy_meter.frequency.toFixed(2) : "0.00"}
+                    <span className="asm-val__unit">Hz</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Detailed Phase Grid */}
+              <div style={{ marginTop: "4px", borderTop: "1px solid rgba(255, 255, 255, 0.05)", paddingTop: "8px" }}>
+                <div style={{ fontSize: "0.58rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: "6px" }}>Phase Analysis</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
+                  <div className="asm-val">
+                    <div className="asm-val__label" style={{ fontSize: "0.5rem" }}>L1</div>
+                    <div className="asm-val__num" style={{ fontSize: "0.8rem" }}>
+                      {data?.energy_meter?.voltage?.l1 ?? "---"}<span className="asm-val__unit" style={{ fontSize: "0.55rem" }}>V</span>
+                    </div>
+                    <div className="asm-val__num" style={{ fontSize: "0.8rem", color: "#8e94a5" }}>
+                      {data?.energy_meter?.current?.l1 ?? "---"}<span className="asm-val__unit" style={{ fontSize: "0.55rem" }}>A</span>
+                    </div>
+                  </div>
+                  <div className="asm-val">
+                    <div className="asm-val__label" style={{ fontSize: "0.5rem" }}>L2</div>
+                    <div className="asm-val__num" style={{ fontSize: "0.8rem" }}>
+                      {data?.energy_meter?.voltage?.l2 ?? "---"}<span className="asm-val__unit" style={{ fontSize: "0.55rem" }}>V</span>
+                    </div>
+                    <div className="asm-val__num" style={{ fontSize: "0.8rem", color: "#8e94a5" }}>
+                      {data?.energy_meter?.current?.l2 ?? "---"}<span className="asm-val__unit" style={{ fontSize: "0.55rem" }}>A</span>
+                    </div>
+                  </div>
+                  <div className="asm-val">
+                    <div className="asm-val__label" style={{ fontSize: "0.5rem" }}>L3</div>
+                    <div className="asm-val__num" style={{ fontSize: "0.8rem" }}>
+                      {data?.energy_meter?.voltage?.l3 ?? "---"}<span className="asm-val__unit" style={{ fontSize: "0.55rem" }}>V</span>
+                    </div>
+                    <div className="asm-val__num" style={{ fontSize: "0.8rem", color: "#8e94a5" }}>
+                      {data?.energy_meter?.current?.l3 ?? "---"}<span className="asm-val__unit" style={{ fontSize: "0.55rem" }}>A</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* 2. Spindle Dynamics */}
-          <div className="sidebar-section" style={{ borderBottom: '1px solid var(--border)' }}>
-            <div style={{ fontSize: '0.7rem', fontWeight: 600, marginBottom: 16, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              Spindle Dynamics
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-              <SmallMetric title="Speed" value={data?.spindle?.speed} unit="RPM" />
-              <SmallMetric title="Temp" value={data?.spindle?.temperature} unit="°C" />
-              <SmallMetric title="Vibration" value={data?.spindle?.vibration} unit="mm/s" />
-            </div>
-          </div>
-
-          {/* 3. Active Tool */}
-          <div className="sidebar-section" style={{ borderBottom: '1px solid var(--border)' }}>
-            <div style={{ fontSize: '0.7rem', fontWeight: 600, marginBottom: 16, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              Active Tool
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-              <SmallMetric title="Tool Num" value={data?.tool?.number} unit="#" />
-              <SmallMetric title="Temp" value={data?.tool?.temperature} unit="°C" />
-              <SmallMetric title="Vibration" value={data?.tool?.vibration} unit="mm/s" />
-              <SmallMetric title="Reboot Count" value={data?.tool?.reboot_count} unit="" />
-            </div>
-          </div>
-
-          {/* 4. Axis Telemetry - Full Metrics */}
-          <div className="sidebar-section">
-            <div style={{ fontSize: '0.7rem', fontWeight: 600, marginBottom: 16, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              Axis Telemetry
-            </div>
-
-            {/* X Axis */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <span style={{ color: '#4dabf7', fontWeight: 700 }}>X</span>
-                <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+          {/* COLUMN 2: CENTER PANEL (Lathe Machine SVG Visualizer & Footer Stats) */}
+          <div className="mirac-column" style={{ overflow: "hidden" }}>
+            <div className="asm-center-container">
+              {/* High-Fidelity SVG Viewer */}
+              <div className="asm-viz-panel">
+                <MiracMachineView
+                  spindleRPM={data?.spindle?.speed || 0}
+                  xAxisValue={smoothedX}
+                  zAxisValue={smoothedZ}
+                  spindleRunning={data?.status?.cycle_start || false}
+                  alarmActive={!isWsConnected}
+                  toolEngaged={data?.status?.cycle_start && smoothedX > 10}
+                  coolantOn={data?.status?.cycle_start || false}
+                  toolNumber={data?.tool?.number ?? 4}
+                />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.8rem' }}>
-                <SmallMetric title="RMS Accel" value={data?.axes?.x?.rms_accel} unit="mm/s²" />
-                <SmallMetric title="Peak Accel" value={data?.axes?.x?.peak_accel} unit="mm/s²" />
-                <SmallMetric title="RMS Velocity" value={data?.axes?.x?.rms_velocity} unit="mm/s" />
-                <SmallMetric title="Peak Velocity" value={data?.axes?.x?.peak_velocity} unit="mm/s" />
-              </div>
-            </div>
 
-            {/* Y Axis */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <span style={{ color: '#51cf66', fontWeight: 700 }}>Y</span>
-                <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.8rem' }}>
-                <SmallMetric title="RMS Accel" value={data?.axes?.y?.rms_accel} unit="mm/s²" />
-                <SmallMetric title="Peak Accel" value={data?.axes?.y?.peak_accel} unit="mm/s²" />
-                <SmallMetric title="RMS Velocity" value={data?.axes?.y?.rms_velocity} unit="mm/s" />
-                <SmallMetric title="Peak Velocity" value={data?.axes?.y?.peak_velocity} unit="mm/s" />
-              </div>
-            </div>
-
-            {/* Z Axis */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <span style={{ color: '#ff6b6b', fontWeight: 700 }}>Z</span>
-                <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.8rem' }}>
-                <SmallMetric title="RMS Accel" value={data?.axes?.z?.rms_accel} unit="mm/s²" />
-                <SmallMetric title="Peak Accel" value={data?.axes?.z?.peak_accel} unit="mm/s²" />
-                <SmallMetric title="RMS Velocity" value={data?.axes?.z?.rms_velocity} unit="mm/s" />
-                <SmallMetric title="Peak Velocity" value={data?.axes?.z?.peak_velocity} unit="mm/s" />
+              {/* Bottom Quick-Metrics Panel */}
+              <div className="asm-footer-stats">
+                <div className="asm-footer-stats-card">
+                  <div className="asm-val__label">Spindle State</div>
+                  <div className="asm-val__num" style={{ fontSize: "1rem", color: data?.status?.cycle_start ? "#4ade80" : "#64748b" }}>
+                    {data?.status?.cycle_start ? "RUNNING" : "STOPPED"}
+                  </div>
+                </div>
+                <div className="asm-footer-stats-card">
+                  <div className="asm-val__label">Pneumatic Chuck</div>
+                  <div className="asm-val__num" style={{ fontSize: "1rem", color: data?.status?.pneumatic_chuck ? "#38bdf8" : "#64748b" }}>
+                    {data?.status?.pneumatic_chuck ? "CLAMPED" : "OPEN"}
+                  </div>
+                </div>
+                <div className="asm-footer-stats-card">
+                  <div className="asm-val__label">Speed Feed</div>
+                  <div className="asm-val__num" style={{ fontSize: "1.1rem" }}>
+                    {data?.spindle?.speed ?? 0} <span className="asm-val__unit">RPM</span>
+                  </div>
+                </div>
+                <div className="asm-footer-stats-card">
+                  <div className="asm-val__label">Active Tool</div>
+                  <div className="asm-val__num" style={{ fontSize: "1.1rem" }}>
+                    #{data?.tool?.number ?? 0}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-        </aside>
+          {/* COLUMN 3: RIGHT HUD (OPC-UA connection status, controls, and axis telemetry feed) */}
+          <div className="mirac-column">
+            {/* Connection and Gateway Controls */}
+            <div className="asm-hud-card">
+              <div className="asm-hud-header">
+                <span>OPC-UA Connection</span>
+                <span className={`asm-hud-badge ${isConnected ? "asm-hud-badge--active" : ""}`}>
+                  {isConnected ? "CONNECTED" : "DISCONNECTED"}
+                </span>
+              </div>
+              <div className="asm-val">
+                <div className="asm-val__label">OPC UA Station Link</div>
+                <div className="asm-val__num" style={{ fontSize: "1.2rem", color: isConnected ? "#4ade80" : "#ef4444" }}>
+                  {isConnected ? "ONLINE" : "OFFLINE"}
+                </div>
+              </div>
+              <div className="asm-action-group">
+                {isConnected ? (
+                  <button
+                    onClick={handleDisconnect}
+                    className="asm-btn-control asm-btn-control--disconnect"
+                    disabled={statusLoading}
+                  >
+                    {statusLoading ? "Disconnecting..." : "Disconnect"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleConnect}
+                    className="asm-btn-control asm-btn-control--connect"
+                    disabled={statusLoading}
+                  >
+                    {statusLoading ? "Connecting..." : "Connect"}
+                  </button>
+                )}
+              </div>
+            </div>
 
-        {/* RIGHT: Machine Visualization */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: 0,
-          gap: '1rem'
-        }}>
-          <MiracMachineView
-            spindleRPM={data?.spindle?.speed || 0}
-            carriagePositionPct={getCarriagePositionPct(data?.axes)}
-            spindleRunning={data?.status?.cycle_start || false}
-            alarmActive={wsStatus !== 'connected'}
-            toolEngaged={false}
-            coolantOn={false}
-            demoMode={demoMode}
-          />
+            {/* Live Axis Telemetry */}
+            <div className="asm-hud-card">
+              <div className="asm-hud-header">
+                <span>Axis Positions</span>
+                <span className="asm-hud-badge">TELEM</span>
+              </div>
+
+              {/* X Axis */}
+              <div className="asm-axis-section">
+                <div className="asm-axis-header">
+                  <span className="asm-axis-letter asm-axis-letter--x">X</span>
+                  <div className="asm-axis-line" />
+                  <span style={{ fontSize: "0.6rem", color: "#64748b", fontWeight: 600 }}>TRANSVERSE</span>
+                </div>
+                <div className="asm-val-grid">
+                  <div className="asm-val">
+                    <div className="asm-val__label">Raw Pos</div>
+                    <div className="asm-val__num asm-val__num--sm">
+                      {data?.axes?.x?.value != null ? data.axes.x.value.toFixed(3) : "0.000"}
+                      <span className="asm-val__unit">mm</span>
+                    </div>
+                  </div>
+                  <div className="asm-val">
+                    <div className="asm-val__label">Smoothed Pos</div>
+                    <div className="asm-val__num asm-val__num--sm asm-val__num--glowing-blue">
+                      {smoothedX.toFixed(3)}
+                      <span className="asm-val__unit">mm</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="asm-val" style={{ marginTop: "6px" }}>
+                  <div className="asm-val__label">Feed Rate</div>
+                  <div className="asm-val__num asm-val__num--sm">
+                    {data?.axes?.x?.feed != null ? data.axes.x.feed.toFixed(1) : "0.0"}
+                    <span className="asm-val__unit">mm/min</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Z Axis */}
+              <div className="asm-axis-section" style={{ marginTop: "8px" }}>
+                <div className="asm-axis-header">
+                  <span className="asm-axis-letter asm-axis-letter--z">Z</span>
+                  <div className="asm-axis-line" />
+                  <span style={{ fontSize: "0.6rem", color: "#64748b", fontWeight: 600 }}>LONGITUDINAL</span>
+                </div>
+                <div className="asm-val-grid">
+                  <div className="asm-val">
+                    <div className="asm-val__label">Raw Pos</div>
+                    <div className="asm-val__num asm-val__num--sm">
+                      {data?.axes?.z?.value != null ? data.axes.z.value.toFixed(3) : "0.000"}
+                      <span className="asm-val__unit">mm</span>
+                    </div>
+                  </div>
+                  <div className="asm-val">
+                    <div className="asm-val__label">Smoothed Pos</div>
+                    <div className="asm-val__num asm-val__num--sm asm-val__num--glowing-orange">
+                      {smoothedZ.toFixed(3)}
+                      <span className="asm-val__unit">mm</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="asm-val" style={{ marginTop: "6px" }}>
+                  <div className="asm-val__label">Feed Rate</div>
+                  <div className="asm-val__num asm-val__num--sm">
+                    {data?.axes?.z?.feed != null ? data.axes.z.feed.toFixed(1) : "0.0"}
+                    <span className="asm-val__unit">mm/min</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Axis Vibration summary */}
+              <div style={{ marginTop: "12px", borderTop: "1px solid rgba(255, 255, 255, 0.05)", paddingTop: "10px" }}>
+                <div className="asm-val">
+                  <div className="asm-val__label">Axes Vibration</div>
+                  <div className="asm-val__num asm-val__num--sm">
+                    {data?.axes?.vibration != null ? data.axes.vibration.toFixed(2) : "0.00"}
+                    <span className="asm-val__unit">mm/s</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
       </div>
     </div>
   );
