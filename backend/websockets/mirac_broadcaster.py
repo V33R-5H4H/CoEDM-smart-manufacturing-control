@@ -72,6 +72,9 @@ class MiracBroadcaster:
                 node = opcua_connection.client.get_node(node_id)
                 value = node.get_value()
                 data[tag_name] = value
+                
+                from backend.database.sensor_data import queue_opcua_reading
+                queue_opcua_reading("mirac", tag_name, value)
             except Exception as e:
                 logger.warning(f"Failed to read {tag_name}: {e}")
                 data[tag_name] = None

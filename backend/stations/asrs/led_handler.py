@@ -44,10 +44,15 @@ class LEDHandler:
             if tag == "saftey":
                 # Route native safety curtain state change
                 self.led_service.update_safety(bool(val))
+                from backend.database.sensor_data import queue_opcua_reading
+                queue_opcua_reading("asrs", tag, val)
                 return
             
             # Extract box ID from tag: "ledA1" → "A1"
             box_id = tag.replace("led", "")
+            
+            from backend.database.sensor_data import queue_opcua_reading
+            queue_opcua_reading("asrs", tag, val)
             
             # Convert value to boolean (LED ON/OFF)
             active = bool(val)
