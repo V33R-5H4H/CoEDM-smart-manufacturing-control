@@ -66,6 +66,122 @@ def _cfg(name: str):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# VIBIT Sensor Known Tags (shared across all Modbus vibration sensors)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+VIBIT_KNOWN_TAGS = {
+    "Acceleration RMS (READ)": {
+        "x_rms_acc": {
+            "register": "4001-4002",
+            "direction": "READ",
+            "type": "Float32 (word-swapped big-endian)",
+            "description": "X-axis RMS acceleration (g)",
+        },
+        "y_rms_acc": {
+            "register": "4003-4004",
+            "direction": "READ",
+            "type": "Float32 (word-swapped big-endian)",
+            "description": "Y-axis RMS acceleration (g)",
+        },
+        "z_rms_acc": {
+            "register": "4005-4006",
+            "direction": "READ",
+            "type": "Float32 (word-swapped big-endian)",
+            "description": "Z-axis RMS acceleration (g)",
+        },
+    },
+    "Velocity RMS (READ)": {
+        "x_rms_vel": {
+            "register": "4007-4008",
+            "direction": "READ",
+            "type": "Float32 (word-swapped big-endian)",
+            "description": "X-axis RMS velocity (mm/s)",
+        },
+        "y_rms_vel": {
+            "register": "4009-4010",
+            "direction": "READ",
+            "type": "Float32 (word-swapped big-endian)",
+            "description": "Y-axis RMS velocity (mm/s)",
+        },
+        "z_rms_vel": {
+            "register": "4011-4012",
+            "direction": "READ",
+            "type": "Float32 (word-swapped big-endian)",
+            "description": "Z-axis RMS velocity (mm/s)",
+        },
+    },
+    "Temperature (READ)": {
+        "temperature": {
+            "register": "4013-4014",
+            "direction": "READ",
+            "type": "Float32 (word-swapped big-endian)",
+            "description": "Sensor temperature (°C)",
+        },
+    },
+    "Acceleration Peak (READ)": {
+        "x_peak_acc": {
+            "register": "4015-4016",
+            "direction": "READ",
+            "type": "Float32 (word-swapped big-endian)",
+            "description": "X-axis peak acceleration (g)",
+        },
+        "y_peak_acc": {
+            "register": "4017-4018",
+            "direction": "READ",
+            "type": "Float32 (word-swapped big-endian)",
+            "description": "Y-axis peak acceleration (g)",
+        },
+        "z_peak_acc": {
+            "register": "4019-4020",
+            "direction": "READ",
+            "type": "Float32 (word-swapped big-endian)",
+            "description": "Z-axis peak acceleration (g)",
+        },
+    },
+    "Velocity Peak (READ)": {
+        "x_peak_vel": {
+            "register": "4021-4022",
+            "direction": "READ",
+            "type": "Float32 (word-swapped big-endian)",
+            "description": "X-axis peak velocity (mm/s)",
+        },
+        "y_peak_vel": {
+            "register": "4023-4024",
+            "direction": "READ",
+            "type": "Float32 (word-swapped big-endian)",
+            "description": "Y-axis peak velocity (mm/s)",
+        },
+        "z_peak_vel": {
+            "register": "4025-4026",
+            "direction": "READ",
+            "type": "Float32 (word-swapped big-endian)",
+            "description": "Z-axis peak velocity (mm/s)",
+        },
+    },
+    "Device info (READ)": {
+        "reboot_count": {
+            "register": "4031-4032",
+            "direction": "READ",
+            "type": "Float32 (word-swapped big-endian)",
+            "description": "Device reboot counter",
+        },
+        "led_status": {
+            "register": "4035-4036",
+            "direction": "READ",
+            "type": "Float32 (word-swapped big-endian)",
+            "description": "On-board LED status code",
+        },
+        "rpm": {
+            "register": "4039-4040",
+            "direction": "READ",
+            "type": "Float32 (word-swapped big-endian)",
+            "description": "Measured RPM",
+        },
+    },
+}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Machine definitions (static registry of everything we know about)
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -316,122 +432,31 @@ MACHINES: List[Dict[str, Any]] = [
         },
     },
     {
-        "name": "VIBIT Vibration Sensor (MIRAC)",
-        "station": "mirac-vibit",
+        "name": "VIBIT Vibration Sensor (MIRAC — Spindle, Unit 1)",
+        "station": "mirac-vibit-1",
         "protocol": "Modbus TCP",
         "host": lambda: _cfg("VIBIT_HOST"),
         "port": lambda: _cfg("VIBIT_PORT"),
         "unit_id": lambda: _cfg("VIBIT_UNIT_ID"),
-        "known_tags": {
-            "Acceleration RMS (READ)": {
-                "x_rms_acc": {
-                    "register": "4001-4002",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "X-axis RMS acceleration (g)",
-                },
-                "y_rms_acc": {
-                    "register": "4003-4004",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Y-axis RMS acceleration (g)",
-                },
-                "z_rms_acc": {
-                    "register": "4005-4006",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Z-axis RMS acceleration (g)",
-                },
-            },
-            "Velocity RMS (READ)": {
-                "x_rms_vel": {
-                    "register": "4007-4008",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "X-axis RMS velocity (mm/s)",
-                },
-                "y_rms_vel": {
-                    "register": "4009-4010",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Y-axis RMS velocity (mm/s)",
-                },
-                "z_rms_vel": {
-                    "register": "4011-4012",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Z-axis RMS velocity (mm/s)",
-                },
-            },
-            "Temperature (READ)": {
-                "temperature": {
-                    "register": "4013-4014",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Sensor temperature (°C)",
-                },
-            },
-            "Acceleration Peak (READ)": {
-                "x_peak_acc": {
-                    "register": "4015-4016",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "X-axis peak acceleration (g)",
-                },
-                "y_peak_acc": {
-                    "register": "4017-4018",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Y-axis peak acceleration (g)",
-                },
-                "z_peak_acc": {
-                    "register": "4019-4020",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Z-axis peak acceleration (g)",
-                },
-            },
-            "Velocity Peak (READ)": {
-                "x_peak_vel": {
-                    "register": "4021-4022",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "X-axis peak velocity (mm/s)",
-                },
-                "y_peak_vel": {
-                    "register": "4023-4024",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Y-axis peak velocity (mm/s)",
-                },
-                "z_peak_vel": {
-                    "register": "4025-4026",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Z-axis peak velocity (mm/s)",
-                },
-            },
-            "Device info (READ)": {
-                "reboot_count": {
-                    "register": "4031-4032",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Device reboot counter",
-                },
-                "led_status": {
-                    "register": "4035-4036",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "On-board LED status code",
-                },
-                "rpm": {
-                    "register": "4039-4040",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Measured RPM",
-                },
-            },
-        },
+        "known_tags": VIBIT_KNOWN_TAGS,
+    },
+    {
+        "name": "VIBIT Vibration Sensor (MIRAC — Tool, Unit 2)",
+        "station": "mirac-vibit-2",
+        "protocol": "Modbus TCP",
+        "host": lambda: _cfg("VIBIT_HOST"),
+        "port": lambda: _cfg("VIBIT_PORT"),
+        "unit_id": lambda: _cfg("VIBIT_UNIT_ID_2"),
+        "known_tags": VIBIT_KNOWN_TAGS,
+    },
+    {
+        "name": "VIBIT Vibration Sensor (MIRAC — Feed/Axes, Unit 3)",
+        "station": "mirac-vibit-3",
+        "protocol": "Modbus TCP",
+        "host": lambda: _cfg("VIBIT_HOST"),
+        "port": lambda: _cfg("VIBIT_PORT"),
+        "unit_id": lambda: _cfg("VIBIT_UNIT_ID_3"),
+        "known_tags": VIBIT_KNOWN_TAGS,
     },
     {
         "name": "TM Cobot (Collaborative Robot)",
@@ -480,122 +505,31 @@ MACHINES: List[Dict[str, Any]] = [
         },
     },
     {
-        "name": "VIBIT Vibration Sensor (TRIAC)",
-        "station": "triac-vibit",
+        "name": "VIBIT Vibration Sensor (TRIAC — Spindle, Unit 1)",
+        "station": "triac-vibit-1",
         "protocol": "Modbus TCP",
         "host": lambda: _cfg("TRIAC_VIBIT_HOST"),
         "port": lambda: _cfg("TRIAC_VIBIT_PORT"),
         "unit_id": lambda: _cfg("TRIAC_VIBIT_UNIT_ID"),
-        "known_tags": {
-            "Acceleration RMS (READ)": {
-                "x_rms_acc": {
-                    "register": "4001-4002",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "X-axis RMS acceleration (g)",
-                },
-                "y_rms_acc": {
-                    "register": "4003-4004",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Y-axis RMS acceleration (g)",
-                },
-                "z_rms_acc": {
-                    "register": "4005-4006",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Z-axis RMS acceleration (g)",
-                },
-            },
-            "Velocity RMS (READ)": {
-                "x_rms_vel": {
-                    "register": "4007-4008",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "X-axis RMS velocity (mm/s)",
-                },
-                "y_rms_vel": {
-                    "register": "4009-4010",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Y-axis RMS velocity (mm/s)",
-                },
-                "z_rms_vel": {
-                    "register": "4011-4012",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Z-axis RMS velocity (mm/s)",
-                },
-            },
-            "Temperature (READ)": {
-                "temperature": {
-                    "register": "4013-4014",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Sensor temperature (°C)",
-                },
-            },
-            "Acceleration Peak (READ)": {
-                "x_peak_acc": {
-                    "register": "4015-4016",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "X-axis peak acceleration (g)",
-                },
-                "y_peak_acc": {
-                    "register": "4017-4018",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Y-axis peak acceleration (g)",
-                },
-                "z_peak_acc": {
-                    "register": "4019-4020",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Z-axis peak acceleration (g)",
-                },
-            },
-            "Velocity Peak (READ)": {
-                "x_peak_vel": {
-                    "register": "4021-4022",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "X-axis peak velocity (mm/s)",
-                },
-                "y_peak_vel": {
-                    "register": "4023-4024",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Y-axis peak velocity (mm/s)",
-                },
-                "z_peak_vel": {
-                    "register": "4025-4026",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Z-axis peak velocity (mm/s)",
-                },
-            },
-            "Device info (READ)": {
-                "reboot_count": {
-                    "register": "4031-4032",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Device reboot counter",
-                },
-                "led_status": {
-                    "register": "4035-4036",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "On-board LED status code",
-                },
-                "rpm": {
-                    "register": "4039-4040",
-                    "direction": "READ",
-                    "type": "Float32 (word-swapped big-endian)",
-                    "description": "Measured RPM",
-                },
-            },
-        },
+        "known_tags": VIBIT_KNOWN_TAGS,
+    },
+    {
+        "name": "VIBIT Vibration Sensor (TRIAC — Tool, Unit 2)",
+        "station": "triac-vibit-2",
+        "protocol": "Modbus TCP",
+        "host": lambda: _cfg("TRIAC_VIBIT_HOST"),
+        "port": lambda: _cfg("TRIAC_VIBIT_PORT"),
+        "unit_id": lambda: _cfg("TRIAC_VIBIT_UNIT_ID_2"),
+        "known_tags": VIBIT_KNOWN_TAGS,
+    },
+    {
+        "name": "VIBIT Vibration Sensor (TRIAC — Feed/Axes, Unit 3)",
+        "station": "triac-vibit-3",
+        "protocol": "Modbus TCP",
+        "host": lambda: _cfg("TRIAC_VIBIT_HOST"),
+        "port": lambda: _cfg("TRIAC_VIBIT_PORT"),
+        "unit_id": lambda: _cfg("TRIAC_VIBIT_UNIT_ID_3"),
+        "known_tags": VIBIT_KNOWN_TAGS,
     },
     {
         "name": "AMR (Autonomous Mobile Robot)",
