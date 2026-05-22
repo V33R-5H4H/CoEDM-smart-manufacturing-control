@@ -50,10 +50,13 @@ class LEDWebSocketManager:
             active: Current LED state (True=ON, False=OFF)
             prev: Previous LED state (for edge detection)
         """
+        if box_id == "saftcy":
+            return await self.broadcast_safety_state(active)
+
         # Log the LED transition
         transition = "False → True" if not prev and active else "True → False" if prev and not active else f"{prev} → {active}"
         logging.info(f"[WS BROADCAST] LED {box_id} {transition} | Clients: {len(self.active_connections)}")
-        
+
         if not self.active_connections:
             return
         
@@ -96,6 +99,27 @@ class LEDWebSocketManager:
         
         await self._send_to_all(message)
     
+    async def broadcast_safety_state(self, active: bool):
+        """
+        Broadcast safety curtain state to all connected WebSocket clients.
+        
+        Args:
+            active: Current safety curtain state (True=BREACHED, False=CLEAR)
+        """
+        logging.info(f"[WS BROADCAST] Safety Curtain {'BREACHED' if active else 'CLEAR'} | Clients: {len(self.active_connections)}")
+        
+        if not self.active_connections:
+            return
+            
+        message = json.dumps({
+            "type": "safety",
+            "payload": {
+                "active": active
+            }
+        })
+        
+        await self._send_to_all(message)
+    
     async def _send_to_all(self, message: str):
         """
         Internal method to send message to all clients and clean up dead connections.
@@ -128,9 +152,13 @@ class LEDWebSocketManager:
         message = json.dumps({
             "type": "snapshot",
             "states": led_states,
+<<<<<<< HEAD
             "safety": {
                 "curtain": safety_curtain
             }
+=======
+            "safety": led_states.get("saftcy", False)
+>>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
         })
         await websocket.send_text(message)
         logging.info(f"[ASRS WebSocket] Sent snapshot (with safety={safety_curtain}) to client")

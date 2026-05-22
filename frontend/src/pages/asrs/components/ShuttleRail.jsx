@@ -74,6 +74,10 @@ const ShuttleRail = ({ shuttle }) => {
 
   const isActive = shuttleState === 'moving' || shuttleState === 'busy';
 
+  // Since TRANSIT_STEP in hook is 2500ms, use 2.4s to smoothly glide and settle
+  const transitionDuration = isActive ? '2.4s' : '0.6s';
+  const transitionTiming = isActive ? 'cubic-bezier(0.25, 0.1, 0.25, 1)' : 'cubic-bezier(0.4, 0, 0.2, 1)';
+
   const shuttleColor = {
     idle: '#475569',
     moving: '#00bcd4',
@@ -91,6 +95,13 @@ const ShuttleRail = ({ shuttle }) => {
         overflow: 'visible' // Allow carriage to go to dropoff outside grid
       }}
     >
+      <style>{`
+        @keyframes roller-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+
       {/* CARRIAGE - Industrial trolley */}
       <div
         style={{
@@ -120,9 +131,10 @@ const ShuttleRail = ({ shuttle }) => {
           width: '8px',
           height: '8px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle at 30% 30%, #374151, #1a202c)',
+          background: 'conic-gradient(from 0deg, #475569, #1e293b, #475569, #0f172a, #475569)',
           border: '1.5px solid rgba(0,0,0,0.8)',
           boxShadow: 'inset -1px -1px 2px rgba(255,255,255,0.2), 0 2px 3px rgba(0,0,0,0.5)',
+          animation: isActive ? 'roller-spin 0.4s linear infinite' : 'none',
         }} />
         <div style={{
           position: 'absolute',
@@ -131,9 +143,10 @@ const ShuttleRail = ({ shuttle }) => {
           width: '8px',
           height: '8px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle at 30% 30%, #374151, #1a202c)',
+          background: 'conic-gradient(from 0deg, #475569, #1e293b, #475569, #0f172a, #475569)',
           border: '1.5px solid rgba(0,0,0,0.8)',
           boxShadow: 'inset -1px -1px 2px rgba(255,255,255,0.2), 0 2px 3px rgba(0,0,0,0.5)',
+          animation: isActive ? 'roller-spin 0.4s linear infinite' : 'none',
         }} />
 
         {/* Bottom rollers */}
@@ -144,9 +157,10 @@ const ShuttleRail = ({ shuttle }) => {
           width: '8px',
           height: '8px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle at 30% 30%, #374151, #1a202c)',
+          background: 'conic-gradient(from 0deg, #475569, #1e293b, #475569, #0f172a, #475569)',
           border: '1.5px solid rgba(0,0,0,0.8)',
           boxShadow: 'inset -1px -1px 2px rgba(255,255,255,0.2), 0 2px 3px rgba(0,0,0,0.5)',
+          animation: isActive ? 'roller-spin 0.4s linear infinite' : 'none',
         }} />
         <div style={{
           position: 'absolute',
@@ -155,9 +169,10 @@ const ShuttleRail = ({ shuttle }) => {
           width: '8px',
           height: '8px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle at 30% 30%, #374151, #1a202c)',
+          background: 'conic-gradient(from 0deg, #475569, #1e293b, #475569, #0f172a, #475569)',
           border: '1.5px solid rgba(0,0,0,0.8)',
           boxShadow: 'inset -1px -1px 2px rgba(255,255,255,0.2), 0 2px 3px rgba(0,0,0,0.5)',
+          animation: isActive ? 'roller-spin 0.4s linear infinite' : 'none',
         }} />
 
         {/* Center grip lines */}
@@ -187,7 +202,7 @@ const ShuttleRail = ({ shuttle }) => {
             color: shuttleColor,
             fontWeight: 800,
             letterSpacing: '0.075em',
-            transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+            transition: `left ${transitionDuration} ${transitionTiming}, top ${transitionDuration} ${transitionTiming}, text-shadow 0.6s ease, border-color 0.6s ease`,
             textShadow: `0 0 8px ${shuttleColor}, 0 0 4px ${shuttleColor}`,
             background: 'rgba(15, 23, 42, 0.9)',
             padding: '2px 6px',
@@ -207,3 +222,4 @@ const ShuttleRail = ({ shuttle }) => {
 };
 
 export default ShuttleRail;
+

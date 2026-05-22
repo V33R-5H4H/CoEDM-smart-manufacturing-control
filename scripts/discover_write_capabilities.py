@@ -761,6 +761,7 @@ MACHINES = [
         "unit_id": settings.VIBIT_UNIT_ID_2,
     },
     {
+<<<<<<< HEAD
         "id": "vibit_mirac_3",
         "name": "VIBIT Sensor (MIRAC — Feed/Axes, Unit 3)",
         "type": "modbus",
@@ -771,12 +772,17 @@ MACHINES = [
     {
         "id": "vibit_triac",
         "name": "VIBIT Sensor (TRIAC — Spindle, Unit 1)",
+=======
+        "id": "vibit_triac",
+        "name": "VIBIT Sensor (TRIAC)",
+>>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
         "type": "modbus",
         "host": settings.TRIAC_VIBIT_HOST,
         "port": settings.TRIAC_VIBIT_PORT,
         "unit_id": settings.TRIAC_VIBIT_UNIT_ID,
     },
     {
+<<<<<<< HEAD
         "id": "vibit_triac_2",
         "name": "VIBIT Sensor (TRIAC — Tool, Unit 2)",
         "type": "modbus",
@@ -793,6 +799,8 @@ MACHINES = [
         "unit_id": settings.TRIAC_VIBIT_UNIT_ID_3,
     },
     {
+=======
+>>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
         "id": "amr",
         "name": "AMR Mobile Robot",
         "type": "modbus",

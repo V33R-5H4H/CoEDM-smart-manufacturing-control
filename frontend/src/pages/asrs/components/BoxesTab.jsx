@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import BoxDetailsModal from './BoxDetailsModal';
 import BoxService from '../services/boxService';
+import SubCompartmentService from '../services/subCompartmentService';
+import ItemService from '../services/itemService';
 import ConfirmModal from './ConfirmModal';
 import ShuttleRail from './ShuttleRail';
 
@@ -199,7 +200,8 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
     getEffectiveLEDState,
     isSourceBlinking,
     visualShuttle,
-    operationPhase
+    operationPhase,
+    pendingOperation
   } = useOperationShadowState(ledStates, shuttleState);
 
   // Debug: Log when WebSocket data changes
@@ -363,11 +365,17 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
 
   const highlightColor = getHighlightColor();
 
-  const borderStyle = isSelected 
-    ? '2px solid var(--primary)' 
+  const baseBackground = isBlinking
+    ? 'rgba(234, 179, 8, 0.15)'
+    : isSelected
+      ? 'var(--bg-secondary)'
+      : 'var(--bg-elevated)';
+
+  const borderStyle = isSelected
+    ? '2px solid var(--primary)'
     : `1px solid ${highlightColor}aa`;
 
-  const shadowStyle = isSelected 
+  const shadowStyle = isSelected
     ? `0 0 12px ${highlightColor}44`
     : `0 0 8px ${highlightColor}15`;
 
@@ -377,7 +385,7 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
     <button
       onClick={onClick}
       style={{
-        background: 'var(--bg-hover)',
+        background: baseBackground,
         border: borderStyle,
         borderRadius: '4px',
         padding: '6px 8px',
@@ -491,7 +499,7 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
           const sub = boxSubs.find(s => s.sub_id === label);
           const isOccupied = sub?.status === 'Occupied';
           const cellColor = isOccupied ? '#10b981' : '#ef4444';
-          
+
           return (
             <div
               key={label}
@@ -533,6 +541,60 @@ function RackView({
     boxMap[`${b.column_name}${b.row_number}`] = b;
   });
 
+  const gridRef = React.useRef(null);
+  const cellRefs = React.useRef({});
+  const [trolleyPos, setTrolleyPos] = React.useState({ top: 0, left: 0, width: 0, height: 0, visible: false });
+
+  React.useEffect(() => {
+    const updateTrolley = () => {
+      const activeCol = shuttle?.col;
+      const activeRow = shuttle?.row;
+      // Default to DROP_OFF if row is 0 or if there is no col/row (like startup)
+      const activeId = (activeRow === 0 || activeCol === 'DROP_OFF' || !activeCol) ? 'DROP_OFF' : `${activeCol}${activeRow}`;
+
+      const cellEl = cellRefs.current[activeId];
+      const gridEl = gridRef.current;
+      if (cellEl && gridEl) {
+        const cellRect = cellEl.getBoundingClientRect();
+        const gridRect = gridEl.getBoundingClientRect();
+        setTrolleyPos({
+          top: cellRect.top - gridRect.top + gridEl.scrollTop,
+          left: cellRect.left - gridRect.left + gridEl.scrollLeft,
+          width: cellRect.width,
+          height: cellRect.height,
+          visible: true
+        });
+      } else {
+        setTrolleyPos(prev => ({ ...prev, visible: false }));
+      }
+    };
+
+    // Run immediately
+    updateTrolley();
+
+    window.addEventListener('resize', updateTrolley);
+    const gridEl = gridRef.current;
+    if (gridEl) {
+      gridEl.addEventListener('scroll', updateTrolley);
+    }
+
+    // Check multiple times to handle dynamic loading and layout updates
+    const timers = [
+      setTimeout(updateTrolley, 100),
+      setTimeout(updateTrolley, 300),
+      setTimeout(updateTrolley, 600),
+      setTimeout(updateTrolley, 1000)
+    ];
+
+    return () => {
+      window.removeEventListener('resize', updateTrolley);
+      if (gridEl) {
+        gridEl.removeEventListener('scroll', updateTrolley);
+      }
+      timers.forEach(t => clearTimeout(t));
+    };
+  }, [shuttle?.col, shuttle?.row, boxes]);
+
   return (
     <div style={{
       background: 'var(--bg-tertiary)',
@@ -544,6 +606,24 @@ function RackView({
       height: '100%',
       position: 'relative'
     }}>
+      <style>{`
+        @keyframes mechanical-hum {
+          0% { transform: translateY(0) scaleY(1); }
+          25% { transform: translateY(-0.4px) scaleY(0.995); }
+          50% { transform: translateY(0.2px) scaleY(1.002); }
+          75% { transform: translateY(-0.2px) scaleY(0.998); }
+          100% { transform: translateY(0) scaleY(1); }
+        }
+        @keyframes roller-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes lidar-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+
       {/* Canvas Header */}
       <div style={{
         height: '32px',
@@ -628,7 +708,7 @@ function RackView({
         opacity: safetyCurtainTriggered ? 0.35 : 1,
         transition: 'padding-bottom 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)'
       }}>
-        <div 
+        <div
           id="asrs-rack-grid"
           style={{
             display: 'grid',
@@ -668,9 +748,9 @@ function RackView({
           }}>HANDOFF</div>
 
           {/* Column A Row 0 (Handoff Zone) */}
-          <div 
+          <div
             id="asrs-cell-DROP_OFF"
-            style={{ 
+            style={{
               position: 'relative',
               background: 'linear-gradient(135deg, rgba(6,182,212,0.12) 0%, rgba(6,182,212,0.02) 100%)',
               border: '2px dashed #06b6d4',
@@ -744,10 +824,10 @@ function RackView({
                 const rawLED = ledStates[id] || false;
                 const blinking = isSourceBlinking(id);
                 const isSelected = box && box.box_id === selectedBoxId;
-                
+
                 // Get subcompartments for this specific box
                 const boxSubs = subcompartments.filter(s => s.box_id === id);
-                
+
                 return (
                   <div key={id} id={`asrs-cell-${id}`} style={{ position: 'relative' }}>
                     <BoxCard
@@ -787,7 +867,6 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
 
   const fetchItems = async () => {
     try {
-      const ItemService = (await import('../services/itemService')).default;
       const response = await ItemService.getAllItems();
       setItems(response.data || []);
     } catch (error) {
@@ -798,7 +877,6 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
   const fetchSubCompartments = async () => {
     try {
       setLoading(true);
-      const SubCompartmentService = (await import('../services/subCompartmentService')).default;
       const response = await SubCompartmentService.getAllSubCompartments();
 
       // Filter subcompartments for this specific box
@@ -858,7 +936,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
   };
 
   const statusInfo = getStatusInfo();
-  
+
   const colName = box.column_name;
   const colNum = colName === 'A' ? '1' : colName === 'B' ? '2' : colName === 'C' ? '3' : colName === 'D' ? '4' : '5';
   const boxName = `BOX-${box.row_number}0${colNum}`;
@@ -907,7 +985,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
             {boxName} • {statusInfo.name} ({filledCount}/{totalCount} OCCUPIED)
           </span>
         </div>
-        
+
         <button
           onClick={onClose}
           style={{
@@ -954,7 +1032,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
             marginBottom: '10px',
             fontWeight: 700
           }}>Select Subcompartment Slot</h4>
-          
+
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(2, 1fr)',
@@ -1003,7 +1081,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                   {isOccupied && (
                     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: '#10b981', borderRadius: '6px 6px 0 0' }} />
                   )}
-                  
+
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                     <span style={{
                       fontFamily: 'var(--font-mono)',
@@ -1022,7 +1100,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                       boxShadow: isOccupied ? '0 0 6px #10b981' : 'none'
                     }} />
                   </div>
-                  
+
                   <div style={{
                     fontSize: '10px',
                     color: isOccupied ? 'var(--text-primary)' : 'var(--text-disabled)',
@@ -1095,7 +1173,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                   }}>
                     SLOT: {box.column_name}{box.row_number}{selectedSubId.toUpperCase()}
                   </span>
-                  
+
                   <span style={{
                     fontSize: '9px',
                     fontFamily: 'var(--font-mono)',
@@ -1117,7 +1195,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                     <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
                       Slot is empty. Select an inventory item below to dispatch the shuttle for a <strong>Store</strong> operation.
                     </p>
-                    
+
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       <label style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                         Inventory Product
@@ -1153,7 +1231,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                     <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
                       Slot is occupied. Click retrieve to dispatch the shuttle to execute a <strong>Retrieve</strong> operation.
                     </p>
-                    
+
                     <div style={{
                       background: 'var(--bg-primary)',
                       border: '1px solid var(--border)',

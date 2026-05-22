@@ -34,9 +34,9 @@ def client():
     Test client with hardware connections mocked at module startup.
     Patches OPC-UA and Modbus so the app can import without live hardware.
     """
-    with patch("backend.stations.asrs_station.OPCUAConnection"):
-        with patch("backend.stations.hydraulic_station.OPCUAConnection"):
-            with patch("backend.stations.cnc_mirac_station.OPCUAConnection"):
+    with patch("backend.stations.asrs.asrs_station.OPCUAConnection"):
+        with patch("backend.stations.assembly.hydraulic_station.OPCUAConnection"):
+            with patch("backend.stations.mirac.cnc_mirac_station.OPCUAConnection"):
                 with patch("backend.communication.modbus_driver.AsyncModbusTcpClient"):
                     from backend.api.main import app
                     with TestClient(app, raise_server_exceptions=False) as c:
@@ -88,8 +88,8 @@ class TestHealthEndpoint:
 
 class TestBoxesRoutes:
 
-    @patch("backend.stations.box_controller.BoxController.get_all_boxes", return_value=[SAMPLE_BOX])
-    @patch("backend.stations.box_controller.BoxController.get_filled_counts", return_value={})
+    @patch("backend.crud.asrs.box.BoxController.get_all_boxes", return_value=[SAMPLE_BOX])
+    @patch("backend.crud.asrs.box.BoxController.get_filled_counts", return_value={})
     def test_get_all_boxes_200(self, mock_counts, mock_boxes, client):
         resp = client.get("/api/asrs-data/boxes")
         assert resp.status_code == 200
@@ -98,7 +98,7 @@ class TestBoxesRoutes:
         assert "data" in data
         assert data["count"] >= 0
 
-    @patch("backend.stations.box_controller.BoxController.get_boxes_with_empty_compartments",
+    @patch("backend.crud.asrs.box.BoxController.get_boxes_with_empty_compartments",
            return_value=[SAMPLE_BOX])
     def test_get_empty_compartments_200(self, mock_fn, client):
         resp = client.get("/api/asrs-data/boxes/empty-compartments")
@@ -106,7 +106,7 @@ class TestBoxesRoutes:
         data = resp.json()
         assert data["success"] is True
 
-    @patch("backend.stations.box_controller.BoxController.get_box_by_id", return_value=SAMPLE_BOX)
+    @patch("backend.crud.asrs.box.BoxController.get_box_by_id", return_value=SAMPLE_BOX)
     def test_get_box_by_id_200(self, mock_fn, client):
         resp = client.get("/api/asrs-data/boxes/A1")
         assert resp.status_code == 200
@@ -114,12 +114,12 @@ class TestBoxesRoutes:
         assert data["success"] is True
         assert data["data"]["box_id"] == "A1"
 
-    @patch("backend.stations.box_controller.BoxController.get_box_by_id", return_value=None)
+    @patch("backend.crud.asrs.box.BoxController.get_box_by_id", return_value=None)
     def test_get_box_by_id_404(self, mock_fn, client):
         resp = client.get("/api/asrs-data/boxes/ZZ")
         assert resp.status_code == 404
 
-    @patch("backend.stations.box_controller.BoxController.get_all_boxes",
+    @patch("backend.crud.asrs.box.BoxController.get_all_boxes",
            side_effect=Exception("DB error"))
     def test_get_all_boxes_500_on_exception(self, mock_fn, client):
         resp = client.get("/api/asrs-data/boxes")
@@ -132,7 +132,7 @@ class TestBoxesRoutes:
 
 class TestItemsRoutes:
 
-    @patch("backend.stations.item_controller.ItemController.get_all_items",
+    @patch("backend.crud.asrs.item.ItemController.get_all_items",
            return_value=[SAMPLE_ITEM])
     def test_get_all_items_200(self, mock_fn, client):
         resp = client.get("/api/asrs-data/items")
@@ -142,7 +142,7 @@ class TestItemsRoutes:
         assert data["count"] == 1
         assert data["data"][0]["name"] == "Bearing"
 
-    @patch("backend.stations.item_controller.ItemController.get_item_by_id",
+    @patch("backend.crud.asrs.item.ItemController.get_item_by_id",
            return_value=SAMPLE_ITEM)
     def test_get_item_by_id_200(self, mock_fn, client):
         resp = client.get("/api/asrs-data/items/1")
@@ -150,12 +150,12 @@ class TestItemsRoutes:
         data = resp.json()
         assert data["success"] is True
 
-    @patch("backend.stations.item_controller.ItemController.get_item_by_id", return_value=None)
+    @patch("backend.crud.asrs.item.ItemController.get_item_by_id", return_value=None)
     def test_get_item_by_id_404(self, mock_fn, client):
         resp = client.get("/api/asrs-data/items/999")
         assert resp.status_code == 404
 
-    @patch("backend.stations.item_controller.ItemController.get_available_items_with_count",
+    @patch("backend.crud.asrs.item.ItemController.get_available_items_with_count",
            return_value=[{"item_id": 1, "name": "Bearing", "available_count": 27}])
     def test_get_available_items_with_count_200(self, mock_fn, client):
         resp = client.get("/api/asrs-data/items/available/with-count")
@@ -164,16 +164,16 @@ class TestItemsRoutes:
         assert data["success"] is True
         assert data["data"][0]["available_count"] == 27
 
-    @patch("backend.stations.item_controller.ItemController.check_item_id_exists",
+    @patch("backend.crud.asrs.item.ItemController.check_item_id_exists",
            return_value=True)
     def test_check_item_exists_200(self, mock_fn, client):
         resp = client.get("/api/asrs-data/items/1/exists")
         assert resp.status_code == 200
         assert resp.json()["exists"] is True
 
-    @patch("backend.stations.item_controller.ItemController.check_item_id_exists",
+    @patch("backend.crud.asrs.item.ItemController.check_item_id_exists",
            return_value=False)
-    @patch("backend.stations.item_controller.ItemController.create_item",
+    @patch("backend.crud.asrs.item.ItemController.create_item",
            return_value=SAMPLE_ITEM)
     def test_create_item_201(self, mock_create, mock_exists, client):
         resp = client.post("/api/asrs-data/items", json={
@@ -195,7 +195,7 @@ class TestItemsRoutes:
         resp = client.post("/api/asrs-data/items", json={"name": "Part"})
         assert resp.status_code == 400
 
-    @patch("backend.stations.item_controller.ItemController.check_item_id_exists",
+    @patch("backend.crud.asrs.item.ItemController.check_item_id_exists",
            return_value=True)
     def test_create_item_duplicate_400(self, mock_fn, client):
         resp = client.post("/api/asrs-data/items", json={
@@ -211,7 +211,7 @@ class TestItemsRoutes:
 
 class TestSubCompartmentsRoutes:
 
-    @patch("backend.stations.subcompartment_controller.SubCompartmentController.get_all_subcompartments",
+    @patch("backend.crud.asrs.subcompartment.SubCompartmentController.get_all_subcompartments",
            return_value=[SAMPLE_SUBCOMPARTMENT])
     def test_get_all_subcompartments_200(self, mock_fn, client):
         resp = client.get("/api/asrs-data/subcompartments")
@@ -220,7 +220,7 @@ class TestSubCompartmentsRoutes:
         assert data["success"] is True
         assert data["count"] == 1
 
-    @patch("backend.stations.subcompartment_controller.SubCompartmentController.get_subcompartment_by_place",
+    @patch("backend.crud.asrs.subcompartment.SubCompartmentController.get_subcompartment_by_place",
            return_value=SAMPLE_SUBCOMPARTMENT)
     def test_get_subcompartment_by_place_200(self, mock_fn, client):
         resp = client.get("/api/asrs-data/subcompartments/A1a")
@@ -228,7 +228,7 @@ class TestSubCompartmentsRoutes:
         data = resp.json()
         assert data["data"]["subcom_place"] == "A1a"
 
-    @patch("backend.stations.subcompartment_controller.SubCompartmentController.get_subcompartment_by_place",
+    @patch("backend.crud.asrs.subcompartment.SubCompartmentController.get_subcompartment_by_place",
            return_value=None)
     def test_get_subcompartment_not_found_404(self, mock_fn, client):
         resp = client.get("/api/asrs-data/subcompartments/ZZZ")
@@ -256,7 +256,7 @@ class TestSubCompartmentsRoutes:
 
 class TestTransactionsRoutes:
 
-    @patch("backend.stations.transaction_controller.TransactionController.get_all_transactions",
+    @patch("backend.crud.asrs.transaction.TransactionController.get_all_transactions",
            return_value=[SAMPLE_TRANSACTION])
     def test_get_all_transactions_200(self, mock_fn, client):
         resp = client.get("/api/asrs-data/transactions")
@@ -265,25 +265,25 @@ class TestTransactionsRoutes:
         assert data["success"] is True
         assert data["count"] == 1
 
-    @patch("backend.stations.transaction_controller.TransactionController.get_all_transactions",
+    @patch("backend.crud.asrs.transaction.TransactionController.get_all_transactions",
            return_value=[SAMPLE_TRANSACTION])
     def test_get_transactions_sort_param(self, mock_fn, client):
         resp = client.get("/api/asrs-data/transactions?sort=newest_first&limit=50")
         assert resp.status_code == 200
 
-    @patch("backend.stations.transaction_controller.TransactionController.get_transaction_by_id",
+    @patch("backend.crud.asrs.transaction.TransactionController.get_transaction_by_id",
            return_value=SAMPLE_TRANSACTION)
     def test_get_transaction_by_id_200(self, mock_fn, client):
         resp = client.get("/api/asrs-data/transactions/1")
         assert resp.status_code == 200
 
-    @patch("backend.stations.transaction_controller.TransactionController.get_transaction_by_id",
+    @patch("backend.crud.asrs.transaction.TransactionController.get_transaction_by_id",
            return_value=None)
     def test_get_transaction_not_found_404(self, mock_fn, client):
         resp = client.get("/api/asrs-data/transactions/9999")
         assert resp.status_code == 404
 
-    @patch("backend.stations.transaction_controller.TransactionController.get_transactions_by_item_id",
+    @patch("backend.crud.asrs.transaction.TransactionController.get_transactions_by_item_id",
            return_value=[SAMPLE_TRANSACTION])
     def test_get_transactions_by_item_200(self, mock_fn, client):
         resp = client.get("/api/asrs-data/transactions/item/1")
@@ -305,7 +305,7 @@ class TestTransactionsRoutes:
 
 class TestOrdersRoutes:
 
-    @patch("backend.stations.order_controller.OrderController.get_all_orders",
+    @patch("backend.crud.asrs.order.OrderController.get_all_orders",
            return_value=[SAMPLE_ORDER])
     def test_get_all_orders_200(self, mock_fn, client):
         resp = client.get("/api/asrs-data/orders")
@@ -314,25 +314,25 @@ class TestOrdersRoutes:
         assert data["success"] is True
         assert data["count"] == 1
 
-    @patch("backend.stations.order_controller.OrderController.get_order_by_id",
+    @patch("backend.crud.asrs.order.OrderController.get_order_by_id",
            return_value=SAMPLE_ORDER)
     def test_get_order_by_id_200(self, mock_fn, client):
         resp = client.get("/api/asrs-data/orders/4")
         assert resp.status_code == 200
 
-    @patch("backend.stations.order_controller.OrderController.get_order_by_id",
+    @patch("backend.crud.asrs.order.OrderController.get_order_by_id",
            return_value=None)
     def test_get_order_not_found_404(self, mock_fn, client):
         resp = client.get("/api/asrs-data/orders/9999")
         assert resp.status_code == 404
 
-    @patch("backend.stations.order_controller.OrderController.get_order_stats",
+    @patch("backend.crud.asrs.order.OrderController.get_order_stats",
            return_value={"total_orders": 13, "pending_orders": 13})
     def test_get_order_stats_200(self, mock_fn, client):
         resp = client.get("/api/asrs-data/orders/stats/summary")
         assert resp.status_code == 200
 
-    @patch("backend.stations.order_controller.OrderController.create_order",
+    @patch("backend.crud.asrs.order.OrderController.create_order",
            side_effect=Exception("Missing required field: customer_name"))
     def test_create_order_missing_customer_400(self, mock_create, client):
         """Route returns 400 when customer_name is missing (controller raises ValueError)."""

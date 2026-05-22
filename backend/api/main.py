@@ -19,6 +19,7 @@ from backend.api.routes.control.assembly import assembly_control
 from backend.api.routes.control.mirac import mirac_control
 from backend.api.routes.control.asrs.shuttle import router as shuttle_router
 from backend.api.routes.data.asrs.asrs_data import router as asrs_data_router
+from backend.api.routes import sensor_data
 from backend.stations.asrs.asrs_singleton import asrs_controller
 from backend.websockets.assembly_broadcaster import hydraulic_broadcaster
 from backend.websockets.mirac_broadcaster import mirac_broadcaster
@@ -57,6 +58,7 @@ app.include_router(assembly_control.router)
 app.include_router(mirac_control.router)
 app.include_router(shuttle_router)
 app.include_router(asrs_data_router)
+app.include_router(sensor_data.router)
 
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -213,4 +215,4 @@ async def health_check():
                 },
             }
         },
-    }
+    }

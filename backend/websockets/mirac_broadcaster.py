@@ -18,6 +18,7 @@ class MiracBroadcaster:
         self.active_connections: Set[WebSocket] = set()
         self.is_broadcasting = False
         self.broadcast_task = None
+<<<<<<< HEAD
         self.vibit_reader_1 = VibitModbusReader(
             host=settings.VIBIT_HOST,
             port=settings.VIBIT_PORT,
@@ -32,6 +33,11 @@ class MiracBroadcaster:
             host=settings.VIBIT_HOST,
             port=settings.VIBIT_PORT,
             device_id=settings.VIBIT_UNIT_ID_3,
+=======
+        self.vibit_reader = VibitModbusReader(
+            host=VIBIT_HOST,
+            port=VIBIT_PORT,
+>>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
         )
         
     async def connect(self, websocket: WebSocket):
@@ -76,11 +82,15 @@ class MiracBroadcaster:
         """Build unified payload for frontend without exposing source details."""
         try:
             plc_data = await self._read_plc_data()
+<<<<<<< HEAD
             
             # Read all three VibIT snapshots
             vibit1_data = self.vibit_reader_1.read_snapshot() or {}
             vibit2_data = self.vibit_reader_2.read_snapshot() or {}
             vibit3_data = self.vibit_reader_3.read_snapshot() or {}
+=======
+            vibit_data = self.vibit_reader.read_snapshot(device_id=VIBIT_UNIT_ID) or {}
+>>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
 
             # 1. Spindle metrics (from VIBIT 1)
             vibit1_temp = vibit1_data.get("temperature")

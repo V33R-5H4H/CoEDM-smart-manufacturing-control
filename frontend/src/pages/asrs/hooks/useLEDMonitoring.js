@@ -4,7 +4,11 @@ export function useLEDMonitoring() {
   const [ledStates, setLedStates] = useState({});
   const [shuttleState, setShuttleState] = useState({ col: 'A', row: 7, state: 'idle', command: null });
   const [connected, setConnected] = useState(false);
+<<<<<<< HEAD
   const [safetyCurtain, setSafetyCurtain] = useState(false);
+=======
+  const [safetyCurtainActive, setSafetyCurtainActive] = useState(false);
+>>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
   const wsRef = useRef(null);
 
   useEffect(() => {
@@ -53,8 +57,13 @@ export function useLEDMonitoring() {
             // Initial state snapshot
             console.log('LED snapshot received:', data.states);
             setLedStates(data.states);
+<<<<<<< HEAD
             if (data.safety) {
               setSafetyCurtain(!!data.safety.curtain);
+=======
+            if (data.safety !== undefined) {
+              setSafetyCurtainActive(data.safety);
+>>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
             }
             break;
 
@@ -80,9 +89,14 @@ export function useLEDMonitoring() {
             break;
 
           case 'safety':
+<<<<<<< HEAD
             // Safety curtain update
             console.log('Safety update:', data.payload.curtain);
             setSafetyCurtain(!!data.payload.curtain);
+=======
+            console.log('Safety curtain update:', data.payload.active);
+            setSafetyCurtainActive(data.payload.active);
+>>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
             break;
 
           default:
@@ -109,5 +123,9 @@ export function useLEDMonitoring() {
     };
   }, []);
 
+<<<<<<< HEAD
   return { ledStates, shuttleState, connected, safetyCurtain };
+=======
+  return { ledStates, shuttleState, connected, safetyCurtainActive };
+>>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
 }

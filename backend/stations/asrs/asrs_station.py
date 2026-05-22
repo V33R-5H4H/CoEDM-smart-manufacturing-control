@@ -85,6 +85,10 @@ class ASRSController:
         if not asrs_connection.connected:
             raise Exception("Not connected to PLC")
 
+        # Safety curtain lockout
+        if self.led_service.led_state.get("saftcy", False):
+            raise Exception("Cannot execute command: Safety curtain is breached.")
+
         # Determine operation type
         if cmd == "HOME":
             operation = "HOME"
@@ -163,6 +167,7 @@ class ASRSController:
                         except Exception as e:
                             logging.warning(f"[ASRS] LED {tag} unavailable: {e}")
 
+<<<<<<< HEAD
                 # Also subscribe to the native ASRS saftey curtain node
                 safety_tag = "saftey"
                 safety_node_id = f"ns={PLC_NAMESPACE};s={safety_tag}"
@@ -178,6 +183,20 @@ class ASRSController:
                     logging.info(f"[ASRS] Subscribed to safety node with initial value: {safety_value}")
                 except Exception as e:
                     logging.warning(f"[ASRS] Safety tag '{safety_tag}' unavailable: {e}")
+=======
+                # Subscribe to the Safety Curtain tag
+                saftcy_tag = "saftcy"
+                saftcy_node_id = f"ns={PLC_NAMESPACE};s={saftcy_tag}"
+                try:
+                    node = asrs_connection.client.get_node(saftcy_node_id)
+                    value = node.get_value()
+                    led_nodes.append(node)
+                    node_to_tag[node.nodeid.to_string()] = saftcy_tag
+                    self.led_service.led_state[saftcy_tag] = bool(value)
+                    self.led_service.prev_led_state[saftcy_tag] = bool(value)
+                except Exception as e:
+                    logging.warning(f"[ASRS] Safety curtain tag {saftcy_tag} unavailable: {e}")
+>>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
 
                 if not led_nodes:
                     logging.error("[ASRS] No LED nodes found!")

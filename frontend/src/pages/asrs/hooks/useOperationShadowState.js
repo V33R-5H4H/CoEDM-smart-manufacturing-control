@@ -108,25 +108,44 @@ export function useOperationShadowState(ledStates, shuttleState) {
 
   const animateToDropOff = async (fromCell) => {
     console.log('[animateToDropOff] Starting from:', fromCell);
-    // Move directly to drop-off without step-by-step traversal
     const fromCol = fromCell[0];
     const fromRow = parseInt(fromCell.slice(1));
 
     console.log('[animateToDropOff] Parsed - Col:', fromCol, 'Row:', fromRow);
-    console.log('[animateToDropOff] Moving directly to DROP_OFF station');
+    console.log('[animateToDropOff] Starting multi-axis visual travel to DROP_OFF...');
 
-    // Move directly to drop-off position
+    // Step 1: Move vertically to Row 1
+    if (fromRow !== 1) {
+      console.log('[animateToDropOff] Step 1: Move vertically to Row 1');
+      setVisualShuttle({
+        row: 1,
+        col: fromCol,
+        moving: true
+      });
+      await sleep(PHASE_DURATIONS.TRANSIT_STEP);
+    }
+
+    // Step 2: Move horizontally to Column A (where the DROP_OFF visual is adjacent)
+    if (fromCol !== 'A') {
+      console.log('[animateToDropOff] Step 2: Move horizontally to Column A');
+      setVisualShuttle({
+        row: 1,
+        col: 'A',
+        moving: true
+      });
+      await sleep(PHASE_DURATIONS.TRANSIT_STEP);
+    }
+
+    // Step 3: Transition out of the grid to DROP_OFF handoff station (Row 0)
+    console.log('[animateToDropOff] Step 3: Entering DROP_OFF handoff station');
     setVisualShuttle({
       row: 0,
       col: 'DROP_OFF',
       moving: true
     });
+    await sleep(PHASE_DURATIONS.TRANSIT_STEP);
 
-    // Wait for movement to complete
-    await sleep(PHASE_DURATIONS.TRANSIT_STEP * 2);
-
-    // Finally at drop-off position
-    console.log('[animateToDropOff] Setting shuttle to DROP_OFF position');
+    // Final arrival at drop-off position
     setVisualShuttle({
       row: 0,
       col: 'DROP_OFF',
@@ -145,7 +164,7 @@ export function useOperationShadowState(ledStates, shuttleState) {
     let sourceCol, sourceRow;
     if (source === 'DROP_OFF') {
       console.log('[animateShuttleTransit] Starting from DROP_OFF position');
-      // Start from drop-off station position (conceptually at A0 or edge)
+      // Start from drop-off station position (conceptually at A1 entry first)
       sourceCol = 'A';
       sourceRow = 1;
       console.log('[animateShuttleTransit] Moving from DROP_OFF to grid entry:', sourceCol, sourceRow);
@@ -164,18 +183,31 @@ export function useOperationShadowState(ledStates, shuttleState) {
     const targetRow = parseInt(target.slice(1));
     console.log('[animateShuttleTransit] Parsed positions - From:', `${sourceCol}${sourceRow}`, 'To:', `${targetCol}${targetRow}`);
 
-    // Direct movement to destination (no step-by-step grid traversal)
-    console.log('[animateShuttleTransit] Moving directly to destination...');
-    setVisualShuttle({
-      row: targetRow,
-      col: targetCol,
-      moving: true
-    });
+    // Orthogonal 2-Step Motion Narrative (Translating the motion axis by axis)
+    
+    // Step 1: Vertical Movement (Row travel along source column)
+    if (sourceRow !== targetRow) {
+      console.log(`[animateShuttleTransit] Step 1: Moving vertically from row ${sourceRow} to row ${targetRow}`);
+      setVisualShuttle({
+        row: targetRow,
+        col: sourceCol,
+        moving: true
+      });
+      await sleep(PHASE_DURATIONS.TRANSIT_STEP);
+    }
 
-    // Wait for the movement to complete
-    await sleep(PHASE_DURATIONS.TRANSIT_STEP * 2); // Slightly longer for direct movement
+    // Step 2: Horizontal Movement (Column travel along target row)
+    if (sourceCol !== targetCol) {
+      console.log(`[animateShuttleTransit] Step 2: Moving horizontally from column ${sourceCol} to column ${targetCol}`);
+      setVisualShuttle({
+        row: targetRow,
+        col: targetCol,
+        moving: true
+      });
+      await sleep(PHASE_DURATIONS.TRANSIT_STEP);
+    }
 
-    // Final position
+    // Final position sync
     console.log('[animateShuttleTransit] Setting final position:', `${targetCol}${targetRow}`);
     setVisualShuttle({
       row: targetRow,
@@ -319,10 +351,11 @@ export function useOperationShadowState(ledStates, shuttleState) {
     if (operationPhase !== 'IDLE' && pendingOperationRef.current) {
       const { targetCell } = pendingOperationRef.current;
 
-      // Hide destination LED during acknowledgement and transit
+      // Hide destination LED during acknowledgement, departure, dropoff/pickup, and transit phases
       if (cellId === targetCell &&
         (operationPhase === 'ACKNOWLEDGEMENT' ||
           operationPhase === 'SOURCE_DEPARTURE' ||
+          operationPhase === 'PICKUP_TRANSIT' ||
           operationPhase === 'TRANSIT')) {
         return false;
       }

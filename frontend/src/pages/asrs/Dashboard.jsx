@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import React, { useState, useEffect, useRef } from "react";
+=======
+import React, { useState, useEffect, useRef, useCallback } from "react";
+>>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
 import BoxesTab from "./components/BoxesTab";
 import ItemsTab from "./components/ItemsTab";
 import TransactionsTab from "./components/TransactionsTab";
@@ -7,6 +11,7 @@ import PageHeader from "../../components/PageHeader";
 import { useLEDMonitoring } from "./hooks/useLEDMonitoring";
 import { useTheme } from "../../theme/ThemeContext";
 import { ToastContainer, toast } from "react-toastify";
+import { motion, AnimatePresence } from "framer-motion";
 import "react-toastify/dist/ReactToastify.css";
 import "../Assembly.css";
 
@@ -16,6 +21,7 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState("boxes");
   const [isConnected, setIsConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
+<<<<<<< HEAD
   const { shuttleState, connected: ledConnected, ledStates, safetyCurtain } = useLEDMonitoring();
   const { resolved: theme } = useTheme();
 
@@ -34,6 +40,27 @@ function Dashboard() {
     }
     prevSafetyCurtainRef.current = safetyCurtain;
   }, [safetyCurtain]);
+=======
+  const { shuttleState, connected: ledConnected, ledStates, safetyCurtainActive } = useLEDMonitoring();
+  const { resolved: theme } = useTheme();
+
+  // Edge-triggered safety alerts
+  const prevSafetyRef = useRef(false);
+
+  useEffect(() => {
+    const prev = prevSafetyRef.current;
+    if (safetyCurtainActive && !prev) {
+      toast.error('⚠️ SAFETY CURTAIN TRIGGERED — Human presence detected!', {
+        toastId: 'curtain-alert',
+        autoClose: false,
+        closeOnClick: false,
+      });
+    } else if (!safetyCurtainActive && prev) {
+      toast.dismiss('curtain-alert');
+    }
+    prevSafetyRef.current = safetyCurtainActive;
+  }, [safetyCurtainActive]);
+>>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
 
   useEffect(() => {
     const checkConnection = async () => {
@@ -111,6 +138,7 @@ function Dashboard() {
       flexDirection: 'column',
       overflow: 'hidden',
       background: 'var(--bg-primary)',
+      position: 'relative',
     }}>
       {/* Stitch-style top bar */}
       <PageHeader
@@ -118,7 +146,40 @@ function Dashboard() {
         subtitle="Inventory"
         actions={
           <>
+<<<<<<< HEAD
 
+=======
+            {isConnected && (
+              <button
+                type="button"
+                disabled={safetyCurtainActive}
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`${API_BASE}/home`, { method: "POST" });
+                    if (res.ok) toast.info("Resetting shuttle to Home (A7)…");
+                  } catch {
+                    toast.error("Failed to reset shuttle");
+                  }
+                }}
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: safetyCurtainActive ? 'var(--text-muted)' : 'var(--status-error)',
+                  border: `1px solid ${safetyCurtainActive ? 'var(--border)' : 'var(--status-error)'}`,
+                  background: 'transparent',
+                  padding: '4px 12px',
+                  borderRadius: '2px',
+                  cursor: safetyCurtainActive ? 'not-allowed' : 'pointer',
+                  opacity: safetyCurtainActive ? 0.5 : 1,
+                }}
+                title={safetyCurtainActive ? "Disabled due to safety curtain breach" : "Force reset shuttle position to A7"}
+              >
+                Reset A7
+              </button>
+            )}
+>>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
             <TopStatusRibbon
               plcConnected={isConnected}
               ledConnected={ledConnected}
@@ -128,20 +189,20 @@ function Dashboard() {
               <button
                 type="button"
                 onClick={handleDisconnect}
+                disabled={safetyCurtainActive || statusLoading}
                 style={{
                   fontSize: '11px',
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
-                  color: 'var(--text-primary)',
-                  background: 'var(--primary-dark)',
+                  color: safetyCurtainActive ? 'var(--text-muted)' : 'var(--text-primary)',
+                  background: safetyCurtainActive ? 'var(--bg-elevated)' : 'var(--primary-dark)',
                   border: 'none',
                   padding: '4px 12px',
                   borderRadius: '2px',
                   cursor: 'pointer',
                   opacity: statusLoading ? 0.7 : 1,
                 }}
-                disabled={statusLoading}
               >
                 {statusLoading ? "Disconnecting…" : "Disconnect"}
               </button>
@@ -149,20 +210,20 @@ function Dashboard() {
               <button
                 type="button"
                 onClick={handleConnect}
+                disabled={safetyCurtainActive || statusLoading}
                 style={{
                   fontSize: '11px',
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
-                  color: 'var(--bg-primary)',
-                  background: 'var(--primary)',
+                  color: safetyCurtainActive ? 'var(--text-muted)' : 'var(--bg-primary)',
+                  background: safetyCurtainActive ? 'var(--bg-elevated)' : 'var(--primary)',
                   border: 'none',
                   padding: '4px 12px',
                   borderRadius: '2px',
                   cursor: 'pointer',
                   opacity: statusLoading ? 0.7 : 1,
                 }}
-                disabled={statusLoading}
               >
                 {statusLoading ? "Connecting…" : "Connect"}
               </button>
@@ -187,19 +248,23 @@ function Dashboard() {
             <button
               key={tab}
               type="button"
+              disabled={safetyCurtainActive}
               onClick={() => setActiveTab(tab)}
               style={{
                 fontSize: '11px',
                 fontWeight: activeTab === tab ? 700 : 600,
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
-                color: activeTab === tab ? 'var(--primary)' : 'var(--text-muted)',
+                color: safetyCurtainActive
+                  ? 'var(--text-muted)'
+                  : (activeTab === tab ? 'var(--primary)' : 'var(--text-muted)'),
                 background: 'none',
                 border: 'none',
                 borderBottom: activeTab === tab ? '2px solid var(--primary)' : '2px solid transparent',
                 padding: '10px 0',
-                cursor: 'pointer',
+                cursor: safetyCurtainActive ? 'not-allowed' : 'pointer',
                 transition: 'color 150ms ease-out',
+                opacity: safetyCurtainActive ? 0.5 : 1,
               }}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -289,7 +354,13 @@ function Dashboard() {
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
+<<<<<<< HEAD
         position: 'relative'
+=======
+        pointerEvents: safetyCurtainActive ? 'none' : 'auto',
+        opacity: safetyCurtainActive ? 0.35 : 1,
+        transition: 'opacity 300ms ease-in-out',
+>>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
       }}>
         {tabPanels[activeTab]}
 
@@ -327,8 +398,132 @@ function Dashboard() {
         )}
       </div>
 
+<<<<<<< HEAD
       {/* BUZZER ALARM VIEWPORT RING */}
       {safetyCurtain && <div className="asm-buzzer-ring" />}
+=======
+      {/* SAFETY INTERRUPT OVERLAY */}
+      <AnimatePresence>
+        {safetyCurtainActive && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: `
+                linear-gradient(0deg, rgba(220, 38, 38, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(220, 38, 38, 0.03) 1px, transparent 1px),
+                #000000e0
+              `,
+              backgroundSize: '40px 40px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '1.5rem',
+              zIndex: 9999,
+              border: '2px solid #dc2626',
+              boxShadow: 'inset 0 0 100px rgba(220, 38, 38, 0.3)',
+              padding: '2rem',
+              backdropFilter: 'blur(3px)',
+            }}
+          >
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '2.5rem',
+              flexWrap: 'wrap',
+              maxWidth: '800px',
+            }}>
+              {/* Warning Triangle */}
+              <motion.div
+                animate={{
+                  opacity: [1, 0.5, 1],
+                  scale: [1, 1.02, 1]
+                }}
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="1.5">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" strokeWidth="2" />
+                  <circle cx="12" cy="17" r="0.5" fill="#dc2626" />
+                </svg>
+              </motion.div>
+
+              {/* Text Warning Details */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem',
+                alignItems: 'flex-start'
+              }}>
+                <motion.div
+                  animate={{ opacity: [1, 0.8, 1] }}
+                  transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+                  style={{
+                    fontSize: 'clamp(2rem, 3.6vw, 3.5rem)',
+                    fontWeight: 900,
+                    color: '#dc2626',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.15em',
+                    fontFamily: 'monospace',
+                    textShadow: '0 0 20px rgba(220, 38, 38, 0.8), 0 0 40px rgba(220, 38, 38, 0.5)',
+                    lineHeight: 1.1
+                  }}
+                >
+                  SAFETY<br />INTERRUPT
+                </motion.div>
+
+                <div style={{
+                  fontSize: 'clamp(0.95rem, 1.8vw, 1.15rem)',
+                  fontWeight: 600,
+                  color: '#fca5a5',
+                  fontFamily: 'monospace',
+                  letterSpacing: '0.05em',
+                  maxWidth: '560px',
+                  lineHeight: 1.5
+                }}>
+                  Human presence detected in smart cell area. Physical safety light curtain has been breached. All AS/RS shuttle motion has been locked.
+                </div>
+
+                <div style={{
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  color: '#dc2626',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  marginTop: '0.5rem',
+                  padding: '0.6rem 1.2rem',
+                  background: 'rgba(220, 38, 38, 0.15)',
+                  border: '2px solid #dc2626',
+                  borderRadius: '0',
+                  fontFamily: 'monospace',
+                  boxShadow: '0 0 15px rgba(220, 38, 38, 0.4)'
+                }}>
+                  ■ MOTION LOCKOUT ACTIVE · AWAITING CLEARANCE
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+>>>>>>> ad0b676e499a57d5639863fde203e68cf7b7b849
 
       <ToastContainer
         position="bottom-right"
