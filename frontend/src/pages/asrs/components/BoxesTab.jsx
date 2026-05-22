@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import BoxDetailsModal from './BoxDetailsModal';
 import BoxService from '../services/boxService';
 import ConfirmModal from './ConfirmModal';
+import ShuttleRail from './ShuttleRail';
 
 import { useLEDMonitoring } from '../hooks/useLEDMonitoring';
 import { useOperationShadowState } from '../hooks/useOperationShadowState';
@@ -41,6 +42,138 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
   const [selectedBox, setSelectedBox] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const connected = ledConnected;
+
+  // Ref to hold the latest ledStates for use in background async polling intervals
+  const ledStatesRef = useRef(ledStates);
+  useEffect(() => {
+    ledStatesRef.current = ledStates;
+  }, [ledStates]);
+
+  const handleStoreOperation = async (boxId, subId, itemId) => {
+    // 1. Immediately minimize the bottom sheet
+    setShowDetails(false);
+    setSelectedBox(null);
+
+    try {
+      const SubCompartmentService = (await import('../services/subCompartmentService')).default;
+
+      // 2. Dispatch API request
+      await SubCompartmentService.addProduct({
+        boxId,
+        subId,
+        itemId: Number(itemId)
+      });
+
+      // 3. Show persistent background transition toast
+      toast.info('Store operation initiated. Shuttle dispatching...', { autoClose: false, toastId: 'store-wait' });
+
+      // 4. Background transaction tracker
+      const startTime = Date.now();
+      const timeoutMs = 90000;
+      const checkIntervalMs = 500;
+      let hasTurnedOn = false;
+
+      const intervalId = setInterval(() => {
+        const isLedOn = ledStatesRef.current[boxId];
+
+        // Detect LED turning on (Operation Started / Carriage at target)
+        if (isLedOn) {
+          hasTurnedOn = true;
+        }
+
+        const elapsed = Date.now() - startTime;
+
+        // Reconcile and finish when LED turns off
+        if (hasTurnedOn && !isLedOn) {
+          clearInterval(intervalId);
+          toast.dismiss('store-wait');
+          toast.success('Item stored successfully');
+          fetchBoxes();
+        }
+
+        if (elapsed > timeoutMs) {
+          clearInterval(intervalId);
+          toast.dismiss('store-wait');
+          toast.error('Timeout: LED did not confirm completion');
+        }
+      }, checkIntervalMs);
+
+    } catch (error) {
+      console.error('Store operation error:', error);
+      toast.dismiss('store-wait');
+      toast.error(error.message || 'Failed to store item');
+    }
+  };
+
+  const handleRetrieveOperation = async (boxId, subId, itemId) => {
+    // 1. Immediately minimize the bottom sheet
+    setShowDetails(false);
+    setSelectedBox(null);
+
+    try {
+      const SubCompartmentService = (await import('../services/subCompartmentService')).default;
+
+      // 2. Dispatch API request
+      await SubCompartmentService.retrieveProduct({
+        boxId,
+        subId,
+        itemId,
+        quantity: 1
+      });
+
+      // 3. Show persistent background transition toast
+      toast.info('Retrieve operation initiated. Shuttle dispatching...', { autoClose: false, toastId: 'retrieve-wait' });
+
+      // 4. Background transaction tracker
+      const startTime = Date.now();
+      const timeoutMs = 90000;
+      const checkIntervalMs = 500;
+      let hasTurnedOn = false;
+
+      const intervalId = setInterval(() => {
+        const isLedOn = ledStatesRef.current[boxId];
+
+        // Detect LED turning on (Operation Started / Carriage at target)
+        if (isLedOn) {
+          hasTurnedOn = true;
+        }
+
+        const elapsed = Date.now() - startTime;
+
+        // Reconcile and finish when LED turns off
+        if (hasTurnedOn && !isLedOn) {
+          clearInterval(intervalId);
+          toast.dismiss('retrieve-wait');
+          toast.success('Item retrieved successfully');
+          fetchBoxes();
+        }
+
+        if (elapsed > timeoutMs) {
+          clearInterval(intervalId);
+          toast.dismiss('retrieve-wait');
+          toast.error('Timeout: LED did not confirm completion');
+        }
+      }, checkIntervalMs);
+
+    } catch (error) {
+      console.error('Retrieve operation error:', error);
+      toast.dismiss('retrieve-wait');
+      toast.error(error.message || 'Failed to retrieve item');
+    }
+  };
+
+  const handleHomeShuttle = async () => {
+    try {
+      const res = await fetch('http://100.97.200.68:8000/api/control/asrs/home', { method: "POST" });
+      if (res.ok) {
+        toast.info("Resetting shuttle to Home (A7)…");
+      } else {
+        toast.error("Failed to reset shuttle");
+      }
+    } catch {
+      toast.error("Failed to reset shuttle");
+    }
+  };
 
   // Frontend Operation Shadow State - decouples physical LED truth from visual storytelling
   const {
@@ -141,6 +274,7 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
           shuttle={visualShuttle}
           operationPhase={operationPhase}
           selectedBoxId={selectedBox?.box_id}
+          onHomeShuttle={handleHomeShuttle}
         />
       </div>
 
@@ -154,6 +288,8 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
             setSelectedBox(null);
           }}
           onRefresh={fetchBoxes}
+          onStore={handleStoreOperation}
+          onRetrieve={handleRetrieveOperation}
         />
       )}
 
@@ -363,7 +499,8 @@ function RackView({
   setSelectedBox,
   shuttle,
   operationPhase,
-  selectedBoxId
+  selectedBoxId,
+  onHomeShuttle
 }) {
   const columns = ['A', 'B', 'C', 'D', 'E'];
   const rows = [1, 2, 3, 4, 5, 6, 7]; // Render from top to bottom (1 -> 7)
@@ -403,6 +540,39 @@ function RackView({
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <button
+            type="button"
+            onClick={onHomeShuttle}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: 'var(--primary-dark)',
+              border: '1px solid var(--primary)',
+              color: 'var(--primary-light)',
+              fontSize: '10px',
+              fontFamily: 'var(--font-mono)',
+              fontWeight: 700,
+              padding: '2px 8px',
+              borderRadius: '3px',
+              cursor: 'pointer',
+              textTransform: 'uppercase',
+              transition: 'all 150ms ease-out',
+              marginRight: '8px'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--primary)';
+              e.currentTarget.style.color = 'var(--bg-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--primary-dark)';
+              e.currentTarget.style.color = 'var(--primary-light)';
+            }}
+            title="Dispatch shuttle to Home A7"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>home</span>
+            Home Shuttle
+          </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#10b981' }} />
             <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Full</span>
@@ -430,13 +600,17 @@ function RackView({
         backgroundSize: '20px 20px',
         backgroundPosition: '-10px -10px'
       }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'min-content repeat(5, 1fr)',
-          gap: '8px',
-          minWidth: '800px',
-          width: '100%'
-        }}>
+        <div 
+          id="asrs-rack-grid"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'min-content repeat(5, 1fr)',
+            gap: '8px',
+            minWidth: '800px',
+            width: '100%',
+            position: 'relative'
+          }}
+        >
           {/* Column Headers */}
           <div style={{ height: '24px' }} /> {/* Corner */}
           {columns.map(col => (
@@ -450,6 +624,73 @@ function RackView({
               paddingBottom: '4px'
             }}>COL {col}</div>
           ))}
+
+          {/* Row 0 / Handoff Row */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            paddingRight: '8px',
+            fontFamily: 'var(--font-mono)',
+            fontSize: '11px',
+            fontWeight: 700,
+            color: '#06b6d4',
+            borderRight: '1px solid var(--border)',
+            whiteSpace: 'nowrap'
+          }}>HANDOFF</div>
+
+          {/* Column A Row 0 (Handoff Zone) */}
+          <div 
+            id="asrs-cell-DROP_OFF"
+            style={{ 
+              position: 'relative',
+              background: 'linear-gradient(135deg, rgba(6,182,212,0.12) 0%, rgba(6,182,212,0.02) 100%)',
+              border: '2px dashed #06b6d4',
+              borderRadius: '4px',
+              height: '84px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 0 10px rgba(6,182,212,0.15)',
+              overflow: 'hidden',
+              width: '100%'
+            }}
+          >
+            {/* Caution stripes at top of Handoff Station */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '4px',
+              background: 'repeating-linear-gradient(45deg, #06b6d4, #06b6d4 10px, transparent 10px, transparent 20px)'
+            }} />
+            <span className="material-symbols-outlined" style={{ color: '#06b6d4', fontSize: '20px', marginBottom: '2px' }}>swap_horiz</span>
+            <span style={{
+              fontSize: '9px',
+              fontFamily: 'var(--font-mono)',
+              fontWeight: 700,
+              color: '#06b6d4',
+              letterSpacing: '0.05em'
+            }}>HANDOFF ZONE</span>
+            <span style={{
+              fontSize: '7px',
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--text-disabled)',
+              marginTop: '1px'
+            }}>[A0 DOCK]</span>
+          </div>
+
+          {/* Spacer rails for Column B to E in Row 0 */}
+          <div style={{ gridColumn: 'span 4', display: 'flex', alignItems: 'center', paddingLeft: '16px' }}>
+            <div style={{
+              width: '100%',
+              height: '2px',
+              background: 'repeating-linear-gradient(90deg, var(--border) 0, var(--border) 8px, transparent 8px, transparent 16px)',
+              opacity: 0.4
+            }} />
+          </div>
 
           {/* Grid Cells */}
           {rows.map(row => (
@@ -479,11 +720,8 @@ function RackView({
                 // Get subcompartments for this specific box
                 const boxSubs = subcompartments.filter(s => s.box_id === id);
                 
-                // Overlay Shuttle if it's currently at this position
-                const hasShuttle = shuttle && shuttle.position === id;
-
                 return (
-                  <div key={id} style={{ position: 'relative' }}>
+                  <div key={id} id={`asrs-cell-${id}`} style={{ position: 'relative' }}>
                     <BoxCard
                       box={box}
                       boxSubs={boxSubs}
@@ -493,65 +731,26 @@ function RackView({
                       isSelected={isSelected}
                       onClick={() => box && setSelectedBox(box)}
                     />
-                    {hasShuttle && (
-                      <div style={{
-                        position: 'absolute',
-                        inset: 0,
-                        background: 'var(--bg-primary)',
-                        border: '2px solid var(--status-ok)',
-                        borderRadius: '4px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 0 15px rgba(121,218,166,0.2)',
-                        zIndex: 10
-                      }}>
-                        <span className="material-symbols-outlined" style={{ color: 'var(--status-ok)', animation: 'pulse 1.5s infinite' }}>forklift</span>
-                        <div style={{
-                          position: 'absolute',
-                          top: '-12px',
-                          right: '-12px',
-                          background: 'var(--status-ok)',
-                          color: '#002112',
-                          fontFamily: 'var(--font-mono)',
-                          fontSize: '10px',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          border: '1px solid var(--status-ok)',
-                          boxShadow: 'var(--shadow-lg)',
-                          whiteSpace: 'nowrap',
-                          fontWeight: 700
-                        }}>
-                          MOVING ({id})
-                        </div>
-                      </div>
-                    )}
                   </div>
                 );
               })}
             </React.Fragment>
           ))}
+
+          {/* Visual Shuttle Carriage Motion Overlay */}
+          <ShuttleRail shuttle={shuttle} />
         </div>
       </div>
     </div>
   );
 }
 
-function OperationsPanel({ box, ledStates, onClose, onRefresh }) {
+function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrieve }) {
   const [selectedSubId, setSelectedSubId] = useState(null);
   const [subCompartments, setSubCompartments] = useState([]);
   const [items, setItems] = useState([]);
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [loading, setLoading] = useState(false);
-
-  // Ref to hold the latest ledStates for use in async operations (like setInterval)
-  const ledStatesRef = useRef(ledStates);
-
-  // Update the ref whenever ledStates prop changes
-  useEffect(() => {
-    ledStatesRef.current = ledStates;
-  }, [ledStates]);
 
   useEffect(() => {
     fetchSubCompartments();
@@ -586,7 +785,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh }) {
     }
   };
 
-  const handleStoreOperation = async () => {
+  const handleStore = async () => {
     if (!selectedSubId) {
       toast.error('Please select a subcompartment');
       return;
@@ -595,68 +794,12 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh }) {
       toast.error('Please select an item to store');
       return;
     }
-
-    try {
-      setLoading(true);
-      const SubCompartmentService = (await import('../services/subCompartmentService')).default;
-
-      // 1. Send the command
-      await SubCompartmentService.addProduct({
-        boxId: box.box_id,
-        subId: selectedSubId,
-        itemId: Number(selectedItemId)
-      });
-
-      // 2. Wait for LED to turn OFF (operation completed)
-      // The operation takes about 60 seconds (30s source->drop + 30s drop->dest)
-      toast.info('Operation in progress... Shuttle moving', { autoClose: false, toastId: 'store-wait' });
-
-      const waitForLedOff = () => new Promise((resolve, reject) => {
-        const startTime = Date.now();
-        const timeoutMs = 90000; // 90 seconds timeout (safe buffer for 60s operation)
-        const checkIntervalMs = 500; // Check every 500ms
-        let hasTurnedOn = false;
-
-        const intervalId = setInterval(() => {
-          const isLedOn = ledStatesRef.current[box.box_id];
-
-          // 1. Detect LED turning ON (Operation Started)
-          if (isLedOn) {
-            hasTurnedOn = true;
-          }
-
-          // 2. Wait for LED to turn OFF (Operation Completed)
-          const elapsed = Date.now() - startTime;
-
-          if (hasTurnedOn && !isLedOn) {
-            clearInterval(intervalId);
-            resolve();
-          }
-
-          if (elapsed > timeoutMs) {
-            clearInterval(intervalId);
-            reject(new Error('Timeout: LED did not confirm completion'));
-          }
-        }, checkIntervalMs);
-      });
-
-      await waitForLedOff();
-      toast.dismiss('store-wait'); // Dismiss the waiting toast
-      toast.success('Item stored successfully');
-      await fetchSubCompartments();
-      onRefresh();
-      setSelectedSubId(null);
-      setSelectedItemId(null);
-    } catch (error) {
-      console.error('Store operation error:', error);
-      toast.dismiss('store-wait'); // Dismiss the waiting toast on error
-      toast.error(error.message || 'Failed to store item');
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    await onStore(box.box_id, selectedSubId, selectedItemId);
+    setLoading(false);
   };
 
-  const handleRetrieveOperation = async () => {
+  const handleRetrieve = async () => {
     if (!selectedSubId) {
       toast.error('Please select a subcompartment');
       return;
@@ -669,69 +812,9 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh }) {
       return;
     }
 
-    try {
-      setLoading(true);
-      const SubCompartmentService = (await import('../services/subCompartmentService')).default;
-      await SubCompartmentService.retrieveProduct({
-        boxId: box.box_id,
-        subId: selectedSubId,
-        itemId: selectedSub.item_id,
-        quantity: 1 // Always retrieve 1 item from subcompartment
-      });
-
-      // 2. Wait for LED to turn OFF (operation completed)
-      // The operation takes about 60 seconds (30s dest->collect + 30s collect->drop)
-      toast.info('Retrieving item... Shuttle moving', { autoClose: false, toastId: 'retrieve-wait' });
-
-      const waitForLedOff = () => new Promise((resolve, reject) => {
-        const startTime = Date.now();
-        const timeoutMs = 90000; // 90 seconds timeout
-        const checkIntervalMs = 500; // Check every 500ms
-        let hasTurnedOn = false;
-
-        const intervalId = setInterval(() => {
-          const isLedOn = ledStatesRef.current[box.box_id];
-
-          // 1. Detect LED turning ON (Operation Started)
-          if (isLedOn) {
-            hasTurnedOn = true;
-          }
-
-          // 2. Wait for LED to turn OFF (Operation Completed)
-          // Only finish if we saw it turn ON first, OR if we've waited a sensible grace period (e.g. 5s) 
-          // and it's still OFF (maybe we missed the blip or it's a simulation artifact)
-          const elapsed = Date.now() - startTime;
-          const gracePeriodOver = elapsed > 5000;
-
-          if (hasTurnedOn && !isLedOn) {
-            clearInterval(intervalId);
-            resolve();
-          }
-          // Fallback: If 5 seconds passed and it NEVER turned on, maybe we missed it? 
-          // But user says it takes 30s to arrive. So we should NOT resolve early.
-          // We will stick to strict "Wait for ON". If it never turns on, we timeout (correct behavior for failed op).
-
-          if (elapsed > timeoutMs) {
-            clearInterval(intervalId);
-            reject(new Error('Timeout: LED did not confirm completion'));
-          }
-        }, checkIntervalMs);
-      });
-
-      await waitForLedOff();
-      toast.dismiss('retrieve-wait');
-
-      toast.success('Item retrieved successfully');
-      await fetchSubCompartments();
-      onRefresh();
-      setSelectedSubId(null);
-    } catch (error) {
-      console.error('Retrieve operation error:', error);
-      toast.dismiss('retrieve-wait');
-      toast.error(error.message || 'Failed to retrieve item');
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    await onRetrieve(box.box_id, selectedSubId, selectedSub.item_id);
+    setLoading(false);
   };
 
   const filledCount = subCompartments.filter(s => s.status === 'Occupied').length;
@@ -1070,7 +1153,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh }) {
               <div style={{ marginTop: '16px' }}>
                 {!isSelectedOccupied ? (
                   <button
-                    onClick={handleStoreOperation}
+                    onClick={handleStore}
                     disabled={!selectedItemId || loading}
                     style={{
                       background: 'var(--primary)',
@@ -1092,7 +1175,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh }) {
                   </button>
                 ) : (
                   <button
-                    onClick={handleRetrieveOperation}
+                    onClick={handleRetrieve}
                     disabled={loading}
                     style={{
                       background: '#ef4444',

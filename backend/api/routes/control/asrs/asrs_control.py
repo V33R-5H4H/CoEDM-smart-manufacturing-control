@@ -43,8 +43,16 @@ async def reset_shuttle_home():
     """
     Manually reset shuttle state to Home (A7).
     Useful when the physical PLC has been restarted and backend is out of sync.
+    If connected to the PLC, it also physically dispatches the shuttle to home position.
     """
     try:
+        # If connected to the PLC, physically dispatch the shuttle to Home without getting box A7
+        if controller.is_connected():
+            logging.info("[ASRS] PLC is connected, triggering physical HOME command.")
+            controller.run("HOME")
+        else:
+            logging.info("[ASRS] PLC is disconnected. Performing logical reset of shuttle to Home (A7) only.")
+
         controller.shuttle.reset_home()
         # Broadcast the new state to all clients
         from backend.websockets.asrs_broadcaster import led_ws_manager
@@ -54,6 +62,7 @@ async def reset_shuttle_home():
         )
         return {"success": True, "message": "Shuttle reset to Home (A7)", "state": state}
     except Exception as e:
+        logging.error(f"[ASRS] Error during homing: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
