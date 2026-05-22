@@ -8,16 +8,16 @@ import MiracStatusRibbon from "./asrs/components/MiracStatusRibbon";
 
 // --- Custom Hook for MIRAC WebSocket Data ---
 const useMiracData = () => {
-  const [data, setData] = useState(null);
-  const [connectionStatus, setConnectionStatus] = useState("connecting");
+  const [conn, setConn] = useState(null);
   const pollRef = useRef(null);
   const hookInstanceRef = useRef(Math.random().toString(36).slice(2, 9));
 
   useEffect(() => {
     let stopped = false;
+    const apiBase = import.meta.env.VITE_API_URL || '/api';
     const poll = async () => {
       try {
-        const res = await fetch(`${API}/connectivity`, { cache: "no-store" });
+        const res = await fetch(`${apiBase}/control/mirac/connectivity`, { cache: "no-store" });
         if (!res.ok) return;
         const data = await res.json();
         if (!stopped) setConn(data);
@@ -274,7 +274,7 @@ const VibitPanel = ({ title, unitId, data, connected, accentColor }) => {
 
 // ── Main page ──────────────────────────────────────────────────────────────
 const Mirac = () => {
-  const conn = useConnectivity();
+  const conn = useMiracData();
   const { unit1, unit2, merged } = useVibitData();
   const [isConnected, setIsConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
@@ -354,10 +354,10 @@ const Mirac = () => {
         actions={
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <MiracStatusRibbon
-              plcConnected={isConnected}
-              wsStatus={wsStatus}
-              spindleSpeed={data?.spindle?.speed}
-              cycleStart={data?.status?.cycle_start}
+              plcConnected={conn?.opcua?.connected}
+              wsStatus={conn?.any_connected ? "connected" : "connecting"}
+              spindleSpeed={merged?.spindle_speed}
+              cycleStart={merged?.cycle_start}
             />
             <button
               onClick={() => setDemoMode(!demoMode)}
@@ -431,14 +431,14 @@ const Mirac = () => {
               }}
             >
               {t.label}
-              {t.key === "unit1" && conn.vibit1?.connected && (
+              {t.key === "unit1" && conn?.vibit1?.connected && (
                 <span style={{
                   marginLeft: 6, width: 6, height: 6, borderRadius: "50%",
                   background: "#4ade80", display: "inline-block",
                   boxShadow: "0 0 6px #4ade80",
                 }} />
               )}
-              {t.key === "unit2" && conn.vibit2?.connected && (
+              {t.key === "unit2" && conn?.vibit2?.connected && (
                 <span style={{
                   marginLeft: 6, width: 6, height: 6, borderRadius: "50%",
                   background: "#4ade80", display: "inline-block",
@@ -545,6 +545,8 @@ const Mirac = () => {
                       </div>
                     ))}
                     <Metric title="Tool #" value={merged?.tool_number} unit="#" />
+                    <Metric title="X Axis" value={merged?.x_axis_value?.toFixed(2)} unit="mm" />
+                    <Metric title="Z Axis" value={merged?.z_axis_value?.toFixed(2)} unit="mm" />
                   </div>
                 </div>
               )}
@@ -571,10 +573,10 @@ const Mirac = () => {
         {activeTab === "unit1" && (
           <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
             <VibitPanel
-              title="Spindle Vibration Sensor"
+              title="Spindle Slave (Unit 1)"
               unitId={1}
               data={unit1}
-              connected={conn.vibit1?.connected}
+              connected={conn?.vibit1?.connected}
               accentColor="#818cf8"
             />
           </div>
@@ -584,11 +586,11 @@ const Mirac = () => {
         {activeTab === "unit2" && (
           <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
             <VibitPanel
-              title="Tool / Bearing Vibration Sensor"
+              title="Tool/Bearing Slave (Unit 2)"
               unitId={2}
               data={unit2}
-              connected={conn.vibit2?.connected}
-              accentColor="#f472b6"
+              connected={conn?.vibit2?.connected}
+              accentColor="#4ade80"
             />
           </div>
         )}

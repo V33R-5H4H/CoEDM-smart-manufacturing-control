@@ -16,76 +16,25 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState("boxes");
   const [isConnected, setIsConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
-  const { shuttleState, connected: ledConnected, ledStates } = useLEDMonitoring();
+  const { shuttleState, connected: ledConnected, ledStates, safetyCurtainActive } = useLEDMonitoring();
   const { resolved: theme } = useTheme();
 
-  // References and state for global safety curtain subscription
-  const prevSafetyRef = useRef({ curtain: false });
-  const safetyWsRef = useRef(null);
-  const safetyReconnectTimerRef = useRef(null);
-
-  const connectSafetyWS = useCallback(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = `${window.location.hostname}:8000`;
-    const wsBase = import.meta.env.VITE_WS_URL || `${protocol}//${host}`;
-    const wsUrl = `${wsBase}/api/control/assembly/ws/hydraulic-data`;
-
-    console.log('[ASRS Dashboard] Connecting to hydraulic WS for safety curtain:', wsUrl);
-    const ws = new WebSocket(wsUrl);
-    safetyWsRef.current = ws;
-
-    ws.onopen = () => {
-      console.log('[ASRS Dashboard] Safety Curtain WebSocket connected');
-    };
-
-    ws.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        const curtainActive = !!(data.safety?.curtain || data.safety?.buzzer);
-        setSafetyCurtainActive(curtainActive);
-
-        // Edge-triggered safety alerts — only toast on rising edge (false -> true)
-        const prev = prevSafetyRef.current;
-        if (curtainActive && !prev.curtain) {
-          toast.error('⚠️ SAFETY CURTAIN TRIGGERED — Human presence detected!', {
-            toastId: 'curtain-alert',
-            autoClose: false,
-            closeOnClick: false,
-          });
-        }
-
-        // Dismiss alerts when condition clears
-        if (!curtainActive && prev.curtain) {
-          toast.dismiss('curtain-alert');
-        }
-
-        prevSafetyRef.current = {
-          curtain: curtainActive,
-        };
-      } catch (err) {
-        console.error('[ASRS Dashboard] Error parsing safety WS message:', err);
-      }
-    };
-
-    ws.onerror = (err) => {
-      console.error('[ASRS Dashboard] Safety Curtain WebSocket error', err);
-    };
-
-    ws.onclose = () => {
-      console.warn('[ASRS Dashboard] Safety Curtain WebSocket closed, reconnecting in 3s...');
-      safetyReconnectTimerRef.current = setTimeout(() => {
-        if (safetyWsRef.current?.readyState !== WebSocket.OPEN) connectSafetyWS();
-      }, 3000);
-    };
-  }, []);
+  // Edge-triggered safety alerts
+  const prevSafetyRef = useRef(false);
 
   useEffect(() => {
-    connectSafetyWS();
-    return () => {
-      clearTimeout(safetyReconnectTimerRef.current);
-      safetyWsRef.current?.close();
-    };
-  }, [connectSafetyWS]);
+    const prev = prevSafetyRef.current;
+    if (safetyCurtainActive && !prev) {
+      toast.error('⚠️ SAFETY CURTAIN TRIGGERED — Human presence detected!', {
+        toastId: 'curtain-alert',
+        autoClose: false,
+        closeOnClick: false,
+      });
+    } else if (!safetyCurtainActive && prev) {
+      toast.dismiss('curtain-alert');
+    }
+    prevSafetyRef.current = safetyCurtainActive;
+  }, [safetyCurtainActive]);
 
   useEffect(() => {
     const checkConnection = async () => {
@@ -196,7 +145,7 @@ function Dashboard() {
               <button
                 type="button"
                 onClick={handleDisconnect}
-                disabled={safetyCurtainActive}
+                disabled={safetyCurtainActive || statusLoading}
                 style={{
                   fontSize: '11px',
                   fontWeight: 700,
@@ -210,7 +159,6 @@ function Dashboard() {
                   cursor: 'pointer',
                   opacity: statusLoading ? 0.7 : 1,
                 }}
-                disabled={statusLoading}
               >
                 {statusLoading ? "Disconnecting…" : "Disconnect"}
               </button>
@@ -218,7 +166,7 @@ function Dashboard() {
               <button
                 type="button"
                 onClick={handleConnect}
-                disabled={safetyCurtainActive}
+                disabled={safetyCurtainActive || statusLoading}
                 style={{
                   fontSize: '11px',
                   fontWeight: 700,
@@ -232,7 +180,6 @@ function Dashboard() {
                   cursor: 'pointer',
                   opacity: statusLoading ? 0.7 : 1,
                 }}
-                disabled={statusLoading}
               >
                 {statusLoading ? "Connecting…" : "Connect"}
               </button>

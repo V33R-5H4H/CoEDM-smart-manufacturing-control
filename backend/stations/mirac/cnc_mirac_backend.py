@@ -256,14 +256,17 @@ class MIRACDataGateway:
                 opc_connected = False
                 if opcua_connection.connected:
                     try:
-                        nodes = [opcua_connection.client.get_node(nid) for nid in MIRAC_DATA_TAGS.values()]
-                        values = opcua_connection.client.read_values(nodes)
-                        for tag_name, value in zip(MIRAC_DATA_TAGS.keys(), values):
-                            if value is not None:
-                                opc_data[tag_name] = value
+                        for tag_name, nid in MIRAC_DATA_TAGS.items():
+                            try:
+                                node = opcua_connection.client.get_node(nid)
+                                val = node.get_value()
+                                if val is not None:
+                                    opc_data[tag_name] = val
+                            except Exception as e:
+                                logger.debug(f"Failed to read tag {tag_name}: {e}")
                         opc_connected = bool(opc_data)
                     except Exception as e:
-                        logger.warning(f"OPC-UA bulk read error: {e}")
+                        logger.warning(f"OPC-UA read loop error: {e}")
 
                 with self._lock:
                     self._connectivity["opcua"] = opc_connected

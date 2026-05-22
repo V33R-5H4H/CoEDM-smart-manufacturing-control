@@ -137,6 +137,8 @@ class OPCUAConnection:
         """Create a fresh sync Client and connect (must hold self._lock)."""
         logging.info(f"[OPC] Connecting to {self.server_url}...")
         self.client = Client(self.server_url, timeout=60)
+        # Force a short session timeout so the PLC drops abandoned sessions quickly
+        self.client.session_timeout = 10000
         self.client.connect()
         self.connected = True
         logging.info("[OPC] Connected.")

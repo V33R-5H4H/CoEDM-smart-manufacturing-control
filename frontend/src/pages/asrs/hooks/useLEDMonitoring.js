@@ -4,6 +4,7 @@ export function useLEDMonitoring() {
   const [ledStates, setLedStates] = useState({});
   const [shuttleState, setShuttleState] = useState({ col: 'A', row: 7, state: 'idle', command: null });
   const [connected, setConnected] = useState(false);
+  const [safetyCurtainActive, setSafetyCurtainActive] = useState(false);
   const wsRef = useRef(null);
 
   useEffect(() => {
@@ -52,6 +53,9 @@ export function useLEDMonitoring() {
             // Initial state snapshot
             console.log('LED snapshot received:', data.states);
             setLedStates(data.states);
+            if (data.safety !== undefined) {
+              setSafetyCurtainActive(data.safety);
+            }
             break;
 
           case 'led':
@@ -73,6 +77,11 @@ export function useLEDMonitoring() {
               state: data.payload.state,
               command: data.payload.command
             }));
+            break;
+
+          case 'safety':
+            console.log('Safety curtain update:', data.payload.active);
+            setSafetyCurtainActive(data.payload.active);
             break;
 
           default:
@@ -99,5 +108,5 @@ export function useLEDMonitoring() {
     };
   }, []);
 
-  return { ledStates, shuttleState, connected };
+  return { ledStates, shuttleState, connected, safetyCurtainActive };
 }
