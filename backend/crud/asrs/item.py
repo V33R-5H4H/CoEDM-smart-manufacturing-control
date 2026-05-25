@@ -1,10 +1,8 @@
 """
 backend/crud/asrs/item.py
 =========================
-NOTE — PostgreSQL case sensitivity:
-Tables were created with double-quotes → must query with double-quotes:
-  "Items", "SubCompartments", "Boxes"
-item_id in "Items" is INTEGER — pass as int, not str.
+Refactored for Integrated Schema v2 (PostgreSQL lowercase tables).
+Maps internal created_at -> added_on for client compatibility.
 """
 from sqlalchemy import text
 from backend.database.inventory_db import InventorySessionLocal
@@ -20,7 +18,8 @@ class ItemController:
         """Get all items"""
         session = InventorySessionLocal()
         try:
-            result = session.execute(text('SELECT * FROM "Items" ORDER BY item_id'))
+            query = 'SELECT item_id, sku, name, description, item_type, unit, created_at AS added_on FROM storage_items ORDER BY item_id'
+            result = session.execute(text(query))
             columns = result.keys()
             return [dict(zip(columns, row)) for row in result.fetchall()]
         except Exception as e:
@@ -34,8 +33,8 @@ class ItemController:
         session = InventorySessionLocal()
         try:
             result = session.execute(
-                text('SELECT * FROM "Items" WHERE item_id = :id'),
-                {"id": item_id}
+                text('SELECT item_id, sku, name, description, item_type, unit, created_at AS added_on FROM storage_items WHERE item_id = :id'),
+                {"id": int(item_id)}
             )
             item = result.fetchone()
             columns = result.keys()   # capture before close
@@ -60,20 +59,20 @@ class ItemController:
 
             session.execute(
                 text("""
-                    INSERT INTO "Items" (item_id, name, description, added_on)
-                    VALUES (:item_id, :name, :description, :added_on)
+                    INSERT INTO storage_items (item_id, name, description, item_type, created_at, updated_at)
+                    VALUES (:item_id, :name, :description, 'raw', :created_at, :created_at)
                 """),
                 {
                     "item_id": int(item_id),
                     "name": name,
                     "description": description or "",
-                    "added_on": datetime.now(),
+                    "created_at": datetime.now(),
                 }
             )
             session.commit()
 
             result = session.execute(
-                text('SELECT * FROM "Items" WHERE item_id = :id'),
+                text('SELECT item_id, sku, name, description, item_type, unit, created_at AS added_on FROM storage_items WHERE item_id = :id'),
                 {"id": int(item_id)}
             )
             item = result.fetchone()
@@ -93,8 +92,8 @@ class ItemController:
         session = InventorySessionLocal()
         try:
             result = session.execute(
-                text('DELETE FROM "Items" WHERE item_id = :id'),
-                {"id": item_id}
+                text('DELETE FROM storage_items WHERE item_id = :id'),
+                {"id": int(item_id)}
             )
             session.commit()
             if result.rowcount == 0:
@@ -108,14 +107,14 @@ class ItemController:
 
     @staticmethod
     def get_available_items_with_count() -> List[Dict[str, Any]]:
-        """Get items currently stored in SubCompartments with their count"""
+        """Get items currently stored in storage_compartments with their count"""
         session = InventorySessionLocal()
         try:
             result = session.execute(text("""
                 SELECT i.item_id, i.name, COUNT(*) AS available_count
-                FROM "Items" i
-                JOIN "SubCompartments" sc ON i.item_id = sc.item_id
-                WHERE sc.status = 'Occupied'
+                FROM storage_items i
+                JOIN storage_compartments sc ON i.item_id = sc.item_id
+                WHERE sc.status = 'occupied'
                 GROUP BY i.item_id, i.name
                 ORDER BY i.name
             """))
@@ -133,12 +132,15 @@ class ItemController:
         try:
             result = session.execute(
                 text("""
-                    SELECT sc.subcom_place, b.column_name, b.row_number, sc.sub_id
-                    FROM "SubCompartments" sc
-                    JOIN "Boxes" b ON sc.box_id = b.box_id
-                    WHERE sc.item_id = :item_id AND sc.status = 'Occupied'
+                    SELECT sc.compartment_id AS subcom_place, 
+                           b.row_label AS column_name, 
+                           b.col_number AS row_number, 
+                           sc.sub_slot AS sub_id
+                    FROM storage_compartments sc
+                    JOIN storage_boxes b ON sc.box_id = b.box_id
+                    WHERE sc.item_id = :item_id AND sc.status = 'occupied'
                 """),
-                {"item_id": item_id}
+                {"item_id": int(item_id)}
             )
             columns = result.keys()
             return [dict(zip(columns, row)) for row in result.fetchall()]
@@ -153,8 +155,8 @@ class ItemController:
         session = InventorySessionLocal()
         try:
             result = session.execute(
-                text('SELECT COUNT(*) FROM "Items" WHERE item_id = :id'),
-                {"id": item_id}
+                text('SELECT COUNT(*) FROM storage_items WHERE item_id = :id'),
+                {"id": int(item_id)}
             )
             count = result.scalar()
             return (count or 0) > 0
@@ -162,3 +164,4 @@ class ItemController:
             raise Exception(f"Error checking item ID: {e}")
         finally:
             session.close()
+

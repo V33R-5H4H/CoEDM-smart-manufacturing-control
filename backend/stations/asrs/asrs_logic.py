@@ -85,11 +85,17 @@ class ASRSLogic:
                 logger.error(f"Invalid inputs: boxId={box_id}, subId={sub_id}, itemId={item_id}")
                 raise ValueError("Invalid inputs: box_id, subId, and itemId required")
 
+            # Convert item_id to int if possible to match schema type
+            try:
+                item_id_val = int(item_id)
+            except (ValueError, TypeError):
+                item_id_val = item_id
+
             # STEP 2: Check if item exists
             logger.info(f"Checking if item exists: {item_id}")
             item_check = session.execute(
-                text('SELECT item_id FROM "Items" WHERE item_id = :item_id'),
-                {"item_id": item_id}
+                text('SELECT item_id FROM storage_items WHERE item_id = :item_id'),
+                {"item_id": item_id_val}
             ).fetchone()
             if not item_check:
                 logger.error(f"Item not found: {item_id}")
@@ -100,7 +106,7 @@ class ASRSLogic:
             # STEP 3: Check if box exists
             logger.info(f"Checking if box exists: {box_id}")
             box_check = session.execute(
-                text('SELECT box_id FROM "Boxes" WHERE box_id = :box_id'),
+                text('SELECT box_id FROM storage_boxes WHERE box_id = :box_id'),
                 {"box_id": box_id}
             ).fetchone()
             if not box_check:
@@ -134,14 +140,14 @@ class ASRSLogic:
             logger.info(f"PLC success, now updating DB for subcompartment: {subcom_place}")
             # Check if subcompartment exists
             existing_subcom = session.execute(
-                text('SELECT status FROM "SubCompartments" WHERE subcom_place = :place'),
+                text('SELECT status FROM storage_compartments WHERE compartment_id = :place'),
                 {"place": subcom_place}
             ).fetchone()
             db_operation = None
             if existing_subcom:
                 current_status = existing_subcom[0]
                 logger.info(f"SubCompartment {subcom_place} exists with status: {current_status}")
-                if current_status == "Occupied":
+                if current_status.lower() == "occupied":
                     logger.error(f"SubCompartment {subcom_place} is already OCCUPIED")
                     session.rollback()
                     session.close()
@@ -160,11 +166,11 @@ class ASRSLogic:
                     logger.info(f"Updating empty subcompartment {subcom_place} to occupied")
                     session.execute(
                         text("""
-                            UPDATE "SubCompartments"
-                            SET item_id = :item_id, status = 'Occupied'
-                            WHERE subcom_place = :place
+                            UPDATE storage_compartments
+                            SET item_id = :item_id, status = 'occupied'
+                            WHERE compartment_id = :place
                         """),
-                        {"item_id": item_id, "place": subcom_place}
+                        {"item_id": item_id_val, "place": subcom_place}
                     )
                     db_operation = "updated"
             else:
@@ -172,28 +178,27 @@ class ASRSLogic:
                 logger.info(f"Creating new subcompartment: {subcom_place}")
                 session.execute(
                     text("""
-                        INSERT INTO "SubCompartments"
-                        (subcom_place, box_id, sub_id, item_id, status)
-                        VALUES (:subcom_place, :box_id, :sub_id, :item_id, 'Occupied')
+                        INSERT INTO storage_compartments
+                        (box_id, sub_slot, item_id, status)
+                        VALUES (:box_id, :sub_slot, :item_id, 'occupied')
                     """),
                     {
-                        "subcom_place": subcom_place,
                         "box_id": box_id,
-                        "sub_id": sub_id,
-                        "item_id": item_id
+                        "sub_slot": str(sub_id),
+                        "item_id": item_id_val
                     }
                 )
                 db_operation = "created"
 
             # Record transaction
-            logger.info(f"Recording transaction: item={item_id}, place={subcom_place}, action=added")
+            logger.info(f"Recording transaction: item={item_id}, place={subcom_place}, action=add")
             session.execute(
                 text("""
-                    INSERT INTO "Transactions"
-                    (item_id, subcom_place, action, time)
-                    VALUES (:item_id, :subcom_place, 'added', :time)
+                    INSERT INTO storage_transactions
+                    (item_id, compartment_id, action, time)
+                    VALUES (:item_id, :subcom_place, 'add', :time)
                 """),
-                {"item_id": item_id, "subcom_place": subcom_place, "time": datetime.now()}
+                {"item_id": item_id_val, "subcom_place": subcom_place, "time": datetime.now()}
             )
 
             # Commit database changes
@@ -280,12 +285,12 @@ class ASRSLogic:
             # STEP 2: Find occupied subcompartments (column-wise priority)
             available = session.execute(
                 text("""
-                    SELECT sc.subcom_place, sc.box_id, sc.sub_id,
-                           b.column_name, b.row_number
-                    FROM "SubCompartments" sc
-                    JOIN "Boxes" b ON sc.box_id = b.box_id
-                    WHERE sc.item_id = :item_id AND sc.status = 'Occupied'
-                    ORDER BY b.column_name, b.row_number, sc.sub_id
+                    SELECT sc.compartment_id AS subcom_place, sc.box_id, sc.sub_slot AS sub_id,
+                           b.row_label AS column_name, b.col_number AS row_number
+                    FROM storage_compartments sc
+                    JOIN storage_boxes b ON sc.box_id = b.box_id
+                    WHERE sc.item_id = :item_id AND sc.status = 'occupied'
+                    ORDER BY b.row_label, b.col_number, sc.sub_slot
                     LIMIT :quantity
                 """),
                 {"item_id": item_id_val, "quantity": quantity}
@@ -357,18 +362,18 @@ class ASRSLogic:
                 # Mark subcompartment as empty
                 session.execute(
                     text("""
-                        UPDATE "SubCompartments"
-                        SET status = 'Empty', item_id = NULL
-                        WHERE subcom_place = :place
+                        UPDATE storage_compartments
+                        SET status = 'empty', item_id = NULL
+                        WHERE compartment_id = :place
                     """),
                     {"place": subcom_place}
                 )
                 # Record transaction
                 session.execute(
                     text("""
-                        INSERT INTO "Transactions"
-                        (item_id, subcom_place, action, time)
-                        VALUES (:item_id, :subcom_place, 'retrieved', :time)
+                        INSERT INTO storage_transactions
+                        (item_id, compartment_id, action, time)
+                        VALUES (:item_id, :subcom_place, 'retrieve', :time)
                     """),
                     {"item_id": item_id_val, "subcom_place": subcom_place, "time": datetime.now()}
                 )
@@ -431,9 +436,9 @@ class ASRSLogic:
             # STEP 1: Validate that subcompartment exists and has the item
             subcom_place = f"{box_id}{sub_id}"
             query = text("""
-                SELECT sc.subcom_place, sc.item_id, sc.status
-                FROM "SubCompartments" sc
-                WHERE sc.subcom_place = :subcom_place
+                SELECT sc.compartment_id AS subcom_place, sc.item_id, sc.status
+                FROM storage_compartments sc
+                WHERE sc.compartment_id = :subcom_place
             """)
             
             result = session.execute(query, {
@@ -450,7 +455,7 @@ class ASRSLogic:
             current_subcom_place, actual_item_id, status = result
             
             # Check if occupied
-            if status != 'Occupied':
+            if status.lower() != 'occupied':
                 session.close()
                 return {
                     "success": False,
@@ -484,10 +489,10 @@ class ASRSLogic:
             
             # STEP 3: Update database - mark as empty
             update_query = text("""
-                UPDATE "SubCompartments"
+                UPDATE storage_compartments
                 SET item_id = NULL,
-                    status = 'Empty'
-                WHERE subcom_place = :subcom_place
+                    status = 'empty'
+                WHERE compartment_id = :subcom_place
             """)
             
             session.execute(update_query, {"subcom_place": subcom_place})
