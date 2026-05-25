@@ -118,7 +118,7 @@ class VibitModbusReader:
 
         for base, count, fields in _REGISTER_GROUPS:
             try:
-                res = self.client.read_holding_registers(
+                res = self.client.read_input_registers(
                     address=base,
                     count=count,
                     device_id=self.device_id,
