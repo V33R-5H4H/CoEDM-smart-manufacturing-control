@@ -29,6 +29,7 @@ export default function Assembly() {
   const [statusLoading, setStatusLoading] = useState(false);
   const [plantData, setPlantData] = useState(null);
   const [activeTab, setActiveTab] = useState('monitoring');
+  const [activeModal, setActiveModal] = useState(null); // 'piston' | 'clamp' | null
 
   // Smoothed position state for animation
   const [smoothedPosition, setSmoothedPosition] = useState(43);
@@ -513,7 +514,12 @@ export default function Assembly() {
             <div className="asm-press-area" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
               <div className="asm-grid-container">
                 {/* Left Column: Piston Diagnostics HUD */}
-                <div className="asm-hud-card">
+                <div
+                  className="asm-hud-card asm-hud-card--clickable"
+                  onClick={() => setActiveModal("piston")}
+                  style={{ cursor: "pointer" }}
+                  title="Click to open detailed diagnostics panel"
+                >
                   <div className="asm-hud-header">Piston Diagnostics</div>
                   <div className="asm-val">
                     <div className="asm-val__label">Piston Extension</div>
@@ -706,7 +712,12 @@ export default function Assembly() {
                 </div>
 
                 {/* Right Column: Clamp & Workpiece HUD */}
-                <div className="asm-hud-card">
+                <div
+                  className="asm-hud-card asm-hud-card--clickable"
+                  onClick={() => setActiveModal("clamp")}
+                  style={{ cursor: "pointer" }}
+                  title="Click to open detailed diagnostics panel"
+                >
                   <div className="asm-hud-header">Clamp & Workpiece</div>
                   <div className="asm-val">
                     <div className="asm-val__label">Vice Jaws Status</div>
@@ -1172,6 +1183,211 @@ export default function Assembly() {
 
       {/* BUZZER ALARM VIEWPORT RING */}
       {isSafetyFault && <div className="asm-buzzer-ring" />}
+
+      {/* Interactive Sensor Pop-Up Overlay */}
+      {activeModal && (
+        <div 
+          style={{ 
+            position: "fixed", 
+            inset: 0, 
+            background: "rgba(3, 7, 18, 0.75)", 
+            backdropFilter: "blur(10px)", 
+            zIndex: 9999, 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "center" 
+          }} 
+          onClick={() => setActiveModal(null)}
+        >
+          <div 
+            style={{ 
+              background: "rgba(10, 15, 30, 0.96)", 
+              border: "1px solid rgba(255, 255, 255, 0.08)", 
+              borderRadius: "12px", 
+              width: "580px", 
+              maxWidth: "95%", 
+              padding: "24px", 
+              boxShadow: "0 24px 64px rgba(0, 0, 0, 0.85), 0 0 32px rgba(56, 189, 248, 0.05)", 
+              position: "relative", 
+              display: "flex", 
+              flexDirection: "column", 
+              gap: "20px" 
+            }} 
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button 
+              onClick={() => setActiveModal(null)} 
+              style={{ 
+                position: "absolute", 
+                top: "16px", 
+                right: "16px", 
+                background: "rgba(255,255,255,0.03)", 
+                border: "1px solid rgba(255,255,255,0.08)", 
+                color: "var(--text-secondary)", 
+                borderRadius: "50%", 
+                width: "28px", 
+                height: "28px", 
+                display: "flex", 
+                alignItems: "center", 
+                justifyContent: "center", 
+                cursor: "pointer", 
+                transition: "all 0.2s" 
+              }} 
+              onMouseEnter={(e) => { 
+                e.target.style.background = "rgba(255,255,255,0.08)"; 
+                e.target.style.color = "var(--text-primary)"; 
+              }} 
+              onMouseLeave={(e) => { 
+                e.target.style.background = "rgba(255,255,255,0.03)"; 
+                e.target.style.color = "var(--text-secondary)"; 
+              }}
+            >
+              ✕
+            </button>
+            
+            {/* Modal Header */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "50%", background: isWsConnected ? "#4ade80" : "#ef4444", boxShadow: `0 0 8px ${isWsConnected ? "#4ade80" : "#ef4444"}` }} />
+                <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, color: "var(--text-primary)" }}>
+                  {activeModal === "piston" && "Piston Displacement Diagnostics"}
+                  {activeModal === "clamp" && "Vice Clamp & Workpiece Proximity Diagnostics"}
+                </h3>
+              </div>
+              <p style={{ margin: 0, fontSize: "0.68rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>
+                {activeModal === "piston" && "Sensor Model: Assembly-LDS-H01 • Linear Displacement Sensor"}
+                {activeModal === "clamp" && "Sensor Model: Assembly-PROX-V02 • Vice Proximity Sensors"}
+              </p>
+            </div>
+
+            {/* Hardware Specifications */}
+            <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "8px", padding: "12px" }}>
+              <h4 style={{ margin: "0 0 8px 0", fontSize: "0.68rem", color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>
+                Hardware Specifications
+              </h4>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "11px" }}>
+                <div><span style={{ color: "var(--text-muted)" }}>Target Host:</span> <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-secondary)" }}>192.168.1.58</span></div>
+                <div><span style={{ color: "var(--text-muted)" }}>OPC-UA Port:</span> <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-secondary)" }}>4840</span></div>
+                <div><span style={{ color: "var(--text-muted)" }}>Protocol:</span> <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-secondary)" }}>OPC-UA (TCP)</span></div>
+                <div><span style={{ color: "var(--text-muted)" }}>Gateway Status:</span> <span style={{ fontWeight: 700, color: isWsConnected ? "#4ade80" : "#ef4444" }}>{isWsConnected ? "CONNECTED" : "DISCONNECTED"}</span></div>
+              </div>
+            </div>
+
+            {/* Live Metrics */}
+            <div>
+              <h4 style={{ margin: "0 0 8px 0", fontSize: "0.68rem", color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>
+                Decoded Process Variables
+              </h4>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
+                {activeModal === "piston" && (
+                  <>
+                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "6px", padding: "10px", textAlign: "center" }}>
+                      <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Linear Displacement</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#38bdf8", marginTop: "4px" }}>{displacement != null ? displacement : "---"} <span style={{ fontSize: "10px", fontWeight: 600 }}>mm</span></div>
+                    </div>
+                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "6px", padding: "10px", textAlign: "center" }}>
+                      <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Raw Analog Position</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#fff", marginTop: "4px" }}>{plantData?.position?.displacement_mm != null ? plantData.position.displacement_mm.toFixed(2) : "---"} <span style={{ fontSize: "10px", fontWeight: 600 }}>mm</span></div>
+                    </div>
+                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "6px", padding: "10px", textAlign: "center" }}>
+                      <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Piston State</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#fff", marginTop: "4px" }}>{displacement != null ? (displacement > 5 ? "EXTENDING" : "RETRACTED") : "---"}</div>
+                    </div>
+                  </>
+                )}
+                {activeModal === "clamp" && (
+                  <>
+                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "6px", padding: "10px", textAlign: "center" }}>
+                      <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Clamp Status</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: plantData?.vice?.close ? "#38bdf8" : "#4ade80", marginTop: "4px" }}>{plantData?.vice?.close ? "CLOSED" : plantData?.vice?.open ? "OPEN" : "---"}</div>
+                    </div>
+                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "6px", padding: "10px", textAlign: "center" }}>
+                      <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Bearing Detected</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: plantData?.assembly?.bearing ? "#ff6b6b" : "#fff", marginTop: "4px" }}>{plantData?.assembly?.bearing ? "YES" : "NO"}</div>
+                    </div>
+                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "6px", padding: "10px", textAlign: "center" }}>
+                      <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Shaft Detected</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: plantData?.assembly?.shaft ? "#38bdf8" : "#fff", marginTop: "4px" }}>{plantData?.assembly?.shaft ? "YES" : "NO"}</div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* OPC-UA Direct Nodes Table */}
+            <div>
+              <h4 style={{ margin: "0 0 8px 0", fontSize: "0.68rem", color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>
+                OPC-UA Telemetry Node Table
+              </h4>
+              <div style={{ overflowX: "auto", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "6px" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", textAlign: "left", fontFamily: "var(--font-mono)" }}>
+                  <thead>
+                    <tr style={{ background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "9px" }}>NODE ID (ns=4;s=...)</th>
+                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "9px" }}>VARIABLE / SYMBOL</th>
+                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "9px" }}>TYPE</th>
+                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "9px" }}>LIVE VALUE</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeModal === "piston" && (
+                      <>
+                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>|var|CODESYS Control Win V3 x64.Application.GVL.rCylinderPos</td>
+                          <td style={{ padding: "8px 12px", fontWeight: 600 }}>rCylinderPos</td>
+                          <td style={{ padding: "8px 12px", color: "#38bdf8" }}>REAL</td>
+                          <td style={{ padding: "8px 12px", color: "#38bdf8", fontWeight: 700 }}>{plantData?.position?.displacement_mm != null ? plantData.position.displacement_mm.toFixed(3) : "---"}</td>
+                        </tr>
+                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>|var|CODESYS Control Win V3 x64.Application.GVL.bSafetyCurtain</td>
+                          <td style={{ padding: "8px 12px", fontWeight: 600 }}>bSafetyCurtain</td>
+                          <td style={{ padding: "8px 12px", color: "#ef4444" }}>BOOL</td>
+                          <td style={{ padding: "8px 12px", color: plantData?.safety?.curtain ? "#ef4444" : "var(--text-muted)" }}>{plantData?.safety?.curtain ? "TRUE" : "FALSE"}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>|var|CODESYS Control Win V3 x64.Application.GVL.bEmergencyBuzzer</td>
+                          <td style={{ padding: "8px 12px", fontWeight: 600 }}>bEmergencyBuzzer</td>
+                          <td style={{ padding: "8px 12px", color: "#ef4444" }}>BOOL</td>
+                          <td style={{ padding: "8px 12px", color: plantData?.safety?.buzzer ? "#ef4444" : "var(--text-muted)" }}>{plantData?.safety?.buzzer ? "TRUE" : "FALSE"}</td>
+                        </tr>
+                      </>
+                    )}
+                    {activeModal === "clamp" && (
+                      <>
+                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>|var|CODESYS Control Win V3 x64.Application.GVL.bViceOpen</td>
+                          <td style={{ padding: "8px 12px", fontWeight: 600 }}>bViceOpen</td>
+                          <td style={{ padding: "8px 12px", color: "#4ade80" }}>BOOL</td>
+                          <td style={{ padding: "8px 12px", color: plantData?.vice?.open ? "#4ade80" : "var(--text-muted)" }}>{plantData?.vice?.open ? "TRUE" : "FALSE"}</td>
+                        </tr>
+                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>|var|CODESYS Control Win V3 x64.Application.GVL.bViceClose</td>
+                          <td style={{ padding: "8px 12px", fontWeight: 600 }}>bViceClose</td>
+                          <td style={{ padding: "8px 12px", color: "#38bdf8" }}>BOOL</td>
+                          <td style={{ padding: "8px 12px", color: plantData?.vice?.close ? "#38bdf8" : "var(--text-muted)" }}>{plantData?.vice?.close ? "TRUE" : "FALSE"}</td>
+                        </tr>
+                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>|var|CODESYS Control Win V3 x64.Application.GVL.bBearingWorkpiece</td>
+                          <td style={{ padding: "8px 12px", fontWeight: 600 }}>bBearingWorkpiece</td>
+                          <td style={{ padding: "8px 12px", color: "#4ade80" }}>BOOL</td>
+                          <td style={{ padding: "8px 12px", color: plantData?.assembly?.bearing ? "#ff6b6b" : "var(--text-muted)" }}>{plantData?.assembly?.bearing ? "TRUE" : "FALSE"}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>|var|CODESYS Control Win V3 x64.Application.GVL.bShaftWorkpiece</td>
+                          <td style={{ padding: "8px 12px", fontWeight: 600 }}>bShaftWorkpiece</td>
+                          <td style={{ padding: "8px 12px", color: "#4ade80" }}>BOOL</td>
+                          <td style={{ padding: "8px 12px", color: plantData?.assembly?.shaft ? "#38bdf8" : "var(--text-muted)" }}>{plantData?.assembly?.shaft ? "TRUE" : "FALSE"}</td>
+                        </tr>
+                      </>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ToastContainer
         position="bottom-right"

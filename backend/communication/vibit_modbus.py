@@ -48,6 +48,9 @@ class VibitModbusReader:
         self.device_id = device_id
         self.client = ModbusTcpClient(host, port=port, timeout=timeout)
         self._last_log_time = {}
+        self._profile_detected = False
+        self._base_address = 4001
+        self._register_type = "holding"
 
     def _log_throttled(self, key: str, msg: str, *args, level=logging.WARNING, exc_info=None):
         import time
@@ -100,8 +103,143 @@ class VibitModbusReader:
             )
             return False
 
+    def read_energy_snapshot(self, word_swap: bool = True) -> Dict[str, float] | None:
+        """Read current Energy Meter input registers 100-114.
+        Returns dict with 'power' (kW) and 'kwh' (kWh), or None if offline.
+        """
+        if not self._ensure_connected():
+            return None
+
+        try:
+            res = self.client.read_input_registers(
+                address=100,
+                count=14,
+                device_id=self.device_id,
+            )
+        except Exception as e:
+            self._log_throttled(
+                f"read_energy_exception_{self.device_id}",
+                "Exception reading Energy block 100 (Unit ID %s): %s",
+                self.device_id,
+                str(e),
+                level=logging.WARNING
+            )
+            return None
+
+        if res.isError():
+            self._log_throttled(
+                f"read_energy_error_{self.device_id}",
+                "Modbus error reading Energy block 100 (Unit ID %s): %s",
+                self.device_id,
+                str(res),
+                level=logging.WARNING
+            )
+            return None
+
+        regs = res.registers
+        if len(regs) < 10:
+            return None
+
+        try:
+            # Active Power: registers 104-105 (indices 4, 5)
+            reg_p0 = regs[4]
+            reg_p1 = regs[5]
+            if word_swap:
+                raw_p = struct.pack(">HH", reg_p1, reg_p0)
+            else:
+                raw_p = struct.pack(">HH", reg_p0, reg_p1)
+            power = round(struct.unpack(">f", raw_p)[0], 4)
+
+            # Total Active Energy: registers 108-109 (indices 8, 9)
+            reg_e0 = regs[8]
+            reg_e1 = regs[9]
+            if word_swap:
+                raw_e = struct.pack(">HH", reg_e1, reg_e0)
+            else:
+                raw_e = struct.pack(">HH", reg_e0, reg_e1)
+            kwh = round(struct.unpack(">f", raw_e)[0], 4)
+
+            return {
+                "power": power,
+                "kwh": kwh,
+                "raw_power_regs": [reg_p0, reg_p1],
+                "raw_kwh_regs": [reg_e0, reg_e1]
+            }
+        except Exception as e:
+            self._log_throttled(
+                f"decode_energy_error_{self.device_id}",
+                "Failed decoding energy registers (Unit ID %s): %s",
+                self.device_id,
+                str(e),
+                level=logging.ERROR
+            )
+            return None
+
+    def _detect_sensor_profile(self) -> bool:
+        """Auto-detect the Modbus register type (holding vs input) and base address
+        for this VibIT vibration sensor by probing the device.
+        """
+        if self._profile_detected:
+            return True
+
+        if not self._ensure_connected():
+            return False
+
+        # Candidates to try: (base_address, register_type)
+        candidates = [
+            (4000, "input"),      # MIRAC spindle (unit 1), TRIAC feed (unit 3)
+            (4001, "holding"),    # Standard VibIT holding base
+            (4050, "holding"),    # TRIAC tool (unit 2)
+            (4050, "input"),
+            (4000, "holding"),
+            (4001, "input"),
+        ]
+
+        for base, reg_type in candidates:
+            try:
+                if reg_type == "holding":
+                    res = self.client.read_holding_registers(
+                        address=base,
+                        count=26,
+                        device_id=self.device_id,
+                    )
+                else:
+                    res = self.client.read_input_registers(
+                        address=base,
+                        count=26,
+                        device_id=self.device_id,
+                    )
+
+                if res and not res.isError() and hasattr(res, "registers") and len(res.registers) >= 26:
+                    self._base_address = base
+                    self._register_type = reg_type
+                    self._profile_detected = True
+                    logger.info(
+                        "Auto-detected VibIT sensor profile for Unit ID %s: %s registers starting at %s",
+                        self.device_id,
+                        reg_type,
+                        base
+                    )
+                    return True
+            except Exception:
+                continue
+
+        # If probing fails, fall back to holding registers starting at 4001
+        self._base_address = 4001
+        self._register_type = "holding"
+        self._profile_detected = True
+        logger.warning(
+            "VibIT sensor profile detection failed for Unit ID %s. Falling back to holding registers at 4001.",
+            self.device_id
+        )
+        return True
+
     def read_snapshot(self) -> Dict[str, float] | None:
-        """Read current VibIT metrics. Returns None if disconnected/fatal failure."""
+        """Read current VibIT metrics using auto-detected profile."""
+        if not self._profile_detected:
+            if not self._detect_sensor_profile():
+                return None
+
         if not self._ensure_connected():
             return None
 
@@ -116,13 +254,46 @@ class VibitModbusReader:
 
         values: Dict[str, float] = {}
 
-        for base, count, fields in _REGISTER_GROUPS:
+        # Define dynamic register groups based on detected base address
+        dynamic_groups = [
+            (
+                self._base_address,
+                26,
+                [
+                    (0, "x_rms_acc"),
+                    (2, "y_rms_acc"),
+                    (4, "z_rms_acc"),
+                    (6, "x_rms_vel"),
+                    (8, "y_rms_vel"),
+                    (10, "z_rms_vel"),
+                    (12, "temperature"),
+                    (14, "x_peak_acc"),
+                    (16, "y_peak_acc"),
+                    (18, "z_peak_acc"),
+                    (20, "x_peak_vel"),
+                    (22, "y_peak_vel"),
+                    (24, "z_peak_vel"),
+                ],
+            ),
+            (self._base_address + 30, 2, [(0, "reboot_count")]),
+            (self._base_address + 34, 2, [(0, "led_status")]),
+            (self._base_address + 38, 2, [(0, "rpm")]),
+        ]
+
+        for base, count, fields in dynamic_groups:
             try:
-                res = self.client.read_holding_registers(
-                    address=base,
-                    count=count,
-                    device_id=self.device_id,
-                )
+                if self._register_type == "holding":
+                    res = self.client.read_holding_registers(
+                        address=base,
+                        count=count,
+                        device_id=self.device_id,
+                    )
+                else:
+                    res = self.client.read_input_registers(
+                        address=base,
+                        count=count,
+                        device_id=self.device_id,
+                    )
             except Exception as e:
                 err_str = str(e)
                 self._log_throttled(
@@ -156,7 +327,8 @@ class VibitModbusReader:
             regs = res.registers
             for offset, key in fields:
                 try:
-                    values[key] = _decode_vibit_float(regs[offset], regs[offset + 1])
+                    if len(regs) > offset + 1:
+                        values[key] = _decode_vibit_float(regs[offset], regs[offset + 1])
                 except Exception as e:
                     self._log_throttled(
                         f"decode_error_{key}_{self.device_id}",
@@ -170,5 +342,10 @@ class VibitModbusReader:
 
         if not values:
             return None
+
+        # Expose auto-detected profile parameters so the frontend and broadcaster
+        # can show the precise physical address mapping.
+        values["base_address"] = float(self._base_address)
+        values["is_holding"] = 1.0 if self._register_type == "holding" else 0.0
 
         return values

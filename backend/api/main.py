@@ -17,6 +17,7 @@ from backend.database.db import engine, verify_db
 from backend.api.routes.control.asrs import asrs_control
 from backend.api.routes.control.assembly import assembly_control
 from backend.api.routes.control.mirac import mirac_control
+from backend.api.routes.control.triac import triac_control
 from backend.api.routes.control.asrs.shuttle import router as shuttle_router
 from backend.api.routes.data.asrs.asrs_data import router as asrs_data_router
 from backend.stations.asrs.asrs_singleton import asrs_controller
@@ -55,6 +56,7 @@ app.add_middleware(
 app.include_router(asrs_control.router)
 app.include_router(assembly_control.router)
 app.include_router(mirac_control.router)
+app.include_router(triac_control.router)
 app.include_router(shuttle_router)
 app.include_router(asrs_data_router)
 
