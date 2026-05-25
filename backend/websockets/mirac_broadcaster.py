@@ -6,6 +6,9 @@ from fastapi import WebSocket
 from typing import Set
 from backend.stations.mirac.cnc_mirac_station import opcua_connection, MIRAC_DATA_TAGS
 from backend.communication.vibit_modbus import VibitModbusReader
+from backend.database.db import SessionLocal
+from sqlalchemy import text
+from backend.core.timezone import ist_now
 from backend.config import settings
 import logging
 
@@ -34,6 +37,7 @@ class MiracBroadcaster:
         )
         self._last_modbus_read_time = 0.0
         self._cached_modbus_data = (None, None, None)
+        self._sensor_ids_cached = None
         
     async def connect(self, websocket: WebSocket):
         """Register a new WebSocket connection"""
@@ -56,6 +60,174 @@ class MiracBroadcaster:
             if self.broadcast_task:
                 self.broadcast_task.cancel()
     
+    def _get_sensor_ids(self) -> dict:
+        """Resolve sensor UUIDs dynamically."""
+        if self._sensor_ids_cached:
+            return self._sensor_ids_cached
+            
+        session = SessionLocal()
+        try:
+            rows = session.execute(
+                text("SELECT sensor_id, legacy_key FROM machine_sensors WHERE machine_id = 'mirac' OR machine_id = 'triac'")
+            ).fetchall()
+            self._sensor_ids_cached = {row[1]: str(row[0]) for row in rows}
+            return self._sensor_ids_cached
+        except Exception as e:
+            logger.error(f"Error resolving mirac sensors: {e}")
+            return {}
+        finally:
+            session.close()
+
+    async def _log_to_db(self, plc_data: dict, vibit1_data: dict, vibit2_data: dict, vibit3_data: dict):
+        """Log MIRAC PLC, VibITs, and Energy Meter data to PostgreSQL in a background thread."""
+        def _write():
+            sensors = self._get_sensor_ids()
+            if not sensors:
+                return
+                
+            session = SessionLocal()
+            try:
+                now_dt = ist_now()
+                
+                # 1. Log to mirac_sensor_data (if PLC active)
+                if plc_data:
+                    plc_sensor_id = sensors.get("mirac")
+                    if plc_sensor_id:
+                        session.execute(
+                            text("""
+                                INSERT INTO mirac_sensor_data (
+                                    time, machine_id, sensor_id,
+                                    x_axis_value, y_axis_value, z_axis_value,
+                                    spindle_speed, spindle_temperature, spindle_vibration,
+                                    tool_temperature, tool_vibration, tool_number,
+                                    led_red, led_yellow, led_green, safety_curtain_status
+                                )
+                                VALUES (
+                                    :time, 'mirac', :sensor_id,
+                                    :x_val, 0.0, :z_val,
+                                    :speed, :temp, :vib,
+                                    :tool_temp, :tool_vib, :tool_num,
+                                    :red, :yellow, :green, :curtain
+                                )
+                            """),
+                            {
+                                "time": now_dt,
+                                "sensor_id": plc_sensor_id,
+                                "x_val": float(plc_data.get("x_axis_value") or 0.0),
+                                "z_val": float(plc_data.get("z_axis_value") or 0.0),
+                                "speed": float(plc_data.get("spindle_speed") or 0.0),
+                                "temp": float(plc_data.get("spindle_temp") or 0.0),
+                                "vib": float(plc_data.get("spindle_vibration") or 0.0),
+                                "tool_temp": float(plc_data.get("tool_temp") or 0.0),
+                                "tool_vib": float(plc_data.get("tool_vibration") or 0.0),
+                                "tool_num": int(plc_data.get("tool_number") or 1),
+                                "red": bool(plc_data.get("led_red") or False),
+                                "yellow": bool(plc_data.get("led_yellow") or False),
+                                "green": bool(plc_data.get("led_green") or False),
+                                "curtain": bool(plc_data.get("safety_curtain") or False)
+                            }
+                        )
+                        
+                # 2. Log to vibit_readings for Spindle (VibIT 1)
+                if vibit1_data and any(v is not None for v in vibit1_data.values()):
+                    vibit1_sensor_id = sensors.get("mirac_vibit1")
+                    if vibit1_sensor_id:
+                        session.execute(
+                            text("""
+                                INSERT INTO vibit_readings (
+                                    time, sensor_id, modbus_unit_id,
+                                    x_rms_acc, y_rms_acc, z_rms_acc,
+                                    x_peak_acc, y_peak_acc, z_peak_acc,
+                                    temperature, rpm
+                                )
+                                VALUES (
+                                    :time, :sensor_id, 1,
+                                    :x_rms, :y_rms, :z_rms,
+                                    :x_peak, :y_peak, :z_peak,
+                                    :temp, :rpm
+                                )
+                            """),
+                            {
+                                "time": now_dt,
+                                "sensor_id": vibit1_sensor_id,
+                                "x_rms": float(vibit1_data.get("x_rms_acc") or 0.0),
+                                "y_rms": float(vibit1_data.get("y_rms_acc") or 0.0),
+                                "z_rms": float(vibit1_data.get("z_rms_acc") or 0.0),
+                                "x_peak": float(vibit1_data.get("x_peak_acc") or 0.0),
+                                "y_peak": float(vibit1_data.get("y_peak_acc") or 0.0),
+                                "z_peak": float(vibit1_data.get("z_peak_acc") or 0.0),
+                                "temp": float(vibit1_data.get("temperature") or 0.0),
+                                "rpm": float(vibit1_data.get("rpm") or 0.0)
+                            }
+                        )
+
+                # 3. Log to vibit_readings for Tool (VibIT 2)
+                if vibit2_data and any(v is not None for v in vibit2_data.values()):
+                    vibit2_sensor_id = sensors.get("mirac_vibit2")
+                    if vibit2_sensor_id:
+                        session.execute(
+                            text("""
+                                INSERT INTO vibit_readings (
+                                    time, sensor_id, modbus_unit_id,
+                                    x_rms_acc, y_rms_acc, z_rms_acc,
+                                    x_peak_acc, y_peak_acc, z_peak_acc,
+                                    temperature, rpm
+                                )
+                                VALUES (
+                                    :time, :sensor_id, 2,
+                                    :x_rms, :y_rms, :z_rms,
+                                    :x_peak, :y_peak, :z_peak,
+                                    :temp, 0.0
+                                )
+                            """),
+                            {
+                                "time": now_dt,
+                                "sensor_id": vibit2_sensor_id,
+                                "x_rms": float(vibit2_data.get("x_rms_acc") or 0.0),
+                                "y_rms": float(vibit2_data.get("y_rms_acc") or 0.0),
+                                "z_rms": float(vibit2_data.get("z_rms_acc") or 0.0),
+                                "x_peak": float(vibit2_data.get("x_peak_acc") or 0.0),
+                                "y_peak": float(vibit2_data.get("y_peak_acc") or 0.0),
+                                "z_peak": float(vibit2_data.get("z_peak_acc") or 0.0),
+                                "temp": float(vibit2_data.get("temperature") or 0.0)
+                            }
+                        )
+
+                # 4. Log to energy_meter_data (VibIT 3)
+                if vibit3_data and (vibit3_data.get("kwh") is not None or vibit3_data.get("power") is not None):
+                    energy_sensor_id = sensors.get("mirac_energy")
+                    if energy_sensor_id:
+                        power = float(vibit3_data.get("power") or 0.0)
+                        session.execute(
+                            text("""
+                                INSERT INTO energy_meter_data (
+                                    time, machine_id, sensor_id,
+                                    average_voltage_ln, average_voltage_ll, average_current,
+                                    total_net_kwh
+                                )
+                                VALUES (
+                                    :time, 'mirac', :sensor_id,
+                                    230.0, 400.0, :current,
+                                    :kwh
+                                )
+                            """),
+                            {
+                                "time": now_dt,
+                                "sensor_id": energy_sensor_id,
+                                "current": power / 230.0,
+                                "kwh": float(vibit3_data.get("kwh") or 0.0)
+                            }
+                        )
+
+                session.commit()
+            except Exception as e:
+                logger.error(f"Error logging mirac data to DB: {e}")
+                session.rollback()
+            finally:
+                session.close()
+
+        await asyncio.to_thread(_write)
+
     async def _read_plc_data(self) -> dict:
         """Read current MIRAC PLC data from OPC UA server.
         
@@ -108,6 +280,9 @@ class MiracBroadcaster:
                     asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, False)
                 )
                 self._cached_modbus_data = (vibit1_data, vibit2_data, vibit3_data)
+                
+                # Write to DB inside the Modbus 2.0s read tick!
+                asyncio.create_task(self._log_to_db(plc_data, vibit1_data or {}, vibit2_data or {}, vibit3_data or {}))
             else:
                 vibit1_data, vibit2_data, vibit3_data = copy.deepcopy(self._cached_modbus_data)
 

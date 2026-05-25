@@ -25,17 +25,19 @@ class SubCompartmentController:
         session = InventorySessionLocal()
         try:
             query = """
-                SELECT compartment_id AS subcom_place, 
-                       box_id, 
-                       sub_slot AS sub_id, 
-                       item_id, 
-                       CASE status 
+                SELECT sc.compartment_id AS subcom_place, 
+                       sc.box_id, 
+                       sc.sub_slot AS sub_id, 
+                       sc.item_id, 
+                       i.name AS item_name,
+                       CASE sc.status 
                            WHEN 'occupied' THEN 'Occupied' 
                            WHEN 'empty' THEN 'Empty' 
-                           ELSE INITCAP(status) 
+                           ELSE INITCAP(sc.status) 
                        END AS status
-                FROM storage_compartments 
-                ORDER BY compartment_id
+                FROM storage_compartments sc
+                LEFT JOIN storage_items i ON sc.item_id = i.item_id
+                ORDER BY sc.compartment_id
             """
             result = session.execute(text(query))
             columns = result.keys()
@@ -54,17 +56,19 @@ class SubCompartmentController:
         session = InventorySessionLocal()
         try:
             query = """
-                SELECT compartment_id AS subcom_place, 
-                       box_id, 
-                       sub_slot AS sub_id, 
-                       item_id, 
-                       CASE status 
+                SELECT sc.compartment_id AS subcom_place, 
+                       sc.box_id, 
+                       sc.sub_slot AS sub_id, 
+                       sc.item_id, 
+                       i.name AS item_name,
+                       CASE sc.status 
                            WHEN 'occupied' THEN 'Occupied' 
                            WHEN 'empty' THEN 'Empty' 
-                           ELSE INITCAP(status) 
+                           ELSE INITCAP(sc.status) 
                        END AS status
-                FROM storage_compartments 
-                WHERE compartment_id = :place
+                FROM storage_compartments sc
+                LEFT JOIN storage_items i ON sc.item_id = i.item_id
+                WHERE sc.compartment_id = :place
             """
             result = session.execute(text(query), {"place": place})
             row = result.fetchone()

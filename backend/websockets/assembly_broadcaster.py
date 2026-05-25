@@ -1,13 +1,11 @@
-"""
-Hydraulic Data WebSocket Broadcaster
-Continuously streams hydraulic system data to connected clients
-"""
-
 import asyncio
 import json
 from fastapi import WebSocket
 from typing import Set
 from backend.stations.assembly.hydraulic_station import opcua_connection, HYDRAULIC_DATA_TAGS
+from backend.database.db import SessionLocal
+from sqlalchemy import text
+from backend.core.timezone import ist_now
 import logging
 
 logger = logging.getLogger(__name__)
@@ -17,6 +15,8 @@ class HydraulicBroadcaster:
         self.active_connections: Set[WebSocket] = set()
         self.is_broadcasting = False
         self.broadcast_task = None
+        self.last_db_write_time = 0.0
+        self._sensor_id_cached = None
         
     async def connect(self, websocket: WebSocket):
         """Register a new WebSocket connection"""
@@ -38,6 +38,67 @@ class HydraulicBroadcaster:
             self.is_broadcasting = False
             if self.broadcast_task:
                 self.broadcast_task.cancel()
+    
+    def _get_sensor_id(self) -> str:
+        """Resolve sensor UUID for 'assembly' legacy key."""
+        if self._sensor_id_cached:
+            return self._sensor_id_cached
+        
+        session = SessionLocal()
+        try:
+            row = session.execute(
+                text("SELECT sensor_id FROM machine_sensors WHERE legacy_key = 'assembly'")
+            ).fetchone()
+            if row:
+                self._sensor_id_cached = str(row[0])
+                return self._sensor_id_cached
+        except Exception as e:
+            logger.error(f"Error fetching sensor_id: {e}")
+        finally:
+            session.close()
+        return None
+
+    async def _log_to_db(self, payload: dict):
+        """Write a new telemetry log to assembly_station_data in a background thread."""
+        def _write():
+            sensor_id = self._get_sensor_id()
+            if not sensor_id:
+                return
+                
+            session = SessionLocal()
+            try:
+                session.execute(
+                    text("""
+                        INSERT INTO assembly_station_data (
+                            time, machine_id, sensor_id,
+                            bearing_operation_status, shaft_operation_status,
+                            led_red, led_yellow, led_green, safety_curtain_status
+                        )
+                        VALUES (
+                            :time, 'assembly', :sensor_id,
+                            :bearing, :shaft,
+                            :red, :yellow, :green, :curtain
+                        )
+                    """),
+                    {
+                        "time": ist_now(),
+                        "sensor_id": sensor_id,
+                        "bearing": payload["assembly"]["bearing"],
+                        "shaft": payload["assembly"]["shaft"],
+                        "red": payload["safety"]["lights"]["red"],
+                        "yellow": payload["safety"]["lights"]["orange"],
+                        "green": payload["safety"]["lights"]["green"],
+                        "curtain": payload["safety"]["curtain"]
+                    }
+                )
+                session.commit()
+            except Exception as e:
+                logger.error(f"Error logging assembly data to DB: {e}")
+                session.rollback()
+            finally:
+                session.close()
+                
+        await asyncio.to_thread(_write)
     
     async def _read_hydraulic_data(self) -> dict:
         """Read current hydraulic data from OPC UA server.
@@ -65,7 +126,7 @@ class HydraulicBroadcaster:
                     data[tag_name] = None
 
             # Map to frontend format
-            return {
+            payload = {
                 "connected": True,
                 "timestamp": asyncio.get_running_loop().time(),
                 "assembly": {
@@ -89,6 +150,14 @@ class HydraulicBroadcaster:
                     }
                 }
             }
+
+            # Throttle DB writes to once every 2.0 seconds
+            now = asyncio.get_running_loop().time()
+            if now - self.last_db_write_time >= 2.0:
+                self.last_db_write_time = now
+                asyncio.create_task(self._log_to_db(payload))
+
+            return payload
         except Exception as e:
             logger.error(f"Error reading hydraulic data: {e}")
             return self._disconnected_payload()

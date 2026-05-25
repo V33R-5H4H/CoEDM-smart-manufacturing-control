@@ -14,7 +14,7 @@ Provides:
 import logging
 from contextlib import contextmanager
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, event
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 from backend.config import settings
@@ -33,6 +33,16 @@ engine = create_engine(
     pool_pre_ping=True,      # cheaply verify connection liveness before use
     echo=settings.DB_ECHO,   # set DB_ECHO=true in .env to log every SQL
 )
+
+@event.listens_for(engine, "connect")
+def set_timezone(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("SET TIME ZONE 'Asia/Kolkata'")
+    except Exception as e:
+        logger.warning("Failed to set timezone to Asia/Kolkata: %s", e)
+    finally:
+        cursor.close()
 
 # ---------------------------------------------------------------------------
 # Session factory
