@@ -1,15 +1,15 @@
 """
 backend/crud/asrs/item.py
 =========================
-NOTE — PostgreSQL case sensitivity:
-Tables were created with double-quotes → must query with double-quotes:
-  "Items", "SubCompartments", "Boxes"
-item_id in "Items" is INTEGER — pass as int, not str.
+Updated to use new schema (Integrated_Schema):
+  storage_items (item_id SERIAL PK, name, description, sku, item_type, unit, machine_id)
+  Old: "Items" (item_id, name, description, added_on)
+
+item_type must be one of: 'raw', 'finished', 'tool', 'consumable'
 """
 from sqlalchemy import text
 from backend.database.inventory_db import InventorySessionLocal
 from typing import List, Dict, Any, Optional
-from datetime import datetime
 
 
 class ItemController:
@@ -20,7 +20,7 @@ class ItemController:
         """Get all items"""
         session = InventorySessionLocal()
         try:
-            result = session.execute(text('SELECT * FROM "Items" ORDER BY item_id'))
+            result = session.execute(text('SELECT * FROM storage_items ORDER BY item_id'))
             columns = result.keys()
             return [dict(zip(columns, row)) for row in result.fetchall()]
         except Exception as e:
@@ -34,11 +34,11 @@ class ItemController:
         session = InventorySessionLocal()
         try:
             result = session.execute(
-                text('SELECT * FROM "Items" WHERE item_id = :id'),
+                text('SELECT * FROM storage_items WHERE item_id = :id'),
                 {"id": item_id}
             )
             item = result.fetchone()
-            columns = result.keys()   # capture before close
+            columns = result.keys()
             if not item:
                 return None
             return dict(zip(columns, item))
@@ -48,37 +48,62 @@ class ItemController:
             session.close()
 
     @staticmethod
-    def create_item(item_id, name: str, description: str) -> Dict[str, Any]:
+    def create_item(item_id, name: str, description: str,
+                    sku: str = None, item_type: str = 'raw', unit: str = 'pcs') -> Dict[str, Any]:
         """Create a new item.
-        
-        item_id is INTEGER in the DB — pass a numeric value or castable string.
+        item_id is auto-generated (SERIAL) — pass None to auto-assign.
+        item_type must be: 'raw', 'finished', 'tool', 'consumable'
         """
         session = InventorySessionLocal()
         try:
-            if not item_id or not name:
-                raise ValueError("Please provide item_id and name")
+            if not name:
+                raise ValueError("Please provide item name")
 
-            session.execute(
-                text("""
-                    INSERT INTO "Items" (item_id, name, description, added_on)
-                    VALUES (:item_id, :name, :description, :added_on)
-                """),
-                {
-                    "item_id": int(item_id),
-                    "name": name,
-                    "description": description or "",
-                    "added_on": datetime.now(),
-                }
-            )
+            valid_types = ('raw', 'finished', 'tool', 'consumable')
+            if item_type not in valid_types:
+                item_type = 'raw'
+
+            if item_id is not None:
+                result = session.execute(
+                    text("""
+                        INSERT INTO storage_items (item_id, name, description, sku, item_type, unit)
+                        VALUES (:item_id, :name, :description, :sku, :item_type, :unit)
+                        RETURNING item_id
+                    """),
+                    {
+                        "item_id": int(item_id),
+                        "name": name,
+                        "description": description or "",
+                        "sku": sku,
+                        "item_type": item_type,
+                        "unit": unit,
+                    }
+                )
+            else:
+                result = session.execute(
+                    text("""
+                        INSERT INTO storage_items (name, description, sku, item_type, unit)
+                        VALUES (:name, :description, :sku, :item_type, :unit)
+                        RETURNING item_id
+                    """),
+                    {
+                        "name": name,
+                        "description": description or "",
+                        "sku": sku,
+                        "item_type": item_type,
+                        "unit": unit,
+                    }
+                )
+            new_id = result.fetchone()[0]
             session.commit()
 
-            result = session.execute(
-                text('SELECT * FROM "Items" WHERE item_id = :id'),
-                {"id": int(item_id)}
-            )
-            item = result.fetchone()
-            columns = result.keys()
-            return dict(zip(columns, item))
+            row = session.execute(
+                text('SELECT * FROM storage_items WHERE item_id = :id'),
+                {"id": new_id}
+            ).fetchone()
+            return dict(zip(result.keys() if row is None else
+                           session.execute(text('SELECT * FROM storage_items WHERE item_id = :id'), {"id": new_id}).keys(),
+                           row)) if row else {"item_id": new_id, "name": name}
         except ValueError:
             raise
         except Exception as e:
@@ -93,7 +118,7 @@ class ItemController:
         session = InventorySessionLocal()
         try:
             result = session.execute(
-                text('DELETE FROM "Items" WHERE item_id = :id'),
+                text('DELETE FROM storage_items WHERE item_id = :id'),
                 {"id": item_id}
             )
             session.commit()
@@ -108,14 +133,14 @@ class ItemController:
 
     @staticmethod
     def get_available_items_with_count() -> List[Dict[str, Any]]:
-        """Get items currently stored in SubCompartments with their count"""
+        """Get items currently stored in compartments with their count"""
         session = InventorySessionLocal()
         try:
             result = session.execute(text("""
                 SELECT i.item_id, i.name, COUNT(*) AS available_count
-                FROM "Items" i
-                JOIN "SubCompartments" sc ON i.item_id = sc.item_id
-                WHERE sc.status = 'Occupied'
+                FROM storage_items i
+                JOIN storage_compartments sc ON i.item_id = sc.item_id
+                WHERE sc.status = 'occupied'
                 GROUP BY i.item_id, i.name
                 ORDER BY i.name
             """))
@@ -133,10 +158,10 @@ class ItemController:
         try:
             result = session.execute(
                 text("""
-                    SELECT sc.subcom_place, b.column_name, b.row_number, sc.sub_id
-                    FROM "SubCompartments" sc
-                    JOIN "Boxes" b ON sc.box_id = b.box_id
-                    WHERE sc.item_id = :item_id AND sc.status = 'Occupied'
+                    SELECT sc.compartment_id, b.row_label, b.col_number, sc.sub_slot
+                    FROM storage_compartments sc
+                    JOIN storage_boxes b ON sc.box_id = b.box_id
+                    WHERE sc.item_id = :item_id AND sc.status = 'occupied'
                 """),
                 {"item_id": item_id}
             )
@@ -153,7 +178,7 @@ class ItemController:
         session = InventorySessionLocal()
         try:
             result = session.execute(
-                text('SELECT COUNT(*) FROM "Items" WHERE item_id = :id'),
+                text('SELECT COUNT(*) FROM storage_items WHERE item_id = :id'),
                 {"id": item_id}
             )
             count = result.scalar()

@@ -1,16 +1,18 @@
 """
 backend/crud/asrs/order.py
 ==========================
-NOTE — PostgreSQL case sensitivity + dialect differences:
-  Tables: "Orders", "OrderItems", "Items", "SubCompartments", "Transactions"
-  MySQL → PostgreSQL conversions made:
-    LAST_INSERT_ID()  →  RETURNING order_id
-    GROUP_CONCAT()    →  STRING_AGG()
+Updated to use new schema (Integrated_Schema):
+  orders        (order_id SERIAL, machine_id, operator_id, customer_name, customer_email,
+                 customer_phone, shipping_address, total_amount, order_status, notes)
+  order_items   (order_item_id, order_id, item_id, quantity, unit_price, total_price)
+  storage_items (item_id, name, ...)
+  storage_compartments (compartment_id, ...)
+  storage_transactions (...)
 """
 from sqlalchemy import text
 from backend.database.inventory_db import InventorySessionLocal
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class OrderController:
@@ -49,11 +51,11 @@ class OrderController:
             # Insert order — use RETURNING to get the generated ID (PostgreSQL)
             result = session.execute(
                 text("""
-                    INSERT INTO "Orders"
-                        (customer_name, customer_email, customer_phone,
+                    INSERT INTO orders
+                        (machine_id, customer_name, customer_email, customer_phone,
                          shipping_address, total_amount, order_status)
                     VALUES
-                        (:customer_name, :customer_email, :customer_phone,
+                        ('asrs', :customer_name, :customer_email, :customer_phone,
                          :shipping_address, :total_amount, :order_status)
                     RETURNING order_id
                 """),
@@ -73,8 +75,8 @@ class OrderController:
                 # Check inventory
                 avail = session.execute(
                     text("""
-                        SELECT COUNT(*) FROM "SubCompartments"
-                        WHERE item_id = :item_id AND status = 'Occupied'
+                        SELECT COUNT(*) FROM storage_compartments
+                        WHERE item_id = :item_id AND status = 'occupied'
                     """),
                     {"item_id": item["item_id"]}
                 ).scalar()
@@ -87,7 +89,7 @@ class OrderController:
                 # Insert order item
                 session.execute(
                     text("""
-                        INSERT INTO "OrderItems" (order_id, item_id, quantity, unit_price, total_price)
+                        INSERT INTO order_items (order_id, item_id, quantity, unit_price, total_price)
                         VALUES (:order_id, :item_id, :quantity, :unit_price, :total_price)
                     """),
                     {
@@ -99,49 +101,41 @@ class OrderController:
                     }
                 )
 
-                # Mark subcompartments empty and log transactions
+                # Mark storage_compartments empty and log transactions
                 compartments = session.execute(
                     text("""
-                        SELECT sc.subcom_place
-                        FROM "SubCompartments" sc
-                        JOIN "Boxes" b ON sc.box_id = b.box_id
-                        WHERE sc.item_id = :item_id AND sc.status = 'Occupied'
-                        ORDER BY b.column_name, b.row_number, sc.sub_id
+                        SELECT sc.compartment_id
+                        FROM storage_compartments sc
+                        JOIN storage_boxes b ON sc.box_id = b.box_id
+                        WHERE sc.item_id = :item_id AND sc.status = 'occupied'
+                        ORDER BY b.row_label, b.col_number, sc.sub_slot
                         LIMIT :quantity
                     """),
                     {"item_id": item["item_id"], "quantity": item["quantity"]}
                 ).fetchall()
 
-                for (subcom_place,) in compartments:
+                for (compartment_id,) in compartments:
                     session.execute(
                         text("""
-                            UPDATE "SubCompartments"
-                            SET status = 'Empty', item_id = NULL
-                            WHERE subcom_place = :place
+                            UPDATE storage_compartments
+                            SET status = 'empty', item_id = NULL, quantity = 0, updated_at = NOW()
+                            WHERE compartment_id = :place
                         """),
-                        {"place": subcom_place}
+                        {"place": compartment_id}
                     )
                     session.execute(
                         text("""
-                            INSERT INTO "Transactions" (item_id, subcom_place, action, time)
-                            VALUES (:item_id, :subcom_place, 'ordered', :time)
+                            INSERT INTO storage_transactions (machine_id, compartment_id, item_id, action, time)
+                            VALUES ('asrs', :compartment_id, :item_id, 'retrieve', :time)
                         """),
-                        {"item_id": item["item_id"], "subcom_place": subcom_place, "time": datetime.now()}
+                        {"item_id": item["item_id"], "compartment_id": compartment_id, "time": datetime.now(timezone.utc)}
                     )
 
             session.commit()
 
             # Return the created order
-            order_row = session.execute(
-                text('SELECT * FROM "Orders" WHERE order_id = :id'),
-                {"id": order_id}
-            ).fetchone()
-            columns = session.execute(
-                text('SELECT * FROM "Orders" WHERE order_id = :id'), {"id": order_id}
-            )
-            # Simpler: re-fetch
             res2 = session.execute(
-                text('SELECT * FROM "Orders" WHERE order_id = :id'), {"id": order_id}
+                text('SELECT * FROM orders WHERE order_id = :id'), {"id": order_id}
             )
             row2 = res2.fetchone()
             cols2 = res2.keys()
@@ -162,9 +156,9 @@ class OrderController:
                 text("""
                     SELECT o.*,
                            STRING_AGG(CAST(oi.quantity AS TEXT) || 'x ' || i.name, ', ') AS items_summary
-                    FROM "Orders" o
-                    LEFT JOIN "OrderItems" oi ON o.order_id = oi.order_id
-                    LEFT JOIN "Items"      i  ON oi.item_id  = i.item_id
+                    FROM orders o
+                    LEFT JOIN order_items oi ON o.order_id = oi.order_id
+                    LEFT JOIN storage_items i  ON oi.item_id  = i.item_id
                     GROUP BY o.order_id
                     ORDER BY o.created_at DESC
                     LIMIT :limit
@@ -184,7 +178,7 @@ class OrderController:
         session = InventorySessionLocal()
         try:
             order_res = session.execute(
-                text('SELECT * FROM "Orders" WHERE order_id = :id'),
+                text('SELECT * FROM orders WHERE order_id = :id'),
                 {"id": order_id}
             )
             order_row = order_res.fetchone()
@@ -195,8 +189,8 @@ class OrderController:
             items_res = session.execute(
                 text("""
                     SELECT oi.*, i.name AS item_name, i.description AS item_description
-                    FROM "OrderItems" oi
-                    JOIN "Items" i ON oi.item_id = i.item_id
+                    FROM order_items oi
+                    JOIN storage_items i ON oi.item_id = i.item_id
                     WHERE oi.order_id = :order_id
                 """),
                 {"order_id": order_id}
@@ -217,11 +211,11 @@ class OrderController:
         try:
             result = session.execute(
                 text("""
-                    UPDATE "Orders"
+                    UPDATE orders
                     SET order_status = :status, updated_at = :updated_at
                     WHERE order_id = :order_id
                 """),
-                {"status": status, "updated_at": datetime.now(), "order_id": order_id}
+                {"status": status, "updated_at": datetime.now(timezone.utc), "order_id": order_id}
             )
             session.commit()
             if result.rowcount == 0:
@@ -244,9 +238,9 @@ class OrderController:
                 text("""
                     SELECT o.*,
                            STRING_AGG(CAST(oi.quantity AS TEXT) || 'x ' || i.name, ', ') AS items_summary
-                    FROM "Orders" o
-                    LEFT JOIN "OrderItems" oi ON o.order_id = oi.order_id
-                    LEFT JOIN "Items"      i  ON oi.item_id  = i.item_id
+                    FROM orders o
+                    LEFT JOIN order_items oi ON o.order_id = oi.order_id
+                    LEFT JOIN storage_items i  ON oi.item_id  = i.item_id
                     WHERE o.order_status = :status
                     GROUP BY o.order_id
                     ORDER BY o.created_at DESC
@@ -275,7 +269,7 @@ class OrderController:
                     COUNT(*) FILTER (WHERE order_status = 'shipped')          AS shipped_orders,
                     COUNT(*) FILTER (WHERE order_status = 'delivered')        AS delivered_orders,
                     COUNT(*) FILTER (WHERE order_status = 'cancelled')        AS cancelled_orders
-                FROM "Orders"
+                FROM orders
             """))
             row = result.fetchone()
             return dict(zip(result.keys(), row))

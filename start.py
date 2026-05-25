@@ -26,8 +26,8 @@ from datetime import datetime
 ROOT      = Path(__file__).parent.resolve()
 BACKEND   = ROOT / "backend"
 FRONTEND  = ROOT / "frontend"
-VENV_PY   = ROOT / "backend" / "venv" / "Scripts" / "python.exe"
-UVICORN   = ROOT / "backend" / "venv" / "Scripts" / "uvicorn.exe"
+VENV_PY   = ROOT / ".venv" / "Scripts" / "python.exe"
+UVICORN   = ROOT / ".venv" / "Scripts" / "uvicorn.exe"
 PID_FILE  = ROOT / ".pids"
 
 # ── ANSI colours (Windows 10+ supports them) ──────────────────────────────────

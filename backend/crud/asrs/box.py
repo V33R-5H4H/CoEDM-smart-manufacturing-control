@@ -1,11 +1,9 @@
 """
 backend/crud/asrs/box.py
 ========================
-IMPORTANT — PostgreSQL case sensitivity:
-All table names in this DB were created with double-quotes (e.g. CREATE TABLE "Boxes")
-which means they are case-sensitive. Queries MUST use double-quoted names:
-    "Boxes", "Items", "SubCompartments", "Transactions"
-Unquoted names like 'Boxes' or 'boxes' will fail with "relation does not exist".
+Updated to use new schema (Integrated_Schema):
+  storage_boxes  (box_id TEXT PK, row_label CHAR(1), col_number SMALLINT)
+  Old: "Boxes" (box_id, column_name, row_number)
 """
 from sqlalchemy import text
 from backend.database.inventory_db import InventorySessionLocal
@@ -17,19 +15,19 @@ class BoxController:
 
     @staticmethod
     def get_boxes_with_empty_compartments() -> List[Dict[str, Any]]:
-        """Get boxes that have at least one empty SubCompartment"""
+        """Get boxes that have at least one empty compartment"""
         session = InventorySessionLocal()
         try:
             query = """
                 SELECT DISTINCT b.*
-                FROM "Boxes" b
-                JOIN "SubCompartments" sc ON b.box_id = sc.box_id
-                WHERE sc.status = 'Empty'
+                FROM storage_boxes b
+                JOIN storage_compartments sc ON b.box_id = sc.box_id
+                WHERE sc.status = 'empty'
                 UNION
                 SELECT b.*
-                FROM "Boxes" b
-                LEFT JOIN "SubCompartments" sc ON b.box_id = sc.box_id
-                WHERE sc.subcom_place IS NULL
+                FROM storage_boxes b
+                LEFT JOIN storage_compartments sc ON b.box_id = sc.box_id
+                WHERE sc.compartment_id IS NULL
             """
             result = session.execute(text(query))
             columns = result.keys()
@@ -44,7 +42,7 @@ class BoxController:
         """Get all boxes"""
         session = InventorySessionLocal()
         try:
-            result = session.execute(text('SELECT * FROM "Boxes"'))
+            result = session.execute(text('SELECT * FROM storage_boxes ORDER BY row_label, col_number'))
             columns = result.keys()
             return [dict(zip(columns, row)) for row in result.fetchall()]
         except Exception as e:
@@ -58,11 +56,11 @@ class BoxController:
         session = InventorySessionLocal()
         try:
             result = session.execute(
-                text('SELECT * FROM "Boxes" WHERE box_id = :id'),
+                text('SELECT * FROM storage_boxes WHERE box_id = :id'),
                 {"id": box_id}
             )
             box = result.fetchone()
-            columns = result.keys()   # capture before close
+            columns = result.keys()
             if not box:
                 return None
             return dict(zip(columns, box))
@@ -73,18 +71,20 @@ class BoxController:
 
     @staticmethod
     def create_box(box_id: str, column_name: str, row_number: int) -> Dict[str, Any]:
-        """Create a new box"""
+        """Create a new box.
+        column_name maps to row_label (e.g. 'A'), row_number maps to col_number (1-7).
+        """
         session = InventorySessionLocal()
         try:
             if not box_id or not column_name or row_number is None:
                 raise ValueError("Please provide boxId, columnName and rowNumber")
 
             session.execute(
-                text('INSERT INTO "Boxes" (box_id, column_name, row_number) VALUES (:box_id, :column_name, :row_number)'),
-                {"box_id": box_id, "column_name": column_name, "row_number": row_number}
+                text('INSERT INTO storage_boxes (box_id, row_label, col_number) VALUES (:box_id, :row_label, :col_number)'),
+                {"box_id": box_id, "row_label": column_name, "col_number": int(row_number)}
             )
             session.commit()
-            return {"box_id": box_id, "column_name": column_name, "row_number": row_number}
+            return {"box_id": box_id, "row_label": column_name, "col_number": int(row_number)}
         except ValueError:
             raise
         except Exception as e:
@@ -99,7 +99,7 @@ class BoxController:
         session = InventorySessionLocal()
         try:
             result = session.execute(
-                text('DELETE FROM "Boxes" WHERE box_id = :id'),
+                text('DELETE FROM storage_boxes WHERE box_id = :id'),
                 {"id": box_id}
             )
             session.commit()
@@ -119,7 +119,7 @@ class BoxController:
         try:
             result = session.execute(text("""
                 SELECT box_id, COUNT(*) AS filled_count
-                FROM "SubCompartments"
+                FROM storage_compartments
                 WHERE item_id IS NOT NULL
                 GROUP BY box_id
             """))

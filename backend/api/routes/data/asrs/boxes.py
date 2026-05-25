@@ -40,8 +40,8 @@ async def get_boxes():
             box_id = box["box_id"]
             enriched.append({
                 "box_id": box_id,
-                "column_name": box["column_name"],
-                "row_number": box["row_number"],
+                "column_name": box.get("row_label", box.get("column_name", "")),  # new: row_label
+                "row_number": box.get("col_number", box.get("row_number", 0)),    # new: col_number
                 "filled_count": filled_counts.get(box_id, 0),
                 "led_active": led_states.get(box_id, False)
             })

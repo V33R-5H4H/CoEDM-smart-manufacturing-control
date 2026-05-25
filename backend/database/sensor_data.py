@@ -7,24 +7,29 @@ from datetime import datetime, timezone
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import insert, text
 from backend.database.db import SessionLocal
-from backend.database.models import VibitReading, OpcuaReading
+from backend.database.models import (
+    VibitReading, MiracSensorData, TriacSensorData, 
+    AmrSensorData, CobotSensorData, EnergyMeterData, AssemblyStationData
+)
 
 logger = logging.getLogger(__name__)
 
 # Bounded, thread-safe queues for incoming data (prevents OOM on DB failure)
 vibit_queue = Queue(maxsize=5000)
-opcua_queue = Queue(maxsize=5000)
+mirac_queue = Queue(maxsize=5000)
+triac_queue = Queue(maxsize=5000)
+assembly_queue = Queue(maxsize=5000)
 
 BATCH_SIZE = 500  # Max records to insert in one go
 
 # Cache to map legacy string IDs ('triac_vibit1') to actual sensor UUIDs
 _sensor_cache: Dict[str, str] = {}
+# Cache to map legacy string IDs to machine UUIDs
+_machine_cache: Dict[str, str] = {}
 
 def get_sensor_uuid(legacy_key: str) -> str | None:
-    """Look up a sensor's UUID by its legacy_key (e.g. 'mirac', 'triac_vibit1')."""
     if legacy_key in _sensor_cache:
         return _sensor_cache[legacy_key]
-
     try:
         with SessionLocal() as session:
             row = session.execute(
@@ -37,19 +42,21 @@ def get_sensor_uuid(legacy_key: str) -> str | None:
                 return uuid_str
     except Exception as e:
         logger.error(f"[DB] Failed to lookup sensor UUID for {legacy_key}: {e}")
-    
     return None
 
+def get_machine_uuid(machine_id: str) -> str | None:
+    # Machine IDs are just TEXT in the new schema, but we cache anyway for future proofing
+    return machine_id
+
 def queue_vibit_reading(legacy_key: str, metrics: Dict):
-    """Enqueue a VIBIT reading to be saved to the database asynchronously."""
     sensor_uuid = get_sensor_uuid(legacy_key)
     if not sensor_uuid:
-        # Avoid filling the queue with unmappable data
         return
         
     reading = {
         "time": datetime.now(timezone.utc),
         "sensor_id": sensor_uuid,
+        "modbus_unit_id": metrics.get("modbus_unit_id", 1), # Added this based on SQL
         "x_rms_acc": metrics.get("x_rms_acc", metrics.get("x_rms_acceleration", 0.0)),
         "y_rms_acc": metrics.get("y_rms_acc", metrics.get("y_rms_acceleration", 0.0)),
         "z_rms_acc": metrics.get("z_rms_acc", metrics.get("z_rms_acceleration", 0.0)),
@@ -66,39 +73,93 @@ def queue_vibit_reading(legacy_key: str, metrics: Dict):
         "rpm": metrics.get("rpm", 0.0),
         "led_status": int(metrics.get("led_status", 0)),
     }
-    
     try:
         vibit_queue.put_nowait(reading)
     except Exception:
-        # Queue full — backpressure handling (drop data instead of crashing)
         pass
 
-def queue_opcua_reading(legacy_key: str, tag_name: str, value: Any):
-    """Enqueue an OPC-UA reading to be saved to the database asynchronously."""
-    sensor_uuid = get_sensor_uuid(legacy_key)
+def queue_mirac_reading(machine_id: str, sensor_legacy_key: str, data: Dict):
+    sensor_uuid = get_sensor_uuid(sensor_legacy_key)
     if not sensor_uuid:
         return
         
     reading = {
         "time": datetime.now(timezone.utc),
+        "machine_id": machine_id,
         "sensor_id": sensor_uuid,
-        "tag_name": tag_name,
-        "value_num": None,
-        "value_bool": None,
-        "value_text": None,
-        "quality": 0,
+        "x_axis_value": float(data.get("x_axis_value", 0.0)),
+        "y_axis_value": float(data.get("y_axis_value", 0.0)),
+        "z_axis_value": float(data.get("z_axis_value", 0.0)),
+        "x_axis_feed": float(data.get("x_axis_feed", 0.0)),
+        "y_axis_feed": float(data.get("y_axis_feed", 0.0)),
+        "z_axis_feed": float(data.get("z_axis_feed", 0.0)),
+        "spindle_speed": float(data.get("spindle_speed", 0.0)),
+        "spindle_temperature": float(data.get("spindle_temperature", data.get("spindle_temp", 0.0))),
+        "spindle_vibration": float(data.get("spindle_vibration", 0.0)),
+        "tool_number": int(data.get("tool_number", 0)),
+        "tool_temperature": float(data.get("tool_temperature", data.get("tool_temp", 0.0))),
+        "tool_vibration": float(data.get("tool_vibration", 0.0)),
+        "led_red": bool(data.get("led_red", False)),
+        "led_yellow": bool(data.get("led_yellow", False)),
+        "led_green": bool(data.get("led_green", False)),
+        "safety_curtain_status": bool(data.get("safety_curtain", False)),
     }
-    
-    # Map the value to the correct typed column
-    if isinstance(value, bool):
-        reading["value_bool"] = value
-    elif isinstance(value, (int, float)):
-        reading["value_num"] = float(value)
-    else:
-        reading["value_text"] = str(value)
-        
     try:
-        opcua_queue.put_nowait(reading)
+        mirac_queue.put_nowait(reading)
+    except Exception:
+        pass
+
+
+def queue_triac_reading(machine_id: str, sensor_legacy_key: str, data: Dict):
+    sensor_uuid = get_sensor_uuid(sensor_legacy_key)
+    if not sensor_uuid:
+        return
+        
+    reading = {
+        "time": datetime.now(timezone.utc),
+        "machine_id": machine_id,
+        "sensor_id": sensor_uuid,
+        "x_axis_value": float(data.get("x_axis_value", 0.0)),
+        "y_axis_value": float(data.get("y_axis_value", 0.0)),
+        "z_axis_value": float(data.get("z_axis_value", 0.0)),
+        "x_axis_feed": float(data.get("x_axis_feed", 0.0)),
+        "y_axis_feed": float(data.get("y_axis_feed", 0.0)),
+        "z_axis_feed": float(data.get("z_axis_feed", 0.0)),
+        "spindle_speed": float(data.get("spindle_speed", 0.0)),
+        "spindle_temperature": float(data.get("spindle_temperature", data.get("spindle_temp", 0.0))),
+        "spindle_vibration": float(data.get("spindle_vibration", 0.0)),
+        "tool_number": int(data.get("tool_number", 0)),
+        "tool_temperature": float(data.get("tool_temperature", data.get("tool_temp", 0.0))),
+        "tool_vibration": float(data.get("tool_vibration", 0.0)),
+        "led_red": bool(data.get("led_red", False)),
+        "led_yellow": bool(data.get("led_yellow", False)),
+        "led_green": bool(data.get("led_green", False)),
+        "safety_curtain_status": bool(data.get("safety_curtain", False)),
+    }
+    try:
+        triac_queue.put_nowait(reading)
+    except Exception:
+        pass
+
+
+def queue_assembly_reading(machine_id: str, sensor_legacy_key: str, data: Dict):
+    sensor_uuid = get_sensor_uuid(sensor_legacy_key)
+    if not sensor_uuid:
+        return
+        
+    reading = {
+        "time": datetime.now(timezone.utc),
+        "machine_id": machine_id,
+        "sensor_id": sensor_uuid,
+        "bearing_operation_status": bool(data.get("bearing_operation_status", False)),
+        "shaft_operation_status": bool(data.get("shaft_operation_status", False)),
+        "led_red": bool(data.get("led_red", False)),
+        "led_yellow": bool(data.get("led_yellow", False)),
+        "led_green": bool(data.get("led_green", False)),
+        "safety_curtain_status": bool(data.get("safety_curtain", False)),
+    }
+    try:
+        assembly_queue.put_nowait(reading)
     except Exception:
         pass
 
@@ -107,39 +168,39 @@ async def batch_writer_loop():
     """Background task to drain queues and insert records in batches."""
     logger.info("[DB] Started sensor data batch writer loop.")
     
+    queues = [
+        (vibit_queue, VibitReading),
+        (mirac_queue, MiracSensorData),
+        (triac_queue, TriacSensorData),
+        (assembly_queue, AssemblyStationData)
+    ]
+    
     while True:
         await asyncio.sleep(2.0)  # Wake up every 2 seconds
         
-        # Drain VIBIT queue
-        vibit_batch = []
-        while not vibit_queue.empty() and len(vibit_batch) < BATCH_SIZE:
-            try:
-                vibit_batch.append(vibit_queue.get_nowait())
-            except Empty:
-                break
+        batches = []
+        for q, model in queues:
+            batch = []
+            while not q.empty() and len(batch) < BATCH_SIZE:
+                try:
+                    batch.append(q.get_nowait())
+                except Empty:
+                    break
+            if batch:
+                batches.append((model, batch))
                 
-        # Drain OPC-UA queue
-        opcua_batch = []
-        while not opcua_queue.empty() and len(opcua_batch) < BATCH_SIZE:
-            try:
-                opcua_batch.append(opcua_queue.get_nowait())
-            except Empty:
-                break
-                
-        if not vibit_batch and not opcua_batch:
+        if not batches:
             continue
 
-        # Insert batches with retry backoff in case of DB glitch
+        # Insert batches with retry backoff
         retry_delay = 1.0
         max_retries = 3
         
         for attempt in range(max_retries):
             try:
                 with SessionLocal() as session:
-                    if vibit_batch:
-                        session.execute(insert(VibitReading), vibit_batch)
-                    if opcua_batch:
-                        session.execute(insert(OpcuaReading), opcua_batch)
+                    for model, batch in batches:
+                        session.execute(insert(model), batch)
                     session.commit()
                 # Success - break out of retry loop
                 break

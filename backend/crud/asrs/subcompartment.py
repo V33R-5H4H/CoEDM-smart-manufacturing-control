@@ -1,23 +1,22 @@
 """
 backend/crud/asrs/subcompartment.py
 ===================================
-NOTE — PostgreSQL case sensitivity:
-Tables are in the public schema and were created with double-quotes:
-  "SubCompartments", "Boxes", "Items", "Transactions"
-All queries must use double-quoted names.
+Updated to use new schema (Integrated_Schema):
+  storage_compartments (compartment_id TEXT PK, box_id, sub_slot CHAR(1),
+                        item_id, quantity, status, machine_id)
+  Old: "SubCompartments" (subcom_place, box_id, sub_id, item_id, status)
 
-Schema reference:
-  SubCompartments.subcom_place  VARCHAR(3) PK  e.g. 'A1a'
-  SubCompartments.box_id        VARCHAR(2)     e.g. 'A1'
-  SubCompartments.sub_id        CHAR(1)        e.g. 'a'
-  SubCompartments.item_id       INTEGER FK
-  SubCompartments.status        VARCHAR(10)    'Occupied' | 'Empty'
+Key mapping:
+  subcom_place  → compartment_id  (e.g. 'A1a')
+  sub_id        → sub_slot        (e.g. 'a')
+  'Occupied'    → 'occupied'
+  'Empty'       → 'empty'
 """
 import logging
 from sqlalchemy import text
 from backend.database.inventory_db import InventorySessionLocal
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from backend.stations.asrs.asrs_singleton import asrs_controller
 
@@ -33,7 +32,7 @@ class SubCompartmentController:
         """Get all subcompartments"""
         session = InventorySessionLocal()
         try:
-            result = session.execute(text('SELECT * FROM "SubCompartments" ORDER BY subcom_place'))
+            result = session.execute(text('SELECT * FROM storage_compartments ORDER BY compartment_id'))
             columns = result.keys()
             rows = [dict(zip(columns, row)) for row in result.fetchall()]
             logger.info("Fetched %d subcompartments", len(rows))
@@ -46,15 +45,15 @@ class SubCompartmentController:
 
     @staticmethod
     def get_subcompartment_by_place(place: str) -> Optional[Dict[str, Any]]:
-        """Get subcompartment by place code (e.g. 'A1a')"""
+        """Get subcompartment by compartment_id (e.g. 'A1a')"""
         session = InventorySessionLocal()
         try:
             result = session.execute(
-                text('SELECT * FROM "SubCompartments" WHERE subcom_place = :place'),
+                text('SELECT * FROM storage_compartments WHERE compartment_id = :place'),
                 {"place": place}
             )
             row = result.fetchone()
-            columns = result.keys()   # capture before close
+            columns = result.keys()
             if not row:
                 return None
             return dict(zip(columns, row))
@@ -70,32 +69,34 @@ class SubCompartmentController:
         item_id: Optional[Any], status: str
     ) -> Dict[str, Any]:
         """Create a new subcompartment"""
-        if status == 'Occupied' and not item_id:
-            raise ValueError("Item ID is required for Occupied status")
+        # Normalise status to lowercase
+        status_norm = status.lower() if status else 'empty'
+        if status_norm == 'occupied' and not item_id:
+            raise ValueError("Item ID is required for occupied status")
 
         session = InventorySessionLocal()
         try:
             session.execute(
                 text("""
-                    INSERT INTO "SubCompartments" (subcom_place, box_id, sub_id, item_id, status)
-                    VALUES (:subcom_place, :box_id, :sub_id, :item_id, :status)
+                    INSERT INTO storage_compartments (compartment_id, box_id, sub_slot, item_id, status)
+                    VALUES (:compartment_id, :box_id, :sub_slot, :item_id, :status)
                 """),
                 {
-                    "subcom_place": subcom_place,
+                    "compartment_id": subcom_place,
                     "box_id": box_id,
-                    "sub_id": str(sub_id),
+                    "sub_slot": str(sub_id),
                     "item_id": item_id,
-                    "status": status,
+                    "status": status_norm,
                 }
             )
             session.commit()
             logger.info("Created subcompartment: %s", subcom_place)
             return {
-                "subcom_place": subcom_place,
+                "compartment_id": subcom_place,
                 "box_id": box_id,
-                "sub_id": sub_id,
+                "sub_slot": sub_id,
                 "item_id": item_id,
-                "status": status,
+                "status": status_norm,
             }
         except ValueError:
             raise
@@ -109,21 +110,22 @@ class SubCompartmentController:
     @staticmethod
     def update_status(place: str, status: str, item_id: Optional[Any] = None) -> Dict[str, Any]:
         """Update subcompartment status and optionally item_id"""
+        status_norm = status.lower() if status else 'empty'
         session = InventorySessionLocal()
         try:
             result = session.execute(
                 text("""
-                    UPDATE "SubCompartments"
-                    SET status = :status, item_id = :item_id
-                    WHERE subcom_place = :place
+                    UPDATE storage_compartments
+                    SET status = :status, item_id = :item_id, updated_at = NOW()
+                    WHERE compartment_id = :place
                 """),
-                {"status": status, "item_id": item_id, "place": place}
+                {"status": status_norm, "item_id": item_id, "place": place}
             )
             session.commit()
             if result.rowcount == 0:
                 raise Exception(f"SubCompartment {place} not found")
-            logger.info("Updated subcompartment %s → %s", place, status)
-            return {"subcom_place": place, "status": status, "item_id": item_id}
+            logger.info("Updated subcompartment %s → %s", place, status_norm)
+            return {"compartment_id": place, "status": status_norm, "item_id": item_id}
         except Exception as e:
             session.rollback()
             logger.error("Error updating subcompartment %s: %s", place, e)
@@ -137,7 +139,7 @@ class SubCompartmentController:
         session = InventorySessionLocal()
         try:
             result = session.execute(
-                text('DELETE FROM "SubCompartments" WHERE subcom_place = :place'),
+                text('DELETE FROM storage_compartments WHERE compartment_id = :place'),
                 {"place": place}
             )
             session.commit()
@@ -155,37 +157,37 @@ class SubCompartmentController:
     @staticmethod
     def add_product(box_id: str, sub_id: str, item_id) -> Dict[str, Any]:
         """Add product to storage (stores item in subcompartment + records transaction)"""
-        subcom_place = f"{box_id}{sub_id}"
+        compartment_id = f"{box_id}{sub_id}"
         session = InventorySessionLocal()
         try:
             # Check if subcompartment exists
             existing = session.execute(
-                text('SELECT status FROM "SubCompartments" WHERE subcom_place = :place'),
-                {"place": subcom_place}
+                text('SELECT status FROM storage_compartments WHERE compartment_id = :place'),
+                {"place": compartment_id}
             ).fetchone()
 
             if existing:
-                if existing[0] == "Occupied":
-                    raise Exception(f"SubCompartment {subcom_place} is already OCCUPIED")
+                if existing[0] == "occupied":
+                    raise Exception(f"SubCompartment {compartment_id} is already OCCUPIED")
                 session.execute(
                     text("""
-                        UPDATE "SubCompartments"
-                        SET item_id = :item_id, status = 'Occupied'
-                        WHERE subcom_place = :place
+                        UPDATE storage_compartments
+                        SET item_id = :item_id, status = 'occupied', quantity = 1, updated_at = NOW()
+                        WHERE compartment_id = :place
                     """),
-                    {"item_id": item_id, "place": subcom_place}
+                    {"item_id": item_id, "place": compartment_id}
                 )
                 action_taken = "updated"
             else:
                 session.execute(
                     text("""
-                        INSERT INTO "SubCompartments" (subcom_place, box_id, sub_id, item_id, status)
-                        VALUES (:subcom_place, :box_id, :sub_id, :item_id, 'Occupied')
+                        INSERT INTO storage_compartments (compartment_id, box_id, sub_slot, item_id, status, quantity)
+                        VALUES (:compartment_id, :box_id, :sub_slot, :item_id, 'occupied', 1)
                     """),
                     {
-                        "subcom_place": subcom_place,
+                        "compartment_id": compartment_id,
                         "box_id": box_id,
-                        "sub_id": str(sub_id),
+                        "sub_slot": str(sub_id),
                         "item_id": item_id,
                     }
                 )
@@ -194,17 +196,17 @@ class SubCompartmentController:
             # Record transaction
             session.execute(
                 text("""
-                    INSERT INTO "Transactions" (item_id, subcom_place, action, time)
-                    VALUES (:item_id, :subcom_place, 'added', :time)
+                    INSERT INTO storage_transactions (machine_id, compartment_id, item_id, action, time)
+                    VALUES ('asrs', :compartment_id, :item_id, 'add', :time)
                 """),
-                {"item_id": item_id, "subcom_place": subcom_place, "time": datetime.now()}
+                {"item_id": item_id, "compartment_id": compartment_id, "time": datetime.now(timezone.utc)}
             )
             session.commit()
 
             result = {
-                "subcom_place": subcom_place,
+                "compartment_id": compartment_id,
                 "action": action_taken,
-                "status": "Occupied",
+                "status": "occupied",
                 "item_id": item_id,
             }
 
@@ -223,7 +225,7 @@ class SubCompartmentController:
 
         except Exception as e:
             session.rollback()
-            logger.error("Error adding product %s to %s: %s", item_id, subcom_place, e)
+            logger.error("Error adding product %s to %s: %s", item_id, compartment_id, e)
             raise Exception(f"Error adding product: {e}")
         finally:
             session.close()
@@ -235,12 +237,12 @@ class SubCompartmentController:
         try:
             available = session.execute(
                 text("""
-                    SELECT sc.subcom_place, sc.box_id, sc.sub_id,
-                           b.column_name, b.row_number
-                    FROM "SubCompartments" sc
-                    JOIN "Boxes" b ON sc.box_id = b.box_id
-                    WHERE sc.item_id = :item_id AND sc.status = 'Occupied'
-                    ORDER BY b.column_name, b.row_number, sc.sub_id
+                    SELECT sc.compartment_id, sc.box_id, sc.sub_slot,
+                           b.row_label, b.col_number
+                    FROM storage_compartments sc
+                    JOIN storage_boxes b ON sc.box_id = b.box_id
+                    WHERE sc.item_id = :item_id AND sc.status = 'occupied'
+                    ORDER BY b.row_label, b.col_number, sc.sub_slot
                     LIMIT :quantity
                 """),
                 {"item_id": item_id, "quantity": quantity}
@@ -253,28 +255,28 @@ class SubCompartmentController:
 
             retrieved = []
             for row in available:
-                subcom_place, box_id, sub_id, col_name, row_num = row
+                compartment_id, box_id, sub_slot, row_label, col_number = row
                 session.execute(
                     text("""
-                        UPDATE "SubCompartments"
-                        SET status = 'Empty', item_id = NULL
-                        WHERE subcom_place = :place
+                        UPDATE storage_compartments
+                        SET status = 'empty', item_id = NULL, quantity = 0, updated_at = NOW()
+                        WHERE compartment_id = :place
                     """),
-                    {"place": subcom_place}
+                    {"place": compartment_id}
                 )
                 session.execute(
                     text("""
-                        INSERT INTO "Transactions" (item_id, subcom_place, action, time)
-                        VALUES (:item_id, :subcom_place, 'retrieved', :time)
+                        INSERT INTO storage_transactions (machine_id, compartment_id, item_id, action, time)
+                        VALUES ('asrs', :compartment_id, :item_id, 'retrieve', :time)
                     """),
-                    {"item_id": item_id, "subcom_place": subcom_place, "time": datetime.now()}
+                    {"item_id": item_id, "compartment_id": compartment_id, "time": datetime.now(timezone.utc)}
                 )
                 retrieved.append({
-                    "subcom_place": subcom_place,
+                    "compartment_id": compartment_id,
                     "box_id": box_id,
-                    "column_name": col_name,
-                    "row_number": row_num,
-                    "sub_id": sub_id,
+                    "row_label": row_label,
+                    "col_number": col_number,
+                    "sub_slot": sub_slot,
                 })
 
             session.commit()

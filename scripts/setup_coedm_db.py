@@ -530,184 +530,24 @@ def main():
         timescale_available = True  # assume available in dry-run
 
     # ── Phase 3: Create schema ───────────────────────────────────────────────
-    head("Step 3 — Creating schema (16 tables)")
+    head("Step 3 — Creating schema from init_db4.sql")
     if not dry:
         try:
             conn = connect(new_params)
             cur = conn.cursor()
-            cur.execute(SCHEMA_SQL)
+            with open("backend/init_db4.sql", "r", encoding="utf-8") as f:
+                schema_sql = f.read()
+            cur.execute(schema_sql)
             conn.commit()
-            ok("All base tables created")
+            ok("All base tables and seed data created from init_db4.sql")
         except Exception as e:
             conn.rollback()
             err(f"Schema creation failed: {e}")
             sys.exit(1)
     else:
-        info("[DRY-RUN] Applying SCHEMA_SQL (~16 tables + indexes + triggers)")
+        info("[DRY-RUN] Applying init_db4.sql")
 
-    # ── Phase 4: TimescaleDB hypertables ─────────────────────────────────────
-    head("Step 4 — Creating TimescaleDB hypertables")
-    hypertables = [
-        ("vibit_readings",  "time", "1 day",  "sensor_id"),
-        ("opcua_readings",  "time", "1 day",  "sensor_id, tag_name"),
-        ("machine_events",  "time", "7 days", "machine_id"),
-    ]
-    if timescale_available and not dry:
-        try:
-            conn = connect(new_params)
-            cur = conn.cursor()
-            for table, col, interval, seg_by in hypertables:
-                try:
-                    cur.execute(f"""
-                        SELECT create_hypertable('{table}', '{col}',
-                            chunk_time_interval => INTERVAL '{interval}',
-                            if_not_exists => TRUE,
-                            migrate_data => TRUE)
-                    """)
-                    conn.commit()
-                    ok(f"Hypertable: {table} (chunk={interval})")
 
-                    # Compression policy
-                    cur.execute(f"""
-                        ALTER TABLE {table} SET (
-                            timescaledb.compress,
-                            timescaledb.compress_segmentby = '{seg_by}'
-                        )
-                    """)
-                    cur.execute(f"""
-                        SELECT add_compression_policy('{table}',
-                            INTERVAL '7 days', if_not_exists => TRUE)
-                    """)
-                    conn.commit()
-                    ok(f"  └─ Compression after 7 days")
-
-                    # Retention policy for telemetry tables
-                    if table == "vibit_readings":
-                        cur.execute(f"SELECT add_retention_policy('{table}', INTERVAL '30 days', if_not_exists => TRUE)")
-                        conn.commit()
-                        ok(f"  └─ Retention: 30 days")
-                    elif table == "opcua_readings":
-                        cur.execute(f"SELECT add_retention_policy('{table}', INTERVAL '90 days', if_not_exists => TRUE)")
-                        conn.commit()
-                        ok(f"  └─ Retention: 90 days")
-
-                except Exception as ht_err:
-                    conn.rollback()
-                    warn(f"Hypertable {table}: {ht_err}")
-            cur.close()
-        except Exception as e:
-            err(f"Hypertable setup failed: {e}")
-    elif not timescale_available:
-        warn("Skipping hypertables (TimescaleDB not installed)")
-    else:
-        info("[DRY-RUN] create_hypertable for vibit_readings, opcua_readings, machine_events")
-
-    # ── Phase 5: Continuous aggregates ───────────────────────────────────────
-    head("Step 5 — Creating continuous aggregates")
-    if timescale_available and not dry:
-        try:
-            conn = connect(new_params)
-            cur = conn.cursor()
-            cur.execute("""
-                CREATE MATERIALIZED VIEW IF NOT EXISTS vibit_1min
-                WITH (timescaledb.continuous) AS
-                SELECT
-                    time_bucket('1 minute', time) AS bucket,
-                    sensor_id,
-                    AVG(x_rms_vel)   AS avg_x_rms_vel,
-                    MAX(x_rms_vel)   AS max_x_rms_vel,
-                    AVG(y_rms_vel)   AS avg_y_rms_vel,
-                    MAX(y_rms_vel)   AS max_y_rms_vel,
-                    AVG(z_rms_vel)   AS avg_z_rms_vel,
-                    MAX(z_rms_vel)   AS max_z_rms_vel,
-                    AVG(temperature) AS avg_temperature,
-                    MAX(temperature) AS max_temperature,
-                    AVG(rpm)         AS avg_rpm,
-                    COUNT(*)         AS sample_count
-                FROM vibit_readings
-                GROUP BY bucket, sensor_id
-            """)
-            conn.commit()
-            cur.execute("""
-                SELECT add_continuous_aggregate_policy('vibit_1min',
-                    start_offset      => INTERVAL '2 minutes',
-                    end_offset        => INTERVAL '30 seconds',
-                    schedule_interval => INTERVAL '30 seconds',
-                    if_not_exists => TRUE)
-            """)
-            conn.commit()
-            ok("vibit_1min continuous aggregate created")
-            cur.close()
-        except Exception as e:
-            conn.rollback()
-            warn(f"Continuous aggregate skipped: {e}")
-    elif not timescale_available:
-        warn("Skipping continuous aggregates (TimescaleDB not installed)")
-    else:
-        info("[DRY-RUN] CREATE MATERIALIZED VIEW vibit_1min (continuous)")
-
-    # ── Phase 6: Seed static data ─────────────────────────────────────────────
-    head("Step 6 — Seeding machines and sensors")
-    sensors_seed = build_sensors_seed(env)
-
-    if not dry:
-        try:
-            conn = connect(new_params)
-            cur = conn.cursor()
-
-            # Insert machines
-            for row in MACHINES_SEED:
-                cur.execute("""
-                    INSERT INTO machines
-                        (machine_id, display_name, machine_type, location, manufacturer, model)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (machine_id) DO UPDATE
-                        SET display_name = EXCLUDED.display_name,
-                            manufacturer = EXCLUDED.manufacturer
-                """, row)
-            conn.commit()
-            ok(f"Seeded {len(MACHINES_SEED)} machines")
-
-            # Insert sensors
-            for row in sensors_seed:
-                machine_id, name, protocol, host, port, unit_id, legacy_key = row
-                cur.execute("""
-                    INSERT INTO machine_sensors
-                        (machine_id, name, protocol, host, port, unit_id, legacy_key)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (legacy_key) DO UPDATE
-                        SET host = EXCLUDED.host,
-                            port = EXCLUDED.port,
-                            unit_id = EXCLUDED.unit_id
-                """, (machine_id, name, protocol, host, port, unit_id, legacy_key))
-            conn.commit()
-            ok(f"Seeded {len(sensors_seed)} machine_sensors")
-            cur.close()
-        except Exception as e:
-            conn.rollback()
-            err(f"Seeding failed: {e}")
-            sys.exit(1)
-    else:
-        for m in MACHINES_SEED:
-            info(f"[DRY-RUN] INSERT machine: {m[0]} — {m[1]}")
-        for s in sensors_seed:
-            info(f"[DRY-RUN] INSERT sensor: {s[6]} ({s[2]} {s[3]}:{s[4]})")
-
-    # ── Phase 7: Create compat views ─────────────────────────────────────────
-    head("Step 7 — Creating backward-compat views")
-    if not dry:
-        try:
-            conn = connect(new_params)
-            cur = conn.cursor()
-            cur.execute(COMPAT_VIEWS_SQL)
-            conn.commit()
-            ok('"Boxes", "Items", "SubCompartments", "Transactions", "Orders", "OrderItems", shuttle_state created')
-            cur.close()
-        except Exception as e:
-            conn.rollback()
-            warn(f"Compat views (partial): {e}")
-    else:
-        info('[DRY-RUN] CREATE VIEW "Boxes", "Items", "SubCompartments", etc.')
 
     # ── Phase 8: Migrate old data ─────────────────────────────────────────────
     if args.skip_migrate:
@@ -807,21 +647,7 @@ def migrate_data(old_conn, new_conn, dry: bool):
     old_cur = old_conn.cursor()
     new_cur = new_conn.cursor()
 
-    # ── storage_boxes ← "Boxes" ───────────────────────────────────────────────
-    info("Migrating Boxes → storage_boxes...")
-    try:
-        old_cur.execute('SELECT box_id, column_name, row_number FROM "Boxes"')
-        rows = old_cur.fetchall()
-        if rows and not dry:
-            execute_values(new_cur, """
-                INSERT INTO storage_boxes (box_id, column_name, row_number)
-                VALUES %s ON CONFLICT (box_id) DO NOTHING
-            """, rows)
-            new_conn.commit()
-        ok(f"storage_boxes ← {len(rows)} rows")
-    except Exception as e:
-        new_conn.rollback()
-        warn(f"storage_boxes migration skipped: {e}")
+
 
     # ── storage_items ← "Items" ───────────────────────────────────────────────
     info("Migrating Items → storage_items...")
@@ -831,8 +657,8 @@ def migrate_data(old_conn, new_conn, dry: bool):
         if rows and not dry:
             for item_id, name, description, added_on in rows:
                 new_cur.execute("""
-                    INSERT INTO storage_items (item_id, name, description, created_at)
-                    VALUES (%s, %s, %s, %s) ON CONFLICT (item_id) DO NOTHING
+                    INSERT INTO storage_items (item_id, name, description, item_type, created_at)
+                    VALUES (%s, %s, %s, 'raw', %s) ON CONFLICT (item_id) DO NOTHING
                 """, (item_id, name, description, added_on))
             # Reset sequence to avoid PK conflicts
             new_cur.execute("""
@@ -862,7 +688,10 @@ def migrate_data(old_conn, new_conn, dry: bool):
                     INSERT INTO storage_compartments
                         (compartment_id, box_id, sub_slot, item_id, quantity, status)
                     VALUES (%s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (compartment_id) DO NOTHING
+                    ON CONFLICT (compartment_id) DO UPDATE 
+                    SET item_id = EXCLUDED.item_id, 
+                        quantity = EXCLUDED.quantity, 
+                        status = EXCLUDED.status
                 """, (
                     subcom_place, box_id,
                     str(sub_id) if sub_id else None,

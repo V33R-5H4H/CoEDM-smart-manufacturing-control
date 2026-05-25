@@ -21,20 +21,9 @@ class MiracBroadcaster:
         self.active_connections: Set[WebSocket] = set()
         self.is_broadcasting = False
         self.broadcast_task = None
-        self.vibit_reader_1 = VibitModbusReader(
+        self.vibit_reader = VibitModbusReader(
             host=settings.VIBIT_HOST,
             port=settings.VIBIT_PORT,
-            device_id=settings.VIBIT_UNIT_ID,
-        )
-        self.vibit_reader_2 = VibitModbusReader(
-            host=settings.VIBIT_HOST,
-            port=settings.VIBIT_PORT,
-            device_id=settings.VIBIT_UNIT_ID_2,
-        )
-        self.vibit_reader_3 = VibitModbusReader(
-            host=settings.VIBIT_HOST,
-            port=settings.VIBIT_PORT,
-            device_id=settings.VIBIT_UNIT_ID_3,
         )
         # Emulated energy meter state
         self.accumulated_kwh = 1245.8342
@@ -72,9 +61,6 @@ class MiracBroadcaster:
                 node = opcua_connection.client.get_node(node_id)
                 value = node.get_value()
                 data[tag_name] = value
-                
-                from backend.database.sensor_data import queue_opcua_reading
-                queue_opcua_reading("mirac", tag_name, value)
             except Exception as e:
                 logger.warning(f"Failed to read {tag_name}: {e}")
                 data[tag_name] = None
@@ -159,12 +145,11 @@ class MiracBroadcaster:
                     "led_red": cycle_stop and cycle_time >= 25.0
                 }
 
-            # Read all three VibIT snapshots concurrently in a thread pool to avoid blocking the event loop
-            vibit1_data, vibit2_data, vibit3_data = await asyncio.gather(
-                asyncio.to_thread(self.vibit_reader_1.read_snapshot),
-                asyncio.to_thread(self.vibit_reader_2.read_snapshot),
-                asyncio.to_thread(self.vibit_reader_3.read_snapshot)
-            )
+            # Read sequentially from the shared Modbus client to avoid WinError 10038 / connection drops
+            # when polling multiple slave IDs on the same physical Modbus TCP gateway
+            vibit1_data = await asyncio.to_thread(self.vibit_reader.read_snapshot, settings.VIBIT_UNIT_ID)
+            vibit2_data = await asyncio.to_thread(self.vibit_reader.read_snapshot, settings.VIBIT_UNIT_ID_2)
+            vibit3_data = await asyncio.to_thread(self.vibit_reader.read_snapshot, settings.VIBIT_UNIT_ID_3)
 
             # VibIT 1 Simulation fallback (Spindle U1)
             if not vibit1_data:
@@ -433,6 +418,11 @@ class MiracBroadcaster:
                 data = await self._read_mirac_data()
                 
                 if data:
+                    # Queue data to DB using the new unified structure
+                    from backend.database.sensor_data import queue_mirac_reading
+                    plc_raw = data.get("raw", {}).get("plc", {})
+                    queue_mirac_reading("cnc_mirac", "mirac", plc_raw)
+
                     # Broadcast to all connected clients
                     message = json.dumps(data)
                     disconnected = set()

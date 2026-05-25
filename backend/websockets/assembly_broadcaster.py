@@ -60,9 +60,6 @@ class HydraulicBroadcaster:
                     node = opcua_connection.get_node(node_id)
                     value = node.get_value()
                     data[tag_name] = value
-                    
-                    from backend.database.sensor_data import queue_opcua_reading
-                    queue_opcua_reading("hydraulic", tag_name, value)
                 except Exception as e:
                     logger.warning(f"Failed to read {tag_name}: {e}")
                     data[tag_name] = None
@@ -121,7 +118,18 @@ class HydraulicBroadcaster:
                 # Read hydraulic data
                 data = await self._read_hydraulic_data()
                 
-                if data:
+                if data and data.get("connected"):
+                    from backend.database.sensor_data import queue_assembly_reading
+                    queue_payload = {
+                        "bearing_operation_status": data.get("assembly", {}).get("bearing", False),
+                        "shaft_operation_status": data.get("assembly", {}).get("shaft", False),
+                        "led_red": data.get("safety", {}).get("lights", {}).get("red", False),
+                        "led_yellow": data.get("safety", {}).get("lights", {}).get("orange", False),
+                        "led_green": data.get("safety", {}).get("lights", {}).get("green", False),
+                        "safety_curtain": data.get("safety", {}).get("curtain", False)
+                    }
+                    queue_assembly_reading("hydraulic_press", "hydraulic", queue_payload)
+
                     # Broadcast to all connected clients
                     message = json.dumps(data)
                     disconnected = set()

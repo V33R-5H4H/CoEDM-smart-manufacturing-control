@@ -37,7 +37,7 @@ class ShuttleState:
             session = self._session()
             try:
                 result = session.execute(
-                    text("SELECT row_num, column_letter, state, command FROM shuttle_state WHERE id = 1")
+                    text("SELECT from_row, from_col, current_state, last_command FROM v_shuttle_state WHERE machine_id = 'asrs'")
                 ).fetchone()
                 
                 if result:
@@ -57,7 +57,7 @@ class ShuttleState:
             session = self._session()
             try:
                 session.execute(
-                    text("UPDATE shuttle_state SET row_num=:row, column_letter=:col, state=:state, command=:cmd WHERE id=1"),
+                    text("INSERT INTO shuttle_movements (machine_id, from_row, from_col, state, command) VALUES ('asrs', :row, :col, :state, :cmd)"),
                     {
                         "row": self.row_num,
                         "col": self.column_letter,

@@ -15,15 +15,9 @@ class TriacBroadcaster:
         self.active_connections: Set[WebSocket] = set()
         self.is_broadcasting = False
         self.broadcast_task = None
-        self.vibit_reader1 = VibitModbusReader(
+        self.vibit_reader = VibitModbusReader(
             host=settings.TRIAC_VIBIT_HOST,
             port=settings.TRIAC_VIBIT_PORT,
-            device_id=settings.TRIAC_VIBIT_UNIT_ID,
-        )
-        self.vibit_reader2 = VibitModbusReader(
-            host=settings.TRIAC_VIBIT_HOST,
-            port=settings.TRIAC_VIBIT_PORT,
-            device_id=settings.TRIAC_VIBIT_UNIT_ID_2,
         )
         
     async def connect(self, websocket: WebSocket):
@@ -58,9 +52,6 @@ class TriacBroadcaster:
                 node = opcua_connection.client.get_node(node_id)
                 value = node.get_value()
                 data[tag_name] = value
-                
-                from backend.database.sensor_data import queue_opcua_reading
-                queue_opcua_reading("triac", tag_name, value)
             except Exception as e:
                 logger.warning(f"Failed to read {tag_name}: {e}")
                 data[tag_name] = None
@@ -87,9 +78,9 @@ class TriacBroadcaster:
                     "error_code": 0
                 }
 
-            # Read VIBIT sensor data
-            vibit1_data = await self.vibit_reader1.read_all_metrics()
-            vibit2_data = await self.vibit_reader2.read_all_metrics()
+            # Read VIBIT sensor data sequentially
+            vibit1_data = await asyncio.to_thread(self.vibit_reader.read_snapshot, settings.TRIAC_VIBIT_UNIT_ID)
+            vibit2_data = await asyncio.to_thread(self.vibit_reader.read_snapshot, settings.TRIAC_VIBIT_UNIT_ID_2)
             
             is_simulated_vibit = False
             
@@ -179,6 +170,19 @@ class TriacBroadcaster:
                 data = await self._read_triac_data()
                 
                 if data:
+                    from backend.database.sensor_data import queue_triac_reading
+                    plc_raw = data.get("raw", {}).get("plc", {}).copy()
+                    # Add axes data into plc_raw for the queue since triac puts it in 'axes' dict for frontend
+                    if "axes" in data:
+                        plc_raw["x_axis_value"] = data["axes"]["x"]["value"]
+                        plc_raw["y_axis_value"] = data["axes"]["y"]["value"]
+                        plc_raw["z_axis_value"] = data["axes"]["z"]["value"]
+                    if "spindle" in data:
+                        plc_raw["spindle_speed"] = data["spindle"]["speed"]
+                    if "tool" in data:
+                        plc_raw["tool_number"] = data["tool"]["number"]
+                    queue_triac_reading("cnc_triac", "triac", plc_raw)
+
                     message = json.dumps(data)
                     disconnected = set()
                     

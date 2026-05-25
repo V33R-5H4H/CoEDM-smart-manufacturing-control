@@ -1,19 +1,33 @@
 """
 backend/crud/asrs/transaction.py
 ================================
-Queries against the "Transactions" table (case-sensitive PostgreSQL).
+Updated to use new schema (Integrated_Schema):
+  storage_transactions (tran_id, machine_id, time, compartment_id, item_id,
+                        action, quantity, operator_id, notes)
+  Old: "Transactions" (tran_id, item_id, subcom_place, action, time)
 
-Schema:
-  Transactions.tran_id       SERIAL PK
-  Transactions.item_id       INTEGER FK → Items
-  Transactions.subcom_place  VARCHAR(3) FK → SubCompartments
-  Transactions.action        VARCHAR(45)  e.g. 'added' | 'retrieved' | 'ordered'
-  Transactions.time          TIMESTAMP
+action must be one of: 'add', 'retrieve', 'transfer', 'adjust', 'audit'
+Old 'added' → 'add', old 'retrieved' → 'retrieve'
 """
 from sqlalchemy import text
 from backend.database.inventory_db import InventorySessionLocal
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
+
+
+# Map old action names to new schema constraints
+_ACTION_MAP = {
+    'added': 'add',
+    'retrieved': 'retrieve',
+    'ordered': 'add',
+    'transferred': 'transfer',
+    'adjusted': 'adjust',
+    'audited': 'audit',
+}
+
+
+def _normalise_action(action: str) -> str:
+    return _ACTION_MAP.get(action, action)
 
 
 class TransactionController:
@@ -26,25 +40,25 @@ class TransactionController:
         sort options:
           id_asc        — oldest first (default)
           newest_first  — latest first
-          added_only    — only 'added' actions
-          retrieved_only— only 'retrieved' actions
+          added_only    — only 'add' actions
+          retrieved_only— only 'retrieve' actions
         """
         session = InventorySessionLocal()
         try:
             where_clause = ""
             if sort == "added_only":
-                where_clause = "WHERE t.action = 'added'"
+                where_clause = "WHERE t.action = 'add'"
             elif sort == "retrieved_only":
-                where_clause = "WHERE t.action = 'retrieved'"
+                where_clause = "WHERE t.action = 'retrieve'"
 
             order_clause = "ORDER BY t.time ASC" if sort != "newest_first" else "ORDER BY t.time DESC"
 
             result = session.execute(
                 text(f"""
                     SELECT t.tran_id, t.item_id, i.name AS item_name,
-                           t.subcom_place, t.action, t.time
-                    FROM "Transactions" t
-                    LEFT JOIN "Items" i ON t.item_id = i.item_id
+                           t.compartment_id, t.action, t.time, t.notes
+                    FROM storage_transactions t
+                    LEFT JOIN storage_items i ON t.item_id = i.item_id
                     {where_clause}
                     {order_clause}
                     LIMIT :limit
@@ -66,9 +80,9 @@ class TransactionController:
             result = session.execute(
                 text("""
                     SELECT t.tran_id, t.item_id, i.name AS item_name,
-                           t.subcom_place, t.action, t.time
-                    FROM "Transactions" t
-                    LEFT JOIN "Items" i ON t.item_id = i.item_id
+                           t.compartment_id, t.action, t.time, t.notes
+                    FROM storage_transactions t
+                    LEFT JOIN storage_items i ON t.item_id = i.item_id
                     WHERE t.tran_id = :tran_id
                 """),
                 {"tran_id": tran_id}
@@ -90,9 +104,9 @@ class TransactionController:
             result = session.execute(
                 text("""
                     SELECT t.tran_id, t.item_id, i.name AS item_name,
-                           t.subcom_place, t.action, t.time
-                    FROM "Transactions" t
-                    LEFT JOIN "Items" i ON t.item_id = i.item_id
+                           t.compartment_id, t.action, t.time, t.notes
+                    FROM storage_transactions t
+                    LEFT JOIN storage_items i ON t.item_id = i.item_id
                     WHERE t.item_id = :item_id
                     ORDER BY t.time DESC
                 """),
@@ -111,32 +125,34 @@ class TransactionController:
         session = InventorySessionLocal()
         try:
             item_id = transaction_data.get("item_id")
-            action = transaction_data.get("action")
-            subcom_place = transaction_data.get("subcom_place")
+            action = _normalise_action(transaction_data.get("action", ""))
+            compartment_id = transaction_data.get("compartment_id") or transaction_data.get("subcom_place")
+            notes = transaction_data.get("notes")
 
             if not item_id or not action:
                 raise ValueError("item_id and action are required")
 
             result = session.execute(
                 text("""
-                    INSERT INTO "Transactions" (item_id, subcom_place, action, time)
-                    VALUES (:item_id, :subcom_place, :action, :time)
+                    INSERT INTO storage_transactions (machine_id, compartment_id, item_id, action, time, notes)
+                    VALUES ('asrs', :compartment_id, :item_id, :action, :time, :notes)
                     RETURNING tran_id
                 """),
                 {
-                    "item_id":      item_id,
-                    "subcom_place": subcom_place,
-                    "action":       action,
-                    "time":         datetime.now(),
+                    "item_id":       item_id,
+                    "compartment_id": compartment_id,
+                    "action":        action,
+                    "time":          datetime.now(timezone.utc),
+                    "notes":         notes,
                 }
             )
             tran_id = result.fetchone()[0]
             session.commit()
             return {
-                "tran_id":      tran_id,
-                "item_id":      item_id,
-                "subcom_place": subcom_place,
-                "action":       action,
+                "tran_id":        tran_id,
+                "item_id":        item_id,
+                "compartment_id": compartment_id,
+                "action":         action,
             }
         except ValueError:
             raise
@@ -154,29 +170,31 @@ class TransactionController:
             created = []
             for td in transactions:
                 item_id = td.get("item_id")
-                action = td.get("action")
-                subcom_place = td.get("subcom_place")
+                action = _normalise_action(td.get("action", ""))
+                compartment_id = td.get("compartment_id") or td.get("subcom_place")
+                notes = td.get("notes")
                 if not item_id or not action:
                     raise ValueError("Each transaction must have item_id and action")
                 result = session.execute(
                     text("""
-                        INSERT INTO "Transactions" (item_id, subcom_place, action, time)
-                        VALUES (:item_id, :subcom_place, :action, :time)
+                        INSERT INTO storage_transactions (machine_id, compartment_id, item_id, action, time, notes)
+                        VALUES ('asrs', :compartment_id, :item_id, :action, :time, :notes)
                         RETURNING tran_id
                     """),
                     {
-                        "item_id":      item_id,
-                        "subcom_place": subcom_place,
-                        "action":       action,
-                        "time":         datetime.now(),
+                        "item_id":        item_id,
+                        "compartment_id": compartment_id,
+                        "action":         action,
+                        "time":           datetime.now(timezone.utc),
+                        "notes":          notes,
                     }
                 )
                 tran_id = result.fetchone()[0]
                 created.append({
-                    "tran_id":      tran_id,
-                    "item_id":      item_id,
-                    "subcom_place": subcom_place,
-                    "action":       action,
+                    "tran_id":        tran_id,
+                    "item_id":        item_id,
+                    "compartment_id": compartment_id,
+                    "action":         action,
                 })
             session.commit()
             return created
