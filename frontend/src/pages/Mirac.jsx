@@ -986,13 +986,13 @@ const Mirac = () => {
                     {activeModal === "energy" && (
                       <>
                         <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>104-105</td>
+                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>42-43</td>
                           <td style={{ padding: "8px 12px", fontWeight: 600 }}>Active Power (kW)</td>
                           <td style={{ padding: "8px 12px", color: "#4ade80" }}>{data?.energy_meter?.raw_power_regs?.join(", ") || "---"}</td>
                           <td style={{ padding: "8px 12px", color: "var(--text-disabled)" }}>{data?.energy_meter?.raw_power_regs?.map(r => "0x" + r.toString(16).toUpperCase()).join(", ") || "---"}</td>
                         </tr>
                         <tr>
-                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>108-109</td>
+                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>58-59</td>
                           <td style={{ padding: "8px 12px", fontWeight: 600 }}>Total Active Energy (kWh)</td>
                           <td style={{ padding: "8px 12px" }}>{data?.energy_meter?.raw_kwh_regs?.join(", ") || "---"}</td>
                           <td style={{ padding: "8px 12px", color: "var(--text-disabled)" }}>{data?.energy_meter?.raw_kwh_regs?.map(r => "0x" + r.toString(16).toUpperCase()).join(", ") || "---"}</td>

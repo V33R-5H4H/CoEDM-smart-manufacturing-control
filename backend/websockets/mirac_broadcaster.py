@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import json
 import time
 from fastapi import WebSocket
@@ -31,6 +32,8 @@ class MiracBroadcaster:
             port=settings.VIBIT_PORT,
             device_id=settings.VIBIT_UNIT_ID_3,
         )
+        self._last_modbus_read_time = 0.0
+        self._cached_modbus_data = (None, None, None)
         
     async def connect(self, websocket: WebSocket):
         """Register a new WebSocket connection"""
@@ -95,12 +98,18 @@ class MiracBroadcaster:
             plc_data = await self._read_plc_data()
             plc_connected = bool(plc_data)
 
-            # Read all three VibIT snapshots concurrently in a thread pool
-            vibit1_data, vibit2_data, vibit3_data = await asyncio.gather(
-                asyncio.to_thread(self.vibit_reader_1.read_snapshot),
-                asyncio.to_thread(self.vibit_reader_2.read_snapshot),
-                asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, False)
-            )
+            # Throttle physical Modbus reads to a rate of 0.5 Hz (every 2.0s) to relax the RS485 serial network
+            now = time.time()
+            if now - self._last_modbus_read_time >= 2.0:
+                self._last_modbus_read_time = now
+                vibit1_data, vibit2_data, vibit3_data = await asyncio.gather(
+                    asyncio.to_thread(self.vibit_reader_1.read_snapshot),
+                    asyncio.to_thread(self.vibit_reader_2.read_snapshot),
+                    asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, False)
+                )
+                self._cached_modbus_data = (vibit1_data, vibit2_data, vibit3_data)
+            else:
+                vibit1_data, vibit2_data, vibit3_data = copy.deepcopy(self._cached_modbus_data)
 
             # Track which sensors are actually connected
             vibit1_connected = vibit1_data is not None

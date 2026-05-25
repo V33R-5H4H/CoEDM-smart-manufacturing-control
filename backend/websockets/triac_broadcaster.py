@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import json
 import logging
 import time
@@ -31,6 +32,8 @@ class TriacBroadcaster:
             port=settings.TRIAC_VIBIT_PORT,
             device_id=settings.TRIAC_VIBIT_UNIT_ID_3,
         )
+        self._last_modbus_read_time = 0.0
+        self._cached_modbus_data = (None, None, None)
 
         # Physics-based coordinates and G-Code block state for milling visualization
         self.x_pos = 0.0
@@ -115,13 +118,18 @@ class TriacBroadcaster:
         try:
             plc_connected = triac_opcua_connection.connected
 
-            # Read all three VibIT snapshots concurrently
-            # VibIT 3 (Energy Meter) is word-swapped on TRIAC (word_swap=True)
-            vibit1_data, vibit2_data, vibit3_data = await asyncio.gather(
-                asyncio.to_thread(self.vibit_reader_1.read_snapshot),
-                asyncio.to_thread(self.vibit_reader_2.read_snapshot),
-                asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, True)
-            )
+            # Throttle physical Modbus reads to a rate of 0.5 Hz (every 2.0s) to relax the RS485 serial network
+            now = time.time()
+            if now - self._last_modbus_read_time >= 2.0:
+                self._last_modbus_read_time = now
+                vibit1_data, vibit2_data, vibit3_data = await asyncio.gather(
+                    asyncio.to_thread(self.vibit_reader_1.read_snapshot),
+                    asyncio.to_thread(self.vibit_reader_2.read_snapshot),
+                    asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, True)
+                )
+                self._cached_modbus_data = (vibit1_data, vibit2_data, vibit3_data)
+            else:
+                vibit1_data, vibit2_data, vibit3_data = copy.deepcopy(self._cached_modbus_data)
 
             vibit1_connected = vibit1_data is not None
             vibit2_connected = vibit2_data is not None
