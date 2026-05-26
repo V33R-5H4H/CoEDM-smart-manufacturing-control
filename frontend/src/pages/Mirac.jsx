@@ -48,10 +48,7 @@ const SensorDot = ({ connected }) => (
       width: 6,
       height: 6,
       borderRadius: "50%",
-      background: connected ? "#4ade80" : "#ef4444",
-      boxShadow: connected
-        ? "0 0 6px rgba(74, 222, 128, 0.5)"
-        : "0 0 6px rgba(239, 68, 68, 0.5)",
+      background: connected ? "#3a9d6e" : "#c4424b",
       marginRight: 6,
       verticalAlign: "middle",
     }}
@@ -735,8 +732,7 @@ const Mirac = () => {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(3, 7, 18, 0.75)",
-            backdropFilter: "blur(10px)",
+            background: "rgba(0, 0, 0, 0.85)",
             zIndex: 9999,
             display: "flex",
             alignItems: "center",
@@ -746,14 +742,13 @@ const Mirac = () => {
         >
           <div
             style={{
-              background: "rgba(10, 15, 30, 0.96)",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
-              borderRadius: "12px",
+              background: "#252932",
+              border: "1px solid #323842",
+              borderRadius: "4px",
               width: "580px",
               maxWidth: "95%",
               padding: "24px",
-              boxShadow: "0 24px 64px rgba(0, 0, 0, 0.85), 0 0 32px rgba(56, 189, 248, 0.05)",
-              animation: "modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+              animation: "modalFadeIn 0.2s ease-out",
               position: "relative",
               display: "flex",
               flexDirection: "column",
@@ -768,27 +763,25 @@ const Mirac = () => {
                 position: "absolute",
                 top: "16px",
                 right: "16px",
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                color: "var(--text-secondary)",
-                borderRadius: "50%",
+                background: "transparent",
+                border: "1px solid #323842",
+                color: "#e1e2ea",
+                borderRadius: "4px",
                 width: "28px",
                 height: "28px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 cursor: "pointer",
-                transition: "all 0.2s",
-                fontWeight: 700,
+                transition: "background 0.2s",
+                fontWeight: 600,
                 fontSize: "13px",
               }}
               onMouseEnter={(e) => {
-                e.target.style.background = "rgba(255,255,255,0.08)";
-                e.target.style.color = "var(--text-primary)";
+                e.target.style.background = "#323842";
               }}
               onMouseLeave={(e) => {
-                e.target.style.background = "rgba(255,255,255,0.03)";
-                e.target.style.color = "var(--text-secondary)";
+                e.target.style.background = "transparent";
               }}
             >
               ✕
@@ -800,31 +793,30 @@ const Mirac = () => {
                 <span
                   style={{
                     display: "inline-block",
-                    width: "8px",
-                    height: "8px",
+                    width: "10px",
+                    height: "10px",
                     borderRadius: "50%",
                     background:
                       activeModal === "spindle"
-                        ? (vibit1Online ? "#4ade80" : "#ef4444")
+                        ? (vibit1Online ? "#3a9d6e" : "transparent")
                         : activeModal === "tool"
-                        ? (vibit2Online ? "#4ade80" : "#ef4444")
-                        : (vibit3Online ? "#4ade80" : "#ef4444"),
-                    boxShadow: `0 0 8px ${
+                        ? (vibit2Online ? "#3a9d6e" : "transparent")
+                        : (vibit3Online ? "#3a9d6e" : "transparent"),
+                    border:
                       activeModal === "spindle"
-                        ? (vibit1Online ? "#4ade80" : "#ef4444")
+                        ? (vibit1Online ? "none" : "1px solid #c4424b")
                         : activeModal === "tool"
-                        ? (vibit2Online ? "#4ade80" : "#ef4444")
-                        : (vibit3Online ? "#4ade80" : "#ef4444")
-                    }`,
+                        ? (vibit2Online ? "none" : "1px solid #c4424b")
+                        : (vibit3Online ? "none" : "1px solid #c4424b"),
                   }}
                 />
-                <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, color: "var(--text-primary)" }}>
+                <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, color: "#e1e2ea", fontFamily: "Inter" }}>
                   {activeModal === "spindle" && "Spindle Diagnostics Panel"}
                   {activeModal === "tool" && "Tool Diagnostics Panel"}
                   {activeModal === "energy" && "Energy Meter Diagnostics Panel"}
                 </h3>
               </div>
-              <p style={{ margin: 0, fontSize: "0.68rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>
+              <p style={{ margin: 0, fontSize: "11px", color: "#8f9097", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, fontFamily: "Inter" }}>
                 {activeModal === "spindle" && "Sensor Model: VibIT-VIB-S01 • Device ID 1"}
                 {activeModal === "tool" && "Sensor Model: VibIT-VIB-S01 • Device ID 2"}
                 {activeModal === "energy" && "Sensor Model: VibIT-PEM-E02 • Device ID 3"}
@@ -832,67 +824,67 @@ const Mirac = () => {
             </div>
 
             {/* Hardware Specifications */}
-            <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "8px", padding: "12px" }}>
-              <h4 style={{ margin: "0 0 8px 0", fontSize: "0.68rem", color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>
+            <div style={{ background: "#14161a", border: "1px solid #323842", borderRadius: "4px", padding: "12px" }}>
+              <h4 style={{ margin: "0 0 8px 0", fontSize: "11px", color: "#8f9097", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, fontFamily: "Inter" }}>
                 Hardware Specifications
               </h4>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "11px" }}>
-                <div><span style={{ color: "var(--text-muted)" }}>Target Host:</span> <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-secondary)" }}>10.10.14.103</span></div>
-                <div><span style={{ color: "var(--text-muted)" }}>Modbus Port:</span> <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-secondary)" }}>502</span></div>
-                <div><span style={{ color: "var(--text-muted)" }}>Protocol:</span> <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-secondary)" }}>Modbus TCP/IP</span></div>
-                <div><span style={{ color: "var(--text-muted)" }}>Unit ID:</span> <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-secondary)" }}>{activeModal === "spindle" ? "1" : activeModal === "tool" ? "2" : "3"}</span></div>
-                <div><span style={{ color: "var(--text-muted)" }}>Register Type:</span> <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-secondary)" }}>{activeModal === "spindle" ? (data?.raw?.vibit1?.is_holding === 1 ? "Holding Registers" : "Input Registers") : activeModal === "tool" ? (data?.raw?.vibit2?.is_holding === 1 ? "Holding Registers" : "Input Registers") : "Input Registers"}</span></div>
-                <div><span style={{ color: "var(--text-muted)" }}>Status:</span> <span style={{ fontWeight: 700, color: activeModal === "spindle" ? (vibit1Online ? "#4ade80" : "#ef4444") : activeModal === "tool" ? (vibit2Online ? "#4ade80" : "#ef4444") : (vibit3Online ? "#4ade80" : "#ef4444") }}>{activeModal === "spindle" ? (vibit1Online ? "ONLINE" : "OFFLINE") : activeModal === "tool" ? (vibit2Online ? "ONLINE" : "OFFLINE") : (vibit3Online ? "ONLINE" : "OFFLINE")}</span></div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "11px", fontFamily: "Inter" }}>
+                <div><span style={{ color: "#8f9097" }}>Target Host:</span> <span style={{ fontFamily: "JetBrains Mono", color: "#e1e2ea" }}>10.10.14.103</span></div>
+                <div><span style={{ color: "#8f9097" }}>Modbus Port:</span> <span style={{ fontFamily: "JetBrains Mono", color: "#e1e2ea" }}>502</span></div>
+                <div><span style={{ color: "#8f9097" }}>Protocol:</span> <span style={{ fontFamily: "JetBrains Mono", color: "#e1e2ea" }}>Modbus TCP/IP</span></div>
+                <div><span style={{ color: "#8f9097" }}>Unit ID:</span> <span style={{ fontFamily: "JetBrains Mono", color: "#e1e2ea" }}>{activeModal === "spindle" ? "1" : activeModal === "tool" ? "2" : "3"}</span></div>
+                <div><span style={{ color: "#8f9097" }}>Register Type:</span> <span style={{ fontFamily: "JetBrains Mono", color: "#e1e2ea" }}>{activeModal === "spindle" ? (data?.raw?.vibit1?.is_holding === 1 ? "Holding Registers" : "Input Registers") : activeModal === "tool" ? (data?.raw?.vibit2?.is_holding === 1 ? "Holding Registers" : "Input Registers") : "Input Registers"}</span></div>
+                <div><span style={{ color: "#8f9097" }}>Status:</span> <span style={{ fontWeight: 700, fontFamily: "Inter", color: activeModal === "spindle" ? (vibit1Online ? "#3a9d6e" : "#c4424b") : activeModal === "tool" ? (vibit2Online ? "#3a9d6e" : "#c4424b") : (vibit3Online ? "#3a9d6e" : "#c4424b") }}>{activeModal === "spindle" ? (vibit1Online ? "ONLINE" : "OFFLINE") : activeModal === "tool" ? (vibit2Online ? "ONLINE" : "OFFLINE") : (vibit3Online ? "ONLINE" : "OFFLINE")}</span></div>
               </div>
             </div>
 
             {/* Live Metrics */}
             <div>
-              <h4 style={{ margin: "0 0 8px 0", fontSize: "0.68rem", color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>
+              <h4 style={{ margin: "0 0 8px 0", fontSize: "11px", color: "#8f9097", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, fontFamily: "Inter" }}>
                 Decoded Process Variables
               </h4>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
                 {activeModal === "spindle" && (
                   <>
-                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "6px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Vibration</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#38bdf8", marginTop: "4px" }}>{sensorVal(data?.spindle?.vibration)} <span style={{ fontSize: "10px", fontWeight: 600 }}>mm/s</span></div>
+                    <div style={{ background: "#14161a", border: "1px solid #323842", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
+                      <div style={{ fontSize: "11px", color: "#8f9097", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Vibration</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "#e1e2ea", marginTop: "4px" }}>{sensorVal(data?.spindle?.vibration)} <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "Inter" }}>mm/s</span></div>
                     </div>
-                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "6px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Temperature</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#fff", marginTop: "4px" }}>{sensorVal(data?.spindle?.temperature, 1)} <span style={{ fontSize: "10px", fontWeight: 600 }}>°C</span></div>
+                    <div style={{ background: "#14161a", border: "1px solid #323842", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
+                      <div style={{ fontSize: "11px", color: "#8f9097", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Temperature</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "#e1e2ea", marginTop: "4px" }}>{sensorVal(data?.spindle?.temperature, 1)} <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "Inter" }}>°C</span></div>
                     </div>
-                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "6px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Rotational Speed</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#fff", marginTop: "4px" }}>{data?.spindle?.speed != null ? Math.round(data.spindle.speed) : "---"} <span style={{ fontSize: "10px", fontWeight: 600 }}>RPM</span></div>
+                    <div style={{ background: "#14161a", border: "1px solid #323842", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
+                      <div style={{ fontSize: "11px", color: "#8f9097", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Rotational Speed</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "#e1e2ea", marginTop: "4px" }}>{data?.spindle?.speed != null ? Math.round(data.spindle.speed) : "---"} <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "Inter" }}>RPM</span></div>
                     </div>
                   </>
                 )}
                 {activeModal === "tool" && (
                   <>
-                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "6px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Vibration Peak</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#fb923c", marginTop: "4px" }}>{sensorVal(data?.tool?.vibration)} <span style={{ fontSize: "10px", fontWeight: 600 }}>mm/s</span></div>
+                    <div style={{ background: "#14161a", border: "1px solid #323842", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
+                      <div style={{ fontSize: "11px", color: "#8f9097", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Vibration Peak</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "#e1e2ea", marginTop: "4px" }}>{sensorVal(data?.tool?.vibration)} <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "Inter" }}>mm/s</span></div>
                     </div>
-                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "6px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Temperature</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#fff", marginTop: "4px" }}>{sensorVal(data?.tool?.temperature, 1)} <span style={{ fontSize: "10px", fontWeight: 600 }}>°C</span></div>
+                    <div style={{ background: "#14161a", border: "1px solid #323842", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
+                      <div style={{ fontSize: "11px", color: "#8f9097", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Temperature</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "#e1e2ea", marginTop: "4px" }}>{sensorVal(data?.tool?.temperature, 1)} <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "Inter" }}>°C</span></div>
                     </div>
-                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "6px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Reboot Count</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#fff", marginTop: "4px" }}>{data?.tool?.reboot_count ?? "---"}</div>
+                    <div style={{ background: "#14161a", border: "1px solid #323842", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
+                      <div style={{ fontSize: "11px", color: "#8f9097", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Reboot Count</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "#e1e2ea", marginTop: "4px" }}>{data?.tool?.reboot_count ?? "---"}</div>
                     </div>
                   </>
                 )}
                 {activeModal === "energy" && (
                   <>
-                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "6px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Active Power</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#4ade80", marginTop: "4px" }}>{sensorVal(data?.energy_meter?.power, 3)} <span style={{ fontSize: "10px", fontWeight: 600 }}>kW</span></div>
+                    <div style={{ background: "#14161a", border: "1px solid #323842", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
+                      <div style={{ fontSize: "11px", color: "#8f9097", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Active Power</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "#3a9d6e", marginTop: "4px" }}>{sensorVal(data?.energy_meter?.power, 3)} <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "Inter" }}>kW</span></div>
                     </div>
-                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "6px", padding: "10px", textAlign: "center", gridColumn: "span 2" }}>
-                      <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Accumulated Consumption</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#fff", marginTop: "4px" }}>{sensorVal(data?.energy_meter?.kwh, 4)} <span style={{ fontSize: "10px", fontWeight: 600 }}>kWh</span></div>
+                    <div style={{ background: "#14161a", border: "1px solid #323842", borderRadius: "4px", padding: "10px", textAlign: "center", gridColumn: "span 2" }}>
+                      <div style={{ fontSize: "11px", color: "#8f9097", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Accumulated Consumption</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "#e1e2ea", marginTop: "4px" }}>{sensorVal(data?.energy_meter?.kwh, 4)} <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "Inter" }}>kWh</span></div>
                     </div>
                   </>
                 )}
@@ -901,101 +893,101 @@ const Mirac = () => {
 
             {/* Modbus Direct Registers */}
             <div>
-              <h4 style={{ margin: "0 0 8px 0", fontSize: "0.68rem", color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>
-                Modbus Telemetry Register Table
+              <h4 style={{ margin: "0 0 8px 0", fontSize: "11px", color: "#8f9097", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, fontFamily: "Inter" }}>
+                Modbus Telemetry Register Table (16-bit word representation)
               </h4>
-              <div style={{ overflowX: "auto", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "6px" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", textAlign: "left", fontFamily: "var(--font-mono)" }}>
+              <div style={{ overflowX: "auto", border: "1px solid #323842", borderRadius: "4px" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", textAlign: "left", fontFamily: "JetBrains Mono" }}>
                   <thead>
-                    <tr style={{ background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "9px" }}>ADDRESS</th>
-                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "9px" }}>VARIABLE NAME</th>
-                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "9px" }}>RAW INT16[2]</th>
-                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "9px" }}>HEX WORD</th>
+                    <tr style={{ background: "#14161a", borderBottom: "1px solid #323842" }}>
+                      <th style={{ padding: "8px 12px", color: "#8f9097", fontSize: "10px" }}>ADDRESS</th>
+                      <th style={{ padding: "8px 12px", color: "#8f9097", fontSize: "10px" }}>VARIABLE NAME</th>
+                      <th style={{ padding: "8px 12px", color: "#8f9097", fontSize: "10px" }}>RAW INT16[2]</th>
+                      <th style={{ padding: "8px 12px", color: "#8f9097", fontSize: "10px" }}>HEX WORD</th>
                     </tr>
                   </thead>
                   <tbody>
                     {activeModal === "spindle" && (
                       <>
-                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>{getRegRange(b1, 6)}</td>
-                          <td style={{ padding: "8px 12px", fontWeight: 600 }}>X-Axis Velocity RMS</td>
-                          <td style={{ padding: "8px 12px", color: "#38bdf8" }}>{floatToRegs(data?.raw?.vibit1?.x_rms_vel, false).join(", ")}</td>
-                          <td style={{ padding: "8px 12px", color: "var(--text-disabled)" }}>{floatToRegs(data?.raw?.vibit1?.x_rms_vel, false).map(r => "0x" + r.toString(16).toUpperCase()).join(", ")}</td>
+                        <tr style={{ borderBottom: "1px solid #323842" }}>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{getRegRange(b1, 6)}</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>X-Axis Velocity RMS</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>{floatToRegs(data?.raw?.vibit1?.x_rms_vel, false).join(", ")}</td>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{floatToRegs(data?.raw?.vibit1?.x_rms_vel, false).map(r => "0x" + r.toString(16).toUpperCase()).join(", ")}</td>
                         </tr>
-                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>{getRegRange(b1, 8)}</td>
-                          <td style={{ padding: "8px 12px", fontWeight: 600 }}>Y-Axis Velocity RMS</td>
-                          <td style={{ padding: "8px 12px", color: "#38bdf8" }}>{floatToRegs(data?.raw?.vibit1?.y_rms_vel, false).join(", ")}</td>
-                          <td style={{ padding: "8px 12px", color: "var(--text-disabled)" }}>{floatToRegs(data?.raw?.vibit1?.y_rms_vel, false).map(r => "0x" + r.toString(16).toUpperCase()).join(", ")}</td>
+                        <tr style={{ borderBottom: "1px solid #323842" }}>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{getRegRange(b1, 8)}</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>Y-Axis Velocity RMS</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>{floatToRegs(data?.raw?.vibit1?.y_rms_vel, false).join(", ")}</td>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{floatToRegs(data?.raw?.vibit1?.y_rms_vel, false).map(r => "0x" + r.toString(16).toUpperCase()).join(", ")}</td>
                         </tr>
-                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>{getRegRange(b1, 10)}</td>
-                          <td style={{ padding: "8px 12px", fontWeight: 600 }}>Z-Axis Velocity RMS</td>
-                          <td style={{ padding: "8px 12px", color: "#38bdf8" }}>{floatToRegs(data?.raw?.vibit1?.z_rms_vel, false).join(", ")}</td>
-                          <td style={{ padding: "8px 12px", color: "var(--text-disabled)" }}>{floatToRegs(data?.raw?.vibit1?.z_rms_vel, false).map(r => "0x" + r.toString(16).toUpperCase()).join(", ")}</td>
+                        <tr style={{ borderBottom: "1px solid #323842" }}>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{getRegRange(b1, 10)}</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>Z-Axis Velocity RMS</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>{floatToRegs(data?.raw?.vibit1?.z_rms_vel, false).join(", ")}</td>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{floatToRegs(data?.raw?.vibit1?.z_rms_vel, false).map(r => "0x" + r.toString(16).toUpperCase()).join(", ")}</td>
                         </tr>
-                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>{getRegRange(b1, 12)}</td>
-                          <td style={{ padding: "8px 12px", fontWeight: 600 }}>Temperature</td>
-                          <td style={{ padding: "8px 12px" }}>{floatToRegs(data?.raw?.vibit1?.temperature, false).join(", ")}</td>
-                          <td style={{ padding: "8px 12px", color: "var(--text-disabled)" }}>{floatToRegs(data?.raw?.vibit1?.temperature, false).map(r => "0x" + r.toString(16).toUpperCase()).join(", ")}</td>
+                        <tr style={{ borderBottom: "1px solid #323842" }}>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{getRegRange(b1, 12)}</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>Temperature</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>{floatToRegs(data?.raw?.vibit1?.temperature, false).join(", ")}</td>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{floatToRegs(data?.raw?.vibit1?.temperature, false).map(r => "0x" + r.toString(16).toUpperCase()).join(", ")}</td>
                         </tr>
                         <tr>
-                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>{getRegRange(b1, 38)}</td>
-                          <td style={{ padding: "8px 12px", fontWeight: 600 }}>Rotational Speed (RPM)</td>
-                          <td style={{ padding: "8px 12px" }}>{floatToRegs(data?.raw?.vibit1?.rpm, false).join(", ")}</td>
-                          <td style={{ padding: "8px 12px", color: "var(--text-disabled)" }}>{floatToRegs(data?.raw?.vibit1?.rpm, false).map(r => "0x" + r.toString(16).toUpperCase()).join(", ")}</td>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{getRegRange(b1, 38)}</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>Rotational Speed (RPM)</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>{floatToRegs(data?.raw?.vibit1?.rpm, false).join(", ")}</td>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{floatToRegs(data?.raw?.vibit1?.rpm, false).map(r => "0x" + r.toString(16).toUpperCase()).join(", ")}</td>
                         </tr>
                       </>
                     )}
                     {activeModal === "tool" && (
                       <>
-                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>{getRegRange(b2, 20)}</td>
-                          <td style={{ padding: "8px 12px", fontWeight: 600 }}>X-Axis Velocity Peak</td>
-                          <td style={{ padding: "8px 12px", color: "#fb923c" }}>{floatToRegs(data?.raw?.vibit2?.x_peak_vel, false).join(", ")}</td>
-                          <td style={{ padding: "8px 12px", color: "var(--text-disabled)" }}>{floatToRegs(data?.raw?.vibit2?.x_peak_vel, false).map(r => "0x" + r.toString(16).toUpperCase()).join(", ")}</td>
+                        <tr style={{ borderBottom: "1px solid #323842" }}>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{getRegRange(b2, 20)}</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>X-Axis Velocity Peak</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>{floatToRegs(data?.raw?.vibit2?.x_peak_vel, false).join(", ")}</td>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{floatToRegs(data?.raw?.vibit2?.x_peak_vel, false).map(r => "0x" + r.toString(16).toUpperCase()).join(", ")}</td>
                         </tr>
-                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>{getRegRange(b2, 22)}</td>
-                          <td style={{ padding: "8px 12px", fontWeight: 600 }}>Y-Axis Velocity Peak</td>
-                          <td style={{ padding: "8px 12px", color: "#fb923c" }}>{floatToRegs(data?.raw?.vibit2?.y_peak_vel, false).join(", ")}</td>
-                          <td style={{ padding: "8px 12px", color: "var(--text-disabled)" }}>{floatToRegs(data?.raw?.vibit2?.y_peak_vel, false).map(r => "0x" + r.toString(16).toUpperCase()).join(", ")}</td>
+                        <tr style={{ borderBottom: "1px solid #323842" }}>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{getRegRange(b2, 22)}</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>Y-Axis Velocity Peak</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>{floatToRegs(data?.raw?.vibit2?.y_peak_vel, false).join(", ")}</td>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{floatToRegs(data?.raw?.vibit2?.y_peak_vel, false).map(r => "0x" + r.toString(16).toUpperCase()).join(", ")}</td>
                         </tr>
-                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>{getRegRange(b2, 24)}</td>
-                          <td style={{ padding: "8px 12px", fontWeight: 600 }}>Z-Axis Velocity Peak</td>
-                          <td style={{ padding: "8px 12px", color: "#fb923c" }}>{floatToRegs(data?.raw?.vibit2?.z_peak_vel, false).join(", ")}</td>
-                          <td style={{ padding: "8px 12px", color: "var(--text-disabled)" }}>{floatToRegs(data?.raw?.vibit2?.z_peak_vel, false).map(r => "0x" + r.toString(16).toUpperCase()).join(", ")}</td>
+                        <tr style={{ borderBottom: "1px solid #323842" }}>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{getRegRange(b2, 24)}</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>Z-Axis Velocity Peak</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>{floatToRegs(data?.raw?.vibit2?.z_peak_vel, false).join(", ")}</td>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{floatToRegs(data?.raw?.vibit2?.z_peak_vel, false).map(r => "0x" + r.toString(16).toUpperCase()).join(", ")}</td>
                         </tr>
-                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>{getRegRange(b2, 12)}</td>
-                          <td style={{ padding: "8px 12px", fontWeight: 600 }}>Temperature</td>
-                          <td style={{ padding: "8px 12px" }}>{floatToRegs(data?.raw?.vibit2?.temperature, false).join(", ")}</td>
-                          <td style={{ padding: "8px 12px", color: "var(--text-disabled)" }}>{floatToRegs(data?.raw?.vibit2?.temperature, false).map(r => "0x" + r.toString(16).toUpperCase()).join(", ")}</td>
+                        <tr style={{ borderBottom: "1px solid #323842" }}>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{getRegRange(b2, 12)}</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>Temperature</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>{floatToRegs(data?.raw?.vibit2?.temperature, false).join(", ")}</td>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{floatToRegs(data?.raw?.vibit2?.temperature, false).map(r => "0x" + r.toString(16).toUpperCase()).join(", ")}</td>
                         </tr>
                         <tr>
-                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>{getRegRange(b2, 30)}</td>
-                          <td style={{ padding: "8px 12px", fontWeight: 600 }}>Reboot Count</td>
-                          <td style={{ padding: "8px 12px" }}>{[data?.raw?.vibit2?.reboot_count ?? 0, 0].join(", ")}</td>
-                          <td style={{ padding: "8px 12px", color: "var(--text-disabled)" }}>{[`0x${(data?.raw?.vibit2?.reboot_count ?? 0).toString(16).toUpperCase()}`, "0x0000"].join(", ")}</td>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{getRegRange(b2, 30)}</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>Reboot Count</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>{[data?.raw?.vibit2?.reboot_count ?? 0, 0].join(", ")}</td>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{[`0x${(data?.raw?.vibit2?.reboot_count ?? 0).toString(16).toUpperCase()}`, "0x0000"].join(", ")}</td>
                         </tr>
                       </>
                     )}
                     {activeModal === "energy" && (
                       <>
-                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>42-43</td>
-                          <td style={{ padding: "8px 12px", fontWeight: 600 }}>Active Power (kW)</td>
-                          <td style={{ padding: "8px 12px", color: "#4ade80" }}>{data?.energy_meter?.raw_power_regs?.join(", ") || "---"}</td>
-                          <td style={{ padding: "8px 12px", color: "var(--text-disabled)" }}>{data?.energy_meter?.raw_power_regs?.map(r => "0x" + r.toString(16).toUpperCase()).join(", ") || "---"}</td>
+                        <tr style={{ borderBottom: "1px solid #323842" }}>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>42-43</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>Active Power (kW)</td>
+                          <td style={{ padding: "8px 12px", color: "#3a9d6e" }}>{data?.energy_meter?.raw_power_regs?.join(", ") || "---"}</td>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{data?.energy_meter?.raw_power_regs?.map(r => "0x" + r.toString(16).toUpperCase()).join(", ") || "---"}</td>
                         </tr>
                         <tr>
-                          <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>58-59</td>
-                          <td style={{ padding: "8px 12px", fontWeight: 600 }}>Total Active Energy (kWh)</td>
-                          <td style={{ padding: "8px 12px" }}>{data?.energy_meter?.raw_kwh_regs?.join(", ") || "---"}</td>
-                          <td style={{ padding: "8px 12px", color: "var(--text-disabled)" }}>{data?.energy_meter?.raw_kwh_regs?.map(r => "0x" + r.toString(16).toUpperCase()).join(", ") || "---"}</td>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>58-59</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>Total Active Energy (kWh)</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>{data?.energy_meter?.raw_kwh_regs?.join(", ") || "---"}</td>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>{data?.energy_meter?.raw_kwh_regs?.map(r => "0x" + r.toString(16).toUpperCase()).join(", ") || "---"}</td>
                         </tr>
                       </>
                     )}
