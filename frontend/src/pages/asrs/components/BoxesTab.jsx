@@ -176,6 +176,61 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
     }
   };
 
+  const handleReturnCrateOperation = async (boxId) => {
+    // 1. Immediately minimize the bottom sheet
+    setShowDetails(false);
+    setSelectedBox(null);
+
+    try {
+      const BoxService = (await import('../services/boxService')).default;
+
+      // 2. Dispatch API request
+      await BoxService.returnCrate(boxId);
+
+      // Instantly refresh inventory list to reflect database changes
+      fetchBoxes();
+
+      // 3. Show persistent background transition toast
+      toast.info('Return crate operation initiated. Shuttle dispatching...', { autoClose: false, toastId: 'return-wait' });
+
+      // 4. Background transaction tracker
+      const startTime = Date.now();
+      const timeoutMs = 90000;
+      const checkIntervalMs = 500;
+      let hasTurnedOn = false;
+
+      const intervalId = setInterval(() => {
+        const isLedOn = ledStatesRef.current[boxId];
+
+        // Detect LED turning on (Operation Started / Carriage at target)
+        if (isLedOn) {
+          hasTurnedOn = true;
+        }
+
+        const elapsed = Date.now() - startTime;
+
+        // Reconcile and finish when LED turns off
+        if (hasTurnedOn && !isLedOn) {
+          clearInterval(intervalId);
+          toast.dismiss('return-wait');
+          toast.success('Crate returned to slot successfully');
+          fetchBoxes();
+        }
+
+        if (elapsed > timeoutMs) {
+          clearInterval(intervalId);
+          toast.dismiss('return-wait');
+          toast.error('Timeout: LED did not confirm completion');
+        }
+      }, checkIntervalMs);
+
+    } catch (error) {
+      console.error('Return crate operation error:', error);
+      toast.dismiss('return-wait');
+      toast.error(error.message || 'Failed to return crate');
+    }
+  };
+
   const handleHomeShuttle = async () => {
     if (safetyCurtainTriggered) {
       toast.warning("Homing operation locked due to safety curtain alert.");
@@ -311,6 +366,7 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
           onRefresh={fetchBoxes}
           onStore={handleStoreOperation}
           onRetrieve={handleRetrieveOperation}
+          onReturnCrate={handleReturnCrateOperation}
         />
       )}
 
@@ -773,7 +829,7 @@ function RackView({
   );
 }
 
-function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrieve }) {
+function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrieve, onReturnCrate }) {
   const [selectedSubId, setSelectedSubId] = useState(null);
   const [subCompartments, setSubCompartments] = useState([]);
   const [items, setItems] = useState([]);
@@ -824,6 +880,12 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
     }
     setLoading(true);
     await onStore(box.box_id, selectedSubId, selectedItemId);
+    setLoading(false);
+  };
+
+  const handleReturnCrate = async () => {
+    setLoading(true);
+    await onReturnCrate(box.box_id);
     setLoading(false);
   };
 
@@ -1180,27 +1242,49 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
               {/* Action Button Container */}
               <div style={{ marginTop: '16px' }}>
                 {!isSelectedOccupied ? (
-                  <button
-                    onClick={handleStore}
-                    disabled={!selectedItemId || loading}
-                    style={{
-                      background: 'var(--primary)',
-                      color: 'var(--bg-primary)',
-                      border: 'none',
-                      borderRadius: '4px',
-                      padding: '12px',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      width: '100%',
-                      cursor: (!selectedItemId || loading) ? 'not-allowed' : 'pointer',
-                      opacity: (!selectedItemId || loading) ? 0.5 : 1,
-                      transition: 'all 150ms ease-out',
-                      boxShadow: selectedItemId && !loading ? '0 4px 12px rgba(249,115,22,0.2)' : 'none'
-                    }}
-                  >
-                    {loading ? 'Executing Store...' : 'Execute Store'}
-                  </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <button
+                      onClick={handleStore}
+                      disabled={!selectedItemId || loading}
+                      style={{
+                        background: 'var(--primary)',
+                        color: 'var(--bg-primary)',
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '12px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        width: '100%',
+                        cursor: (!selectedItemId || loading) ? 'not-allowed' : 'pointer',
+                        opacity: (!selectedItemId || loading) ? 0.5 : 1,
+                        transition: 'all 150ms ease-out',
+                        boxShadow: selectedItemId && !loading ? '0 4px 12px rgba(249,115,22,0.2)' : 'none'
+                      }}
+                    >
+                      {loading ? 'Executing Store...' : 'Execute Store'}
+                    </button>
+                    <button
+                      onClick={handleReturnCrate}
+                      disabled={loading}
+                      style={{
+                        background: 'var(--bg-tertiary)',
+                        color: 'var(--text-primary)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '4px',
+                        padding: '10px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        width: '100%',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        opacity: loading ? 0.5 : 1,
+                        transition: 'all 150ms ease-out'
+                      }}
+                    >
+                      {loading ? 'Returning Crate...' : 'Return Empty Crate to Slot'}
+                    </button>
+                  </div>
                 ) : (
                   <button
                     onClick={handleRetrieve}

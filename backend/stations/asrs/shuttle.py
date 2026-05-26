@@ -58,10 +58,11 @@ class ShuttleState:
             finally:
                 session.close()
 
-    def save_to_db(self):
+    def save_to_db(self, command_override=None):
         """Persist current shuttle state to database by inserting a movement record"""
         with self.lock:
-            logging.info(f"[Shuttle] Saving state to DB: {self.column_letter}{self.row_num}, state={self.state}, command={self.active_command}")
+            cmd = command_override or self.active_command or ("HOME" if (self.column_letter == "A" and self.row_num == 7) else "IDLE")
+            logging.info(f"[Shuttle] Saving state to DB: {self.column_letter}{self.row_num}, state={self.state}, command={cmd}")
             session = self._session()
             try:
                 session.execute(
@@ -73,7 +74,7 @@ class ShuttleState:
                         "row": self.row_num,
                         "col": self.column_letter,
                         "state": self.state,
-                        "cmd": self.active_command,
+                        "cmd": cmd,
                     }
                 )
                 session.commit()
@@ -128,19 +129,23 @@ class ShuttleState:
         """
         Set shuttle to idle state (LED turned OFF, operation complete).
         """
+        cmd = None
         with self.lock:
             logging.info(f"[Shuttle] Setting state to IDLE (LED OFF) at {self.column_letter}{self.row_num}")
             self.state = "idle"
+            cmd = self.active_command
             self.active_command = None
-        self.save_to_db()
+        self.save_to_db(command_override=cmd)
         self._notify_callbacks()
 
     def set_error(self):
         """Set shuttle to error state (operation failed)"""
+        cmd = None
         with self.lock:
             logging.error(f"[Shuttle] Setting state to ERROR at {self.column_letter}{self.row_num}")
             self.state = "error"
-        self.save_to_db()
+            cmd = self.active_command
+        self.save_to_db(command_override=cmd)
         self._notify_callbacks()
 
     def reset_home(self):
@@ -153,7 +158,7 @@ class ShuttleState:
             self.column_letter = "A"
             self.state = "idle"
             self.active_command = None
-        self.save_to_db()
+        self.save_to_db(command_override="HOME")
         self._notify_callbacks()
 
     def return_to_dropoff(self):
@@ -161,12 +166,14 @@ class ShuttleState:
         Move shuttle to Drop-off position (virtual Row 0).
         Used after Retrieve operation completes.
         """
+        cmd = None
         with self.lock:
             logging.info("[Shuttle] Returning to DROP-OFF (A0)")
             # Set to Row 0 to trigger 'isAtDropOff' in frontend
             self.row_num = 0
             self.column_letter = "A"
             self.state = "idle"
+            cmd = self.active_command
             self.active_command = None
-        self.save_to_db()
+        self.save_to_db(command_override=cmd)
         self._notify_callbacks()
