@@ -57,6 +57,30 @@ export default function Assembly() {
   const wsRef = useRef(null);
   const reconnectTimerRef = useRef(null);
 
+  // Fetch historical telemetry on mount
+  useEffect(() => {
+    const fetchHistory = async () => {
+      const response = await AssemblyControlService.getHistoricalTelemetry(250);
+      if (response && response.success && response.data && response.data.length > 0) {
+        // The data is returned newest first (DESC), so reverse it for the plot (oldest to newest)
+        const historyData = response.data.reverse().map((row, index) => {
+          // Normalize the raw displacement to match the frontend calculation
+          const rawDisp = row.displacement_mm !== null ? row.displacement_mm : 43;
+          const dispFloat = Math.max(0, rawDisp - 43);
+          return {
+            time: index,
+            displacement: Math.round(dispFloat)
+          };
+        });
+        
+        plotDataPointsRef.current = historyData;
+        plotTimestampRef.current = historyData.length;
+        setPlotData([...historyData]);
+      }
+    };
+    fetchHistory();
+  }, []);
+
   const connectWS = useCallback(() => {
     // Derive WS base from VITE_WS_URL env var if set; otherwise use Vite proxy path.
     // In dev: Vite proxies /api/control/assembly/ws/** → ws://localhost:8000
@@ -779,7 +803,8 @@ export default function Assembly() {
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
           gap: '12px',
-          flexShrink: 0
+          flex: 1,
+          minHeight: 0
         }}>
           {/* Raw plot card */}
           <div className="asm-viz" style={{ minHeight: '190px', background: 'var(--bg-secondary)' }}>
@@ -789,18 +814,18 @@ export default function Assembly() {
                 RAW DISPLACEMENT
               </span>
             </div>
-            <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ position: 'relative', width: '100%', maxWidth: '568px' }}>
+            <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <div style={{ position: 'relative', width: '100%', flex: 1, display: 'flex' }}>
                 <canvas 
                   ref={rawCanvasRef}
-                  width={568}
-                  height={100}
+                  width={1200}
+                  height={250}
                   style={{ 
                     border: '1px solid var(--border)',
                     borderRadius: '3px',
                     display: 'block',
                     width: '100%',
-                    height: '100px',
+                    height: '100%',
                     background: '#1a1a1a'
                   }}
                 />
@@ -837,18 +862,18 @@ export default function Assembly() {
                 EXPONENTIAL FILTER
               </span>
             </div>
-            <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ position: 'relative', width: '100%', maxWidth: '568px' }}>
+            <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <div style={{ position: 'relative', width: '100%', flex: 1, display: 'flex' }}>
                 <canvas 
                   ref={smoothedCanvasRef}
-                  width={568}
-                  height={100}
+                  width={1200}
+                  height={250}
                   style={{ 
                     border: '1px solid var(--border)',
                     borderRadius: '3px',
                     display: 'block',
                     width: '100%',
-                    height: '100px',
+                    height: '100%',
                     background: '#1a1a1a'
                   }}
                 />
@@ -879,7 +904,7 @@ export default function Assembly() {
         </div>
 
         {/* Longer-term Telemetry Recharts Graph */}
-        <div className="asm-viz" style={{ flex: 1, minHeight: '320px', display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)' }}>
+        <div className="asm-viz" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)' }}>
           <div className="asm-viz__bar" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-elevated)' }}>
             <span>Displacement History Analytics</span>
             <button

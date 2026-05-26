@@ -72,12 +72,14 @@ class HydraulicBroadcaster:
                         INSERT INTO assembly_station_data (
                             time, machine_id, sensor_id,
                             bearing_operation_status, shaft_operation_status,
-                            led_red, led_yellow, led_green, safety_curtain_status
+                            led_red, led_yellow, led_green, safety_curtain_status,
+                            displacement_mm
                         )
                         VALUES (
                             :time, 'assembly', :sensor_id,
                             :bearing, :shaft,
-                            :red, :yellow, :green, :curtain
+                            :red, :yellow, :green, :curtain,
+                            :displacement
                         )
                     """),
                     {
@@ -88,7 +90,8 @@ class HydraulicBroadcaster:
                         "red": payload["safety"]["lights"]["red"],
                         "yellow": payload["safety"]["lights"]["orange"],
                         "green": payload["safety"]["lights"]["green"],
-                        "curtain": payload["safety"]["curtain"]
+                        "curtain": payload["safety"]["curtain"],
+                        "displacement": payload["position"]["displacement_mm"]
                     }
                 )
                 session.commit()
