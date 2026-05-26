@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 from backend.database.db import SessionLocal
 from sqlalchemy import text
 from pydantic import BaseModel
+from typing import Optional
 from backend.core.timezone import ist_now
 import logging
 import uuid

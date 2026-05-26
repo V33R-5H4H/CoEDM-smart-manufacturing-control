@@ -98,6 +98,7 @@ class MiracBroadcaster:
                                 INSERT INTO mirac_sensor_data (
                                     time, machine_id, sensor_id,
                                     x_axis_value, y_axis_value, z_axis_value,
+                                    x_axis_feed, y_axis_feed, z_axis_feed,
                                     spindle_speed, spindle_temperature, spindle_vibration,
                                     tool_temperature, tool_vibration, tool_number,
                                     led_red, led_yellow, led_green, safety_curtain_status
@@ -105,6 +106,7 @@ class MiracBroadcaster:
                                 VALUES (
                                     :time, 'mirac', :sensor_id,
                                     :x_val, 0.0, :z_val,
+                                    :x_feed, 0.0, :z_feed,
                                     :speed, :temp, :vib,
                                     :tool_temp, :tool_vib, :tool_num,
                                     :red, :yellow, :green, :curtain
@@ -115,6 +117,8 @@ class MiracBroadcaster:
                                 "sensor_id": plc_sensor_id,
                                 "x_val": float(plc_data.get("x_axis_value") or 0.0),
                                 "z_val": float(plc_data.get("z_axis_value") or 0.0),
+                                "x_feed": float(plc_data.get("x_axis_feed") or 0.0),
+                                "z_feed": float(plc_data.get("z_axis_feed") or 0.0),
                                 "speed": float(plc_data.get("spindle_speed") or 0.0),
                                 "temp": float(plc_data.get("spindle_temp") or 0.0),
                                 "vib": float(plc_data.get("spindle_vibration") or 0.0),
