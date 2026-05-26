@@ -1,5 +1,6 @@
 import asyncio
 import json
+from datetime import timedelta
 from fastapi import WebSocket
 from typing import Set
 from backend.stations.assembly.hydraulic_station import opcua_connection, HYDRAULIC_DATA_TAGS
@@ -17,6 +18,8 @@ class HydraulicBroadcaster:
         self.broadcast_task = None
         self.last_db_write_time = 0.0
         self._sensor_id_cached = None
+        self.last_logged_state = None  # Tracks tuple: (bearing, shaft, red, orange, green, curtain, vice_close)
+        self.last_connected = None  # Tracks boolean connection state
         
     async def connect(self, websocket: WebSocket):
         """Register a new WebSocket connection"""
@@ -99,7 +102,91 @@ class HydraulicBroadcaster:
                 session.close()
                 
         await asyncio.to_thread(_write)
-    
+
+    async def _log_connection_event_db(self, connected: bool, reason: str = None):
+        """Write a connection/disconnection event to machine_connections."""
+        def _write():
+            sensor_id = self._get_sensor_id()
+            if not sensor_id:
+                return
+            session = SessionLocal()
+            try:
+                now = ist_now()
+                if connected:
+                    # Log a new connection record
+                    session.execute(
+                        text("""
+                            INSERT INTO machine_connections (sensor_id, connected_at, disconnected_at, disconnect_reason, simulated)
+                            VALUES (:sensor_id, :connected_at, NULL, NULL, False)
+                        """),
+                        {"sensor_id": sensor_id, "connected_at": now}
+                    )
+                else:
+                    # Log a new disconnection record or update the latest connection record
+                    latest = session.execute(
+                        text("""
+                            SELECT id FROM machine_connections 
+                            WHERE sensor_id = :sensor_id AND disconnected_at IS NULL 
+                            ORDER BY connected_at DESC LIMIT 1
+                        """),
+                        {"sensor_id": sensor_id}
+                    ).fetchone()
+                    
+                    if latest:
+                        session.execute(
+                            text("""
+                                UPDATE machine_connections 
+                                SET disconnected_at = :disconnected_at, disconnect_reason = :reason
+                                WHERE id = :id
+                            """),
+                            {"disconnected_at": now, "reason": reason or "Client request / timeout", "id": latest[0]}
+                        )
+                    else:
+                        session.execute(
+                            text("""
+                                INSERT INTO machine_connections (sensor_id, connected_at, disconnected_at, disconnect_reason, simulated)
+                                VALUES (:sensor_id, :connected_at, :disconnected_at, :reason, False)
+                            """),
+                            {"sensor_id": sensor_id, "connected_at": now - timedelta(minutes=1), "disconnected_at": now, "reason": reason or "Disconnected"}
+                        )
+                session.commit()
+            except Exception as e:
+                logger.error(f"Error logging connection event to DB: {e}")
+                session.rollback()
+            finally:
+                session.close()
+        await asyncio.to_thread(_write)
+
+    async def _log_machine_event_db(self, event_type: str, severity: str, title: str, payload_data: dict = None):
+        """Write a new machine event or alarm to machine_events."""
+        def _write():
+            sensor_id = self._get_sensor_id()
+            if not sensor_id:
+                return
+            session = SessionLocal()
+            try:
+                session.execute(
+                    text("""
+                        INSERT INTO machine_events (time, machine_id, sensor_id, event_type, severity, title, payload)
+                        VALUES (:time, 'assembly', :sensor_id, :event_type, :severity, :title, :payload)
+                    """),
+                    {
+                        "time": ist_now(),
+                        "sensor_id": sensor_id,
+                        "event_type": event_type,
+                        "severity": severity,
+                        "title": title,
+                        "payload": json.dumps(payload_data) if payload_data else None
+                    }
+                )
+                session.commit()
+            except Exception as e:
+                logger.error(f"Error logging machine event to DB: {e}")
+                session.rollback()
+            finally:
+                session.close()
+        await asyncio.to_thread(_write)
+
     async def _read_hydraulic_data(self) -> dict:
         """Read current hydraulic data from OPC UA server.
 
@@ -108,7 +195,22 @@ class HydraulicBroadcaster:
         station modules in this project.
         """
         try:
-            if not opcua_connection.connected:
+            is_connected = opcua_connection.connected
+            
+            # Connection state transition logging
+            if self.last_connected is None:
+                self.last_connected = is_connected
+                asyncio.create_task(self._log_connection_event_db(is_connected))
+            elif is_connected != self.last_connected:
+                self.last_connected = is_connected
+                asyncio.create_task(self._log_connection_event_db(is_connected))
+                
+                title = "Assembly OPC-UA Session Connected" if is_connected else "Assembly OPC-UA Session Terminated"
+                severity = "info" if is_connected else "critical"
+                event_type = "info" if is_connected else "alarm"
+                asyncio.create_task(self._log_machine_event_db(event_type, severity, title))
+
+            if not is_connected:
                 # Broadcast explicit offline state so the frontend can reflect
                 # the disconnected condition rather than going silent.
                 return self._disconnected_payload()
@@ -151,12 +253,47 @@ class HydraulicBroadcaster:
                 }
             }
 
-            # Throttle DB writes to once every 2.0 seconds
+            # State-change and heartbeat logging strategy
             now = asyncio.get_running_loop().time()
-            if now - self.last_db_write_time >= 2.0:
-                self.last_db_write_time = now
-                asyncio.create_task(self._log_to_db(payload))
+            current_state = (
+                payload["assembly"]["bearing"],
+                payload["assembly"]["shaft"],
+                payload["safety"]["lights"]["red"],
+                payload["safety"]["lights"]["orange"],
+                payload["safety"]["lights"]["green"],
+                payload["safety"]["curtain"],
+                payload["vice"]["close"]
+            )
+            is_state_changed = (self.last_logged_state is None) or (current_state != self.last_logged_state)
+            is_heartbeat_due = (now - self.last_db_write_time >= 2.0)
 
+            # Edge-triggered machine events for safety triggers
+            if self.last_logged_state is not None:
+                prev_curtain = self.last_logged_state[5]
+                current_curtain = current_state[5]
+                if current_curtain and not prev_curtain:
+                    asyncio.create_task(self._log_machine_event_db(
+                        "alarm", "critical", "Safety Curtain Interrupted", 
+                        {"curtain_interrupted": True}
+                    ))
+                elif not current_curtain and prev_curtain:
+                    asyncio.create_task(self._log_machine_event_db(
+                        "info", "info", "Safety Curtain Cleared", 
+                        {"curtain_interrupted": False}
+                    ))
+
+                prev_red_led = self.last_logged_state[2]
+                current_red_led = current_state[2]
+                if current_red_led and not prev_red_led:
+                    asyncio.create_task(self._log_machine_event_db(
+                        "alarm", "warning", "Status Tower: Red Indicator Active",
+                        {"light_red": True}
+                    ))
+
+            if is_state_changed or is_heartbeat_due:
+                self.last_db_write_time = now
+                self.last_logged_state = current_state
+                asyncio.create_task(self._log_to_db(payload))
             return payload
         except Exception as e:
             logger.error(f"Error reading hydraulic data: {e}")

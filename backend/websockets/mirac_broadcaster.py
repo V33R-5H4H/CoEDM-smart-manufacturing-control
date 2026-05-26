@@ -38,6 +38,12 @@ class MiracBroadcaster:
         self._last_modbus_read_time = 0.0
         self._cached_modbus_data = (None, None, None)
         self._sensor_ids_cached = None
+        self.last_plc_connected = None
+        self.last_vibit1_connected = None
+        self.last_vibit2_connected = None
+        self.last_vibit3_connected = None
+        self.last_safety_curtain = None
+        self.last_red_led = None
         
     async def connect(self, websocket: WebSocket):
         """Register a new WebSocket connection"""
@@ -232,6 +238,93 @@ class MiracBroadcaster:
 
         await asyncio.to_thread(_write)
 
+    async def _log_connection_event_db(self, sensor_key: str, connected: bool, reason: str = None):
+        """Write a connection/disconnection event for a specific sensor to machine_connections."""
+        def _write():
+            from datetime import timedelta
+            sensors = self._get_sensor_ids()
+            sensor_id = sensors.get(sensor_key)
+            if not sensor_id:
+                return
+            session = SessionLocal()
+            try:
+                now = ist_now()
+                if connected:
+                    # Log a new connection record
+                    session.execute(
+                        text("""
+                            INSERT INTO machine_connections (sensor_id, connected_at, disconnected_at, disconnect_reason, simulated)
+                            VALUES (:sensor_id, :connected_at, NULL, NULL, False)
+                        """),
+                        {"sensor_id": sensor_id, "connected_at": now}
+                    )
+                else:
+                    # Log a new disconnection record or update the latest connection record
+                    latest = session.execute(
+                        text("""
+                            SELECT id FROM machine_connections 
+                            WHERE sensor_id = :sensor_id AND disconnected_at IS NULL 
+                            ORDER BY connected_at DESC LIMIT 1
+                        """),
+                        {"sensor_id": sensor_id}
+                    ).fetchone()
+                    
+                    if latest:
+                        session.execute(
+                            text("""
+                                UPDATE machine_connections 
+                                SET disconnected_at = :disconnected_at, disconnect_reason = :reason
+                                WHERE id = :id
+                            """),
+                            {"disconnected_at": now, "reason": reason or "Client request / timeout", "id": latest[0]}
+                        )
+                    else:
+                        session.execute(
+                            text("""
+                                INSERT INTO machine_connections (sensor_id, connected_at, disconnected_at, disconnect_reason, simulated)
+                                VALUES (:sensor_id, :connected_at, :disconnected_at, :reason, False)
+                            """),
+                            {"sensor_id": sensor_id, "connected_at": now - timedelta(minutes=1), "disconnected_at": now, "reason": reason or "Disconnected"}
+                        )
+                session.commit()
+            except Exception as e:
+                logger.error(f"Error logging connection event for {sensor_key}: {e}")
+                session.rollback()
+            finally:
+                session.close()
+        await asyncio.to_thread(_write)
+
+    async def _log_machine_event_db(self, sensor_key: str, event_type: str, severity: str, title: str, payload_data: dict = None):
+        """Write a new machine event or alarm to machine_events."""
+        def _write():
+            sensors = self._get_sensor_ids()
+            sensor_id = sensors.get(sensor_key)
+            if not sensor_id:
+                return
+            session = SessionLocal()
+            try:
+                session.execute(
+                    text("""
+                        INSERT INTO machine_events (time, machine_id, sensor_id, event_type, severity, title, payload)
+                        VALUES (:time, 'mirac', :sensor_id, :event_type, :severity, :title, :payload)
+                    """),
+                    {
+                        "time": ist_now(),
+                        "sensor_id": sensor_id,
+                        "event_type": event_type,
+                        "severity": severity,
+                        "title": title,
+                        "payload": json.dumps(payload_data) if payload_data else None
+                    }
+                )
+                session.commit()
+            except Exception as e:
+                logger.error(f"Error logging machine event for {sensor_key}: {e}")
+                session.rollback()
+            finally:
+                session.close()
+        await asyncio.to_thread(_write)
+
     async def _read_plc_data(self) -> dict:
         """Read current MIRAC PLC data from OPC UA server.
         
@@ -274,6 +367,39 @@ class MiracBroadcaster:
             plc_data = await self._read_plc_data()
             plc_connected = bool(plc_data)
 
+            # Connection state transition logging for PLC
+            if self.last_plc_connected is None:
+                self.last_plc_connected = plc_connected
+                asyncio.create_task(self._log_connection_event_db("mirac", plc_connected))
+            elif plc_connected != self.last_plc_connected:
+                self.last_plc_connected = plc_connected
+                asyncio.create_task(self._log_connection_event_db("mirac", plc_connected))
+                
+                title = "MIRAC PLC Connected" if plc_connected else "MIRAC PLC Session Terminated"
+                severity = "info" if plc_connected else "critical"
+                event_type = "info" if plc_connected else "alarm"
+                asyncio.create_task(self._log_machine_event_db("mirac", event_type, severity, title))
+
+            # Safety triggers edge transitions
+            if plc_connected:
+                curtain_active = bool(plc_data.get("safety_curtain", False))
+                if self.last_safety_curtain is None:
+                    self.last_safety_curtain = curtain_active
+                elif curtain_active != self.last_safety_curtain:
+                    self.last_safety_curtain = curtain_active
+                    if curtain_active:
+                        asyncio.create_task(self._log_machine_event_db("mirac", "alarm", "critical", "Safety Curtain Interrupted", {"curtain_interrupted": True}))
+                    else:
+                        asyncio.create_task(self._log_machine_event_db("mirac", "info", "info", "Safety Curtain Cleared", {"curtain_interrupted": False}))
+
+                red_active = bool(plc_data.get("led_red", False))
+                if self.last_red_led is None:
+                    self.last_red_led = red_active
+                elif red_active != self.last_red_led:
+                    self.last_red_led = red_active
+                    if red_active:
+                        asyncio.create_task(self._log_machine_event_db("mirac", "alarm", "warning", "Status Tower: Red Indicator Active", {"light_red": True}))
+
             # Throttle physical Modbus reads to a rate of 0.5 Hz (every 2.0s) to relax the RS485 serial network
             now = time.time()
             if now - self._last_modbus_read_time >= 2.0:
@@ -294,6 +420,45 @@ class MiracBroadcaster:
             vibit1_connected = vibit1_data is not None
             vibit2_connected = vibit2_data is not None
             vibit3_connected = vibit3_data is not None
+
+            # Connection state transition logging for VibIT 1 (Spindle)
+            if self.last_vibit1_connected is None:
+                self.last_vibit1_connected = vibit1_connected
+                asyncio.create_task(self._log_connection_event_db("mirac_vibit1", vibit1_connected))
+            elif vibit1_connected != self.last_vibit1_connected:
+                self.last_vibit1_connected = vibit1_connected
+                asyncio.create_task(self._log_connection_event_db("mirac_vibit1", vibit1_connected))
+                
+                title = "MIRAC Spindle VibIT Online" if vibit1_connected else "MIRAC Spindle VibIT Offline (Gateway Timeout)"
+                severity = "info" if vibit1_connected else "critical"
+                event_type = "info" if vibit1_connected else "alarm"
+                asyncio.create_task(self._log_machine_event_db("mirac_vibit1", event_type, severity, title))
+
+            # Connection state transition logging for VibIT 2 (Tool)
+            if self.last_vibit2_connected is None:
+                self.last_vibit2_connected = vibit2_connected
+                asyncio.create_task(self._log_connection_event_db("mirac_vibit2", vibit2_connected))
+            elif vibit2_connected != self.last_vibit2_connected:
+                self.last_vibit2_connected = vibit2_connected
+                asyncio.create_task(self._log_connection_event_db("mirac_vibit2", vibit2_connected))
+                
+                title = "MIRAC Tool VibIT Online" if vibit2_connected else "MIRAC Tool VibIT Offline (Gateway Timeout)"
+                severity = "info" if vibit2_connected else "critical"
+                event_type = "info" if vibit2_connected else "alarm"
+                asyncio.create_task(self._log_machine_event_db("mirac_vibit2", event_type, severity, title))
+
+            # Connection state transition logging for VibIT 3 (Energy Meter)
+            if self.last_vibit3_connected is None:
+                self.last_vibit3_connected = vibit3_connected
+                asyncio.create_task(self._log_connection_event_db("mirac_energy", vibit3_connected))
+            elif vibit3_connected != self.last_vibit3_connected:
+                self.last_vibit3_connected = vibit3_connected
+                asyncio.create_task(self._log_connection_event_db("mirac_energy", vibit3_connected))
+                
+                title = "MIRAC Energy Meter Online" if vibit3_connected else "MIRAC Energy Meter Offline (Gateway Timeout)"
+                severity = "info" if vibit3_connected else "critical"
+                event_type = "info" if vibit3_connected else "alarm"
+                asyncio.create_task(self._log_machine_event_db("mirac_energy", event_type, severity, title))
 
             # If a sensor is offline, use empty dict (NO simulation)
             if not vibit1_data:

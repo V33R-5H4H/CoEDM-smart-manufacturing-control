@@ -117,6 +117,13 @@ async def startup_event():
             led_ws_manager.broadcast_safety_change(active),
             loop,
         )
+        
+        # Log safety edge transition to the database
+        from backend.stations.asrs.asrs_station import _log_asrs_event
+        if active and not prev:
+            _log_asrs_event("alarm", "critical", "Safety Curtain Interrupted", {"curtain_interrupted": True})
+        elif not active and prev:
+            _log_asrs_event("info", "info", "Safety Curtain Cleared", {"curtain_interrupted": False})
 
     asrs_controller.led_service.register_safety_callback(_safety_callback)
     logger.info("[Startup] ✓ Safety broadcast callback registered")

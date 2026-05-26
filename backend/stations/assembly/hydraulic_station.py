@@ -116,7 +116,12 @@ def run_hydraulic(command: str) -> dict:
 
         # Send command
         logging.info("[HYDRAULIC] Sending command: %s", cmd)
-        opcua_connection.set_node_state(tag)
+        if cmd == "BEARING_ON":
+            opcua_connection.set_node_state(HYDRAULIC_TAGS["BEARING_ON"], True)
+            opcua_connection.set_node_state(HYDRAULIC_TAGS["SHAFT_ON"], False)
+        elif cmd == "SHAFT_ON":
+            opcua_connection.set_node_state(HYDRAULIC_TAGS["SHAFT_ON"], True)
+            opcua_connection.set_node_state(HYDRAULIC_TAGS["BEARING_ON"], False)
         logging.info("[HYDRAULIC] Command executed: %s", cmd)
 
         return {
