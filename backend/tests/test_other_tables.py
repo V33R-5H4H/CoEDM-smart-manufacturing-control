@@ -371,6 +371,37 @@ class TestTelemetryRoutes:
         assert data["data"]["plc"][0]["spindle_speed"] == 1500.0
 
     @patch("backend.api.routes.data.telemetry.SessionLocal")
+    def test_get_machine_telemetry_triac(self, mock_session_class, client):
+        mock_session = MagicMock()
+        mock_session_class.return_value = mock_session
+        
+        mock_session.execute.side_effect = [
+            make_result(["machine_id"], [["triac"]]),  # machine check
+            make_result(
+                ["time", "x_axis_value", "y_axis_value", "z_axis_value", "x_axis_feed", "y_axis_feed", "z_axis_feed", "spindle_speed", "spindle_temperature", "spindle_vibration", "tool_temperature", "tool_vibration", "tool_number", "led_red", "led_yellow", "led_green", "safety_curtain_status"],
+                [["2026-05-25 17:00:00", 10.0, 10.0, 50.0, 180.0, 180.0, 180.0, 1500.0, 45.0, 1.2, 38.0, 0.8, 2, False, False, True, False]]
+            ),  # plc (simulated) sensor data
+            make_result(
+                ["time", "sensor_id", "modbus_unit_id", "x_rms_acc", "y_rms_acc", "z_rms_acc", "x_peak_acc", "y_peak_acc", "z_peak_acc", "temperature", "rpm"],
+                [["2026-05-25 17:00:00", "sensor-uuid-vib1", 1, 0.5, 0.5, 0.5, 1.0, 1.0, 1.0, 45.0, 1500.0]]
+            ),  # vibit readings
+            make_result(
+                ["time", "average_voltage_ln", "average_voltage_ll", "average_current", "total_net_kwh"],
+                [["2026-05-25 17:00:00", 230.0, 400.0, 1.5, 123.4]]
+            )  # energy meter data
+        ]
+
+        resp = client.get("/api/data/telemetry/triac")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["success"] is True
+        assert data["count"] == 1
+        assert "plc" in data["data"]
+        assert "vibit" in data["data"]
+        assert "energy" in data["data"]
+        assert data["data"]["plc"][0]["spindle_speed"] == 1500.0
+
+    @patch("backend.api.routes.data.telemetry.SessionLocal")
     def test_get_machine_telemetry_not_found(self, mock_session_class, client):
         mock_session = MagicMock()
         mock_session_class.return_value = mock_session

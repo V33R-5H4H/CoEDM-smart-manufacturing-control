@@ -538,6 +538,7 @@ COMMENT ON COLUMN mirac_sensor_data.tool_number       IS 'Active tool number fro
 -- ============================================================
 CREATE TABLE IF NOT EXISTS vibit_readings (
     time            TIMESTAMPTZ      NOT NULL,
+    machine_id      TEXT             NOT NULL REFERENCES machines(machine_id) ON DELETE CASCADE,
     sensor_id       UUID             NOT NULL REFERENCES machine_sensors(sensor_id) ON DELETE CASCADE,
     modbus_unit_id  SMALLINT         NOT NULL,  -- informational copy; no FK (not unique in machine_sensors)
     x_rms_acc       DOUBLE PRECISION,

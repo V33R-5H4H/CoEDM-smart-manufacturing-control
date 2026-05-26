@@ -3,10 +3,13 @@ import { Routes, Route, NavLink } from "react-router-dom";
 
 // Lazy load page components to improve initial load performance (LCP)
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Triac = lazy(() => import("./pages/Triac"));
+const Asrs = lazy(() => import("./pages/asrs/Dashboard"));
 const Mirac = lazy(() => import("./pages/Mirac"));
+const Triac = lazy(() => import("./pages/Triac"));
 const Assembly = lazy(() => import("./pages/Assembly"));
-const ASRSDashboard = lazy(() => import("./pages/asrs/Dashboard"));
+const TestingStation = lazy(() => import("./pages/TestingStation"));
+const Amr = lazy(() => import("./pages/Amr"));
+const Cobot = lazy(() => import("./pages/Cobot"));
 
 export default function App() {
   return (
@@ -94,10 +97,13 @@ export default function App() {
         }>
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/asrs" element={<ASRSDashboard />} />
-            <Route path="/triac" element={<Triac />} />
+            <Route path="/asrs" element={<Asrs />} />
             <Route path="/mirac" element={<Mirac />} />
+            <Route path="/triac" element={<Triac />} />
             <Route path="/assembly" element={<Assembly />} />
+            <Route path="/testing-station" element={<TestingStation />} />
+            <Route path="/amr" element={<Amr />} />
+            <Route path="/cobot" element={<Cobot />} />
           </Routes>
         </Suspense>
       </main>
@@ -127,9 +133,12 @@ export default function App() {
         <div className="bottom-nav-links">
           <NavItem to="/" icon="dashboard" label="Dashboard" />
           <NavItem to="/asrs" icon="inventory_2" label="AS/RS" />
-          <NavItem to="/triac" icon="precision_manufacturing" label="Smart TRIAC" />
           <NavItem to="/mirac" icon="settings_input_component" label="Smart MIRAC" />
-          <NavItem to="/assembly" icon="factory" label="Assembly Station" />
+          <NavItem to="/triac" icon="precision_manufacturing" label="Smart TRIAC" />
+          <NavItem to="/assembly" icon="factory" label="Assembly" />
+          <NavItem to="/testing-station" icon="fact_check" label="Testing Station" />
+          <NavItem to="/amr" icon="local_shipping" label="AMR" />
+          <NavItem to="/cobot" icon="smart_toy" label="Cobot" />
         </div>
 
         {/* Right Side: Status Cluster */}

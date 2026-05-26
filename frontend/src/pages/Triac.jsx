@@ -5,7 +5,6 @@ import PageHeader from "../components/PageHeader";
 import TriacStatusRibbon from "./asrs/components/TriacStatusRibbon";
 import TriacControlService from "../services/TriacControl";
 import SensorDot from "../components/SensorDot";
-import DraggableHUD from "../components/DraggableHUD";
 import "./Assembly.css";
 import "./Triac.css";
 
@@ -86,6 +85,41 @@ const TriacMachineView = ({
     const num = toolNumber ?? 4;
     return `T${String(num).padStart(2, '0')}`;
   }, [toolNumber]);
+
+  // Dynamic Neon HUD Glows
+  const spindleGlow = useMemo(() => {
+    if (!vibit1Online) return {
+      border: '1px solid rgba(239, 68, 68, 0.25)',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 12px rgba(239, 68, 68, 0.1)',
+      background: 'rgba(239, 68, 68, 0.02)'
+    };
+    if (spindleRPM > 0) return {
+      border: '1px solid rgba(56, 189, 248, 0.45)',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.65), 0 0 18px rgba(56, 189, 248, 0.25)',
+      background: 'rgba(10, 15, 25, 0.75)'
+    };
+    return {
+      border: '1px solid rgba(255, 255, 255, 0.08)',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45)'
+    };
+  }, [vibit1Online, spindleRPM]);
+
+  const toolGlow = useMemo(() => {
+    if (!vibit2Online) return {
+      border: '1px solid rgba(239, 68, 68, 0.25)',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 12px rgba(239, 68, 68, 0.1)',
+      background: 'rgba(239, 68, 68, 0.02)'
+    };
+    if (spindleRunning) return {
+      border: '1px solid rgba(249, 115, 22, 0.45)',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.65), 0 0 18px rgba(249, 115, 22, 0.25)',
+      background: 'rgba(10, 15, 25, 0.75)'
+    };
+    return {
+      border: '1px solid rgba(255, 255, 255, 0.08)',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45)'
+    };
+  }, [vibit2Online, spindleRunning]);
 
   return (
     <div
@@ -303,21 +337,23 @@ const TriacMachineView = ({
       </svg>
 
       {/* Premium HTML Glassmorphism HUD for VibIT 1 */}
-      <DraggableHUD id="triac_spindle_vibit" defaultPosition={{ x: 650, y: 32 }} boundsRef={containerRef}>
-        <div style={{
-          width: '200px',
-          background: 'rgba(10, 15, 25, 0.65)',
-          backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          borderTop: '1px solid rgba(255, 255, 255, 0.2)',
-          borderRadius: '12px',
-          padding: '16px',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px'
-        }}>
-          {/* Header */}
+      <div style={{
+        position: 'absolute',
+        top: '24px',
+        right: '24px',
+        zIndex: 10,
+        width: '200px',
+        background: 'rgba(10, 15, 25, 0.65)',
+        backdropFilter: 'blur(16px)',
+        borderRadius: '12px',
+        padding: '16px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        transition: 'border 0.3s, box-shadow 0.3s',
+        ...spindleGlow
+      }}>
+        {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
           <span style={{ color: '#f8fafc', fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.5px' }}>SPINDLE VIBIT</span>
           <div style={{ 
@@ -348,25 +384,26 @@ const TriacMachineView = ({
             <span style={{ color: '#fbbf24', fontWeight: 500 }}>{vibit1Online && vibit1Data?.temperature != null ? vibit1Data.temperature.toFixed(1) : "0.0"} <span style={{ color: '#64748b' }}>°C</span></span>
           </div>
         </div>
-        </div>
-      </DraggableHUD>
+      </div>
 
       {/* Premium HTML Glassmorphism HUD for VibIT 2 (Bed Vibit) */}
-      <DraggableHUD id="triac_bed_vibit" defaultPosition={{ x: 32, y: 300 }} boundsRef={containerRef}>
-        <div style={{
-          width: '200px',
-          background: 'rgba(10, 15, 25, 0.65)',
-          backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          borderTop: '1px solid rgba(255, 255, 255, 0.2)',
-          borderRadius: '12px',
-          padding: '16px',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px'
-        }}>
-          {/* Header */}
+      <div style={{
+        position: 'absolute',
+        bottom: '24px',
+        left: '24px',
+        zIndex: 10,
+        width: '200px',
+        background: 'rgba(10, 15, 25, 0.65)',
+        backdropFilter: 'blur(16px)',
+        borderRadius: '12px',
+        padding: '16px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        transition: 'border 0.3s, box-shadow 0.3s',
+        ...toolGlow
+      }}>
+        {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
           <span style={{ color: '#f8fafc', fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.5px' }}>BED VIBIT</span>
           <div style={{ 
@@ -397,8 +434,7 @@ const TriacMachineView = ({
             <span style={{ color: '#fbbf24', fontWeight: 500 }}>{vibit2Online && vibit2Data?.temperature != null ? vibit2Data.temperature.toFixed(1) : "0.0"} <span style={{ color: '#64748b' }}>°C</span></span>
           </div>
         </div>
-        </div>
-      </DraggableHUD>
+      </div>
     </div>
   );
 };

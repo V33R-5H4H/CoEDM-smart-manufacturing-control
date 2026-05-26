@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { toast } from "react-toastify";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import MiracControlService from "../services/MiracControl";
 import MiracMachineView from "../components/MiracMachineView";
 import PageHeader from "../components/PageHeader";
@@ -82,6 +83,8 @@ const Mirac = () => {
   const wsRef = useRef(null);
   const reconnectTimerRef = useRef(null);
 
+  const containerRef = useRef(null);
+
   // Data source connectivity flags from backend
   const dataSources = data?.data_sources || {};
   const plcOnline = dataSources.plc ?? false;
@@ -91,6 +94,43 @@ const Mirac = () => {
 
   const b1 = data?.raw?.vibit1?.base_address ?? 4001;
   const b2 = data?.raw?.vibit2?.base_address ?? 4001;
+
+  // Dynamic Neon HUD Glows
+  const spindleGlow = useMemo(() => {
+    const speed = data?.spindle?.speed || 0;
+    if (!vibit1Online) return {
+      border: '1px solid rgba(239, 68, 68, 0.25)',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 12px rgba(239, 68, 68, 0.1)',
+      background: 'rgba(239, 68, 68, 0.02)'
+    };
+    if (speed > 0) return {
+      border: '1px solid rgba(56, 189, 248, 0.45)',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.65), 0 0 18px rgba(56, 189, 248, 0.25)',
+      background: 'rgba(10, 15, 25, 0.75)'
+    };
+    return {
+      border: '1px solid rgba(255, 255, 255, 0.08)',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45)'
+    };
+  }, [vibit1Online, data?.spindle?.speed]);
+
+  const toolGlow = useMemo(() => {
+    const cycleStart = data?.status?.cycle_start || false;
+    if (!vibit2Online) return {
+      border: '1px solid rgba(239, 68, 68, 0.25)',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 12px rgba(239, 68, 68, 0.1)',
+      background: 'rgba(239, 68, 68, 0.02)'
+    };
+    if (cycleStart) return {
+      border: '1px solid rgba(249, 115, 22, 0.45)',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.65), 0 0 18px rgba(249, 115, 22, 0.25)',
+      background: 'rgba(10, 15, 25, 0.75)'
+    };
+    return {
+      border: '1px solid rgba(255, 255, 255, 0.08)',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45)'
+    };
+  }, [vibit2Online, data?.status?.cycle_start]);
 
   // Establish WebSocket connection to backend broadcaster
   const connectWS = useCallback(() => {
@@ -600,9 +640,9 @@ const Mirac = () => {
 
           {/* COLUMN 2: CENTER PANEL (Lathe Machine SVG Visualizer & Footer Stats) */}
           <div className="mirac-column" style={{ overflow: "hidden" }}>
-            <div className="asm-center-container">
+            <div className="asm-center-container" ref={containerRef}>
               {/* High-Fidelity SVG Viewer */}
-              <div className="asm-viz-panel">
+              <div className="asm-viz-panel" style={{ position: "relative" }}>
                 <MiracMachineView
                   spindleRPM={data?.spindle?.speed || 0}
                   xAxisValue={smoothedX}
@@ -617,6 +657,100 @@ const Mirac = () => {
                   vibit2Online={vibit2Online}
                   vibit2Data={data?.raw?.vibit2}
                 />
+
+                {/* Premium HTML Glassmorphism HUD for Spindle VibIT */}
+                <div style={{
+                  position: 'absolute',
+                  top: '24px',
+                  left: '24px',
+                  zIndex: 10,
+                  width: '200px',
+                  background: 'rgba(10, 15, 25, 0.65)',
+                  backdropFilter: 'blur(16px)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  transition: 'border 0.3s, box-shadow 0.3s',
+                  ...spindleGlow
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
+                    <span style={{ color: '#f8fafc', fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.5px' }}>SPINDLE VIBIT</span>
+                    <div style={{ 
+                      width: '8px', 
+                      height: '8px', 
+                      borderRadius: '50%', 
+                      background: vibit1Online ? '#10b981' : '#ef4444',
+                      boxShadow: vibit1Online ? '0 0 8px rgba(16, 185, 129, 0.6)' : '0 0 8px rgba(239, 68, 68, 0.6)'
+                    }} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', color: '#94a3b8' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>X RMS</span>
+                      <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{vibit1Online && data?.raw?.vibit1?.x_rms_vel != null ? data.raw.vibit1.x_rms_vel.toFixed(2) : "0.00"} <span style={{ color: '#64748b' }}>mm/s</span></span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Y RMS</span>
+                      <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{vibit1Online && data?.raw?.vibit1?.y_rms_vel != null ? data.raw.vibit1.y_rms_vel.toFixed(2) : "0.00"} <span style={{ color: '#64748b' }}>mm/s</span></span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Z RMS</span>
+                      <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{vibit1Online && data?.raw?.vibit1?.z_rms_vel != null ? data.raw.vibit1.z_rms_vel.toFixed(2) : "0.00"} <span style={{ color: '#64748b' }}>mm/s</span></span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', paddingTop: '8px', borderTop: '1px dashed rgba(255,255,255,0.05)' }}>
+                      <span>TEMP</span>
+                      <span style={{ color: '#fbbf24', fontWeight: 500 }}>{vibit1Online && data?.raw?.vibit1?.temperature != null ? data.raw.vibit1.temperature.toFixed(1) : "0.0"} <span style={{ color: '#64748b' }}>°C</span></span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Premium HTML Glassmorphism HUD for Tool VibIT */}
+                <div style={{
+                  position: 'absolute',
+                  top: '24px',
+                  right: '24px',
+                  zIndex: 10,
+                  width: '200px',
+                  background: 'rgba(10, 15, 25, 0.65)',
+                  backdropFilter: 'blur(16px)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  transition: 'border 0.3s, box-shadow 0.3s',
+                  ...toolGlow
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
+                    <span style={{ color: '#f8fafc', fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.5px' }}>TOOL VIBIT</span>
+                    <div style={{ 
+                      width: '8px', 
+                      height: '8px', 
+                      borderRadius: '50%', 
+                      background: vibit2Online ? '#10b981' : '#ef4444',
+                      boxShadow: vibit2Online ? '0 0 8px rgba(16, 185, 129, 0.6)' : '0 0 8px rgba(239, 68, 68, 0.6)'
+                    }} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', color: '#94a3b8' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>X PEAK</span>
+                      <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{vibit2Online && data?.raw?.vibit2?.x_peak_vel != null ? data.raw.vibit2.x_peak_vel.toFixed(2) : "0.00"} <span style={{ color: '#64748b' }}>mm/s</span></span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Y PEAK</span>
+                      <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{vibit2Online && data?.raw?.vibit2?.y_peak_vel != null ? data.raw.vibit2.y_peak_vel.toFixed(2) : "0.00"} <span style={{ color: '#64748b' }}>mm/s</span></span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Z PEAK</span>
+                      <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{vibit2Online && data?.raw?.vibit2?.z_peak_vel != null ? data.raw.vibit2.z_peak_vel.toFixed(2) : "0.00"} <span style={{ color: '#64748b' }}>mm/s</span></span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', paddingTop: '8px', borderTop: '1px dashed rgba(255,255,255,0.05)' }}>
+                      <span>TEMP</span>
+                      <span style={{ color: '#fbbf24', fontWeight: 500 }}>{vibit2Online && data?.raw?.vibit2?.temperature != null ? data.raw.vibit2.temperature.toFixed(1) : "0.0"} <span style={{ color: '#64748b' }}>°C</span></span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Bottom Quick-Metrics Panel */}

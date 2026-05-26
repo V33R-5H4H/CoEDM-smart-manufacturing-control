@@ -57,14 +57,19 @@ class VibitModbusReader:
     _locks = {}
     _global_lock = threading.Lock()
 
-    def __init__(self, host: str, port: int = 502, device_id: int = 1, timeout: float = 3.0):
+    def __init__(self, host: str, port: int = 502, device_id: int = 1, timeout: float = 3.0, base_address: int = None, register_type: str = None):
         self.host = host
         self.port = port
         self.device_id = device_id
         self._last_log_time = {}
-        self._profile_detected = False
-        self._base_address = 4001
-        self._register_type = "holding"
+        if base_address is not None and register_type is not None:
+            self._base_address = base_address
+            self._register_type = register_type
+            self._profile_detected = True
+        else:
+            self._profile_detected = False
+            self._base_address = 4001
+            self._register_type = "holding"
 
         key = (host, port)
         with self._global_lock:

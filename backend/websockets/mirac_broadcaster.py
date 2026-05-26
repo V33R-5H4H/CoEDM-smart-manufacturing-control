@@ -24,16 +24,22 @@ class MiracBroadcaster:
             host=settings.VIBIT_HOST,
             port=settings.VIBIT_PORT,
             device_id=settings.VIBIT_UNIT_ID,
+            base_address=4001,
+            register_type="holding"
         )
         self.vibit_reader_2 = VibitModbusReader(
             host=settings.VIBIT_HOST,
             port=settings.VIBIT_PORT,
             device_id=settings.VIBIT_UNIT_ID_2,
+            base_address=4001,
+            register_type="holding"
         )
         self.vibit_reader_3 = VibitModbusReader(
             host=settings.VIBIT_HOST,
             port=settings.VIBIT_PORT,
             device_id=settings.VIBIT_UNIT_ID_3,
+            base_address=4000,
+            register_type="input"
         )
         self._last_modbus_read_time = 0.0
         self._cached_modbus_data = (None, None, None)
@@ -44,6 +50,9 @@ class MiracBroadcaster:
         self.last_vibit3_connected = None
         self.last_safety_curtain = None
         self.last_red_led = None
+        self._last_good_vibit1 = None
+        self._last_good_vibit2 = None
+        self._last_good_vibit3 = None
         
     async def connect(self, websocket: WebSocket):
         """Register a new WebSocket connection"""
@@ -81,6 +90,89 @@ class MiracBroadcaster:
         except Exception as e:
             logger.error(f"Error resolving mirac sensors: {e}")
             return {}
+        finally:
+            session.close()
+
+    def _init_last_good_from_db(self):
+        """Load initial last good values from the database at startup."""
+        sensors = self._get_sensor_ids()
+        if not sensors:
+            return
+
+        session = SessionLocal()
+        try:
+            # 1. Load Spindle VibIT 1
+            vibit1_id = sensors.get("mirac_vibit1")
+            if vibit1_id and self._last_good_vibit1 is None:
+                res = session.execute(
+                    text("""
+                        SELECT x_rms_acc, y_rms_acc, z_rms_acc,
+                               x_rms_vel, y_rms_vel, z_rms_vel,
+                               x_peak_acc, y_peak_acc, z_peak_acc,
+                               x_peak_vel, y_peak_vel, z_peak_vel,
+                               temperature, rpm, led_status
+                        FROM vibit_readings
+                        WHERE sensor_id = :sensor_id
+                        ORDER BY time DESC LIMIT 1
+                    """),
+                    {"sensor_id": vibit1_id}
+                ).fetchone()
+                if res:
+                    self._last_good_vibit1 = {
+                        "x_rms_acc": res[0], "y_rms_acc": res[1], "z_rms_acc": res[2],
+                        "x_rms_vel": res[3], "y_rms_vel": res[4], "z_rms_vel": res[5],
+                        "x_peak_acc": res[6], "y_peak_acc": res[7], "z_peak_acc": res[8],
+                        "x_peak_vel": res[9], "y_peak_vel": res[10], "z_peak_vel": res[11],
+                        "temperature": res[12], "rpm": res[13], "led_status": res[14]
+                    }
+                    logger.info("[MiracBroadcaster] Loaded initial Spindle VibIT 1 data from DB")
+
+            # 2. Load Tool VibIT 2
+            vibit2_id = sensors.get("mirac_vibit2")
+            if vibit2_id and self._last_good_vibit2 is None:
+                res = session.execute(
+                    text("""
+                        SELECT x_rms_acc, y_rms_acc, z_rms_acc,
+                               x_rms_vel, y_rms_vel, z_rms_vel,
+                               x_peak_acc, y_peak_acc, z_peak_acc,
+                               x_peak_vel, y_peak_vel, z_peak_vel,
+                               temperature, rpm, led_status
+                        FROM vibit_readings
+                        WHERE sensor_id = :sensor_id
+                        ORDER BY time DESC LIMIT 1
+                    """),
+                    {"sensor_id": vibit2_id}
+                ).fetchone()
+                if res:
+                    self._last_good_vibit2 = {
+                        "x_rms_acc": res[0], "y_rms_acc": res[1], "z_rms_acc": res[2],
+                        "x_rms_vel": res[3], "y_rms_vel": res[4], "z_rms_vel": res[5],
+                        "x_peak_acc": res[6], "y_peak_acc": res[7], "z_peak_acc": res[8],
+                        "x_peak_vel": res[9], "y_peak_vel": res[10], "z_peak_vel": res[11],
+                        "temperature": res[12], "rpm": res[13], "led_status": res[14]
+                    }
+                    logger.info("[MiracBroadcaster] Loaded initial Tool VibIT 2 data from DB")
+
+            # 3. Load Energy Meter VibIT 3
+            energy_id = sensors.get("mirac_energy")
+            if energy_id and self._last_good_vibit3 is None:
+                res = session.execute(
+                    text("""
+                        SELECT total_net_kwh, average_current
+                        FROM energy_meter_data
+                        WHERE sensor_id = :sensor_id
+                        ORDER BY time DESC LIMIT 1
+                    """),
+                    {"sensor_id": energy_id}
+                ).fetchone()
+                if res:
+                    self._last_good_vibit3 = {
+                        "kwh": res[0],
+                        "power": res[1] * 230.0 if res[1] is not None else 0.0
+                    }
+                    logger.info("[MiracBroadcaster] Loaded initial Energy Meter data from DB")
+        except Exception as e:
+            logger.error(f"Error loading initial Modbus data from DB: {e}")
         finally:
             session.close()
 
@@ -145,13 +237,13 @@ class MiracBroadcaster:
                         session.execute(
                             text("""
                                 INSERT INTO vibit_readings (
-                                    time, sensor_id, modbus_unit_id,
+                                    time, machine_id, sensor_id, modbus_unit_id,
                                     x_rms_acc, y_rms_acc, z_rms_acc,
                                     x_peak_acc, y_peak_acc, z_peak_acc,
                                     temperature, rpm
                                 )
                                 VALUES (
-                                    :time, :sensor_id, 1,
+                                    :time, 'mirac', :sensor_id, 1,
                                     :x_rms, :y_rms, :z_rms,
                                     :x_peak, :y_peak, :z_peak,
                                     :temp, :rpm
@@ -178,13 +270,13 @@ class MiracBroadcaster:
                         session.execute(
                             text("""
                                 INSERT INTO vibit_readings (
-                                    time, sensor_id, modbus_unit_id,
+                                    time, machine_id, sensor_id, modbus_unit_id,
                                     x_rms_acc, y_rms_acc, z_rms_acc,
                                     x_peak_acc, y_peak_acc, z_peak_acc,
                                     temperature, rpm
                                 )
                                 VALUES (
-                                    :time, :sensor_id, 2,
+                                    :time, 'mirac', :sensor_id, 2,
                                     :x_rms, :y_rms, :z_rms,
                                     :x_peak, :y_peak, :z_peak,
                                     :temp, 0.0
@@ -404,11 +496,11 @@ class MiracBroadcaster:
             now = time.time()
             if now - self._last_modbus_read_time >= 2.0:
                 self._last_modbus_read_time = now
-                vibit1_data, vibit2_data, vibit3_data = await asyncio.gather(
-                    asyncio.to_thread(self.vibit_reader_1.read_snapshot),
-                    asyncio.to_thread(self.vibit_reader_2.read_snapshot),
-                    asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, False)
-                )
+                vibit1_data = await asyncio.to_thread(self.vibit_reader_1.read_snapshot)
+                await asyncio.sleep(0.1)
+                vibit2_data = await asyncio.to_thread(self.vibit_reader_2.read_snapshot)
+                await asyncio.sleep(0.1)
+                vibit3_data = await asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, False)
                 self._cached_modbus_data = (vibit1_data, vibit2_data, vibit3_data)
                 
                 # Write to DB inside the Modbus 2.0s read tick!
@@ -416,10 +508,22 @@ class MiracBroadcaster:
             else:
                 vibit1_data, vibit2_data, vibit3_data = copy.deepcopy(self._cached_modbus_data)
 
+            # Lazy initialize from DB if not already done
+            if self._last_good_vibit1 is None or self._last_good_vibit2 is None or self._last_good_vibit3 is None:
+                self._init_last_good_from_db()
+
             # Track which sensors are actually connected
             vibit1_connected = vibit1_data is not None
             vibit2_connected = vibit2_data is not None
             vibit3_connected = vibit3_data is not None
+
+            # Update last good cache if read was successful
+            if vibit1_connected:
+                self._last_good_vibit1 = copy.deepcopy(vibit1_data)
+            if vibit2_connected:
+                self._last_good_vibit2 = copy.deepcopy(vibit2_data)
+            if vibit3_connected:
+                self._last_good_vibit3 = copy.deepcopy(vibit3_data)
 
             # Connection state transition logging for VibIT 1 (Spindle)
             if self.last_vibit1_connected is None:
@@ -460,13 +564,10 @@ class MiracBroadcaster:
                 event_type = "info" if vibit3_connected else "alarm"
                 asyncio.create_task(self._log_machine_event_db("mirac_energy", event_type, severity, title))
 
-            # If a sensor is offline, use empty dict (NO simulation)
-            if not vibit1_data:
-                vibit1_data = {}
-            if not vibit2_data:
-                vibit2_data = {}
-            if not vibit3_data:
-                vibit3_data = {}
+            # Use last good cache as fallback for effective readings
+            vibit1_effective = copy.deepcopy(self._last_good_vibit1) if self._last_good_vibit1 else {}
+            vibit2_effective = copy.deepcopy(self._last_good_vibit2) if self._last_good_vibit2 else {}
+            vibit3_effective = copy.deepcopy(self._last_good_vibit3) if self._last_good_vibit3 else {}
 
             # Fill missing keys with None to ensure frontend doesn't break
             def fill_defaults(data_dict: dict, connected: bool) -> dict:
@@ -485,25 +586,25 @@ class MiracBroadcaster:
                         data_dict[key] = 0.0 if connected else None
                 return data_dict
 
-            vibit1_data = fill_defaults(vibit1_data, vibit1_connected)
-            vibit2_data = fill_defaults(vibit2_data, vibit2_connected)
+            vibit1_effective = fill_defaults(vibit1_effective, vibit1_connected or bool(self._last_good_vibit1))
+            vibit2_effective = fill_defaults(vibit2_effective, vibit2_connected or bool(self._last_good_vibit2))
 
             # 1. Spindle metrics (from VibIT 1 — real sensor data only)
-            vibit1_temp = vibit1_data.get("temperature")
-            vibit1_rpm = vibit1_data.get("rpm")
+            vibit1_temp = vibit1_effective.get("temperature")
+            vibit1_rpm = vibit1_effective.get("rpm")
             vibit1_rms_vel = [
-                vibit1_data.get("x_rms_vel"),
-                vibit1_data.get("y_rms_vel"),
-                vibit1_data.get("z_rms_vel"),
+                vibit1_effective.get("x_rms_vel"),
+                vibit1_effective.get("y_rms_vel"),
+                vibit1_effective.get("z_rms_vel"),
             ]
             rms_vel_1_values = [v for v in vibit1_rms_vel if v is not None]
 
             # 2. Tool metrics (from VibIT 2 — real sensor data only)
-            vibit2_temp = vibit2_data.get("temperature")
+            vibit2_temp = vibit2_effective.get("temperature")
             vibit2_peak_vel = [
-                vibit2_data.get("x_peak_vel"),
-                vibit2_data.get("y_peak_vel"),
-                vibit2_data.get("z_peak_vel"),
+                vibit2_effective.get("x_peak_vel"),
+                vibit2_effective.get("y_peak_vel"),
+                vibit2_effective.get("z_peak_vel"),
             ]
             peak_vel_2_values = [v for v in vibit2_peak_vel if v is not None]
 
@@ -541,7 +642,7 @@ class MiracBroadcaster:
                     "number": plc_data.get("tool_number", None) if plc_connected else None,
                     "temperature": vibit2_temp if vibit2_temp is not None else plc_data.get("tool_temp", None),
                     "vibration": max(peak_vel_2_values) if peak_vel_2_values else (plc_data.get("tool_vibration", None) if plc_connected else None),
-                    "reboot_count": vibit2_data.get("reboot_count", None),
+                    "reboot_count": vibit2_effective.get("reboot_count", None),
                 },
                 "axes": {
                     "x": {
@@ -555,15 +656,15 @@ class MiracBroadcaster:
                     "vibration": None,
                 },
                 "energy_meter": {
-                    "power": vibit3_data.get("power"),
-                    "kwh": vibit3_data.get("kwh"),
-                    "raw_power_regs": vibit3_data.get("raw_power_regs"),
-                    "raw_kwh_regs": vibit3_data.get("raw_kwh_regs"),
-                } if vibit3_connected else None,
+                    "power": vibit3_effective.get("power"),
+                    "kwh": vibit3_effective.get("kwh"),
+                    "raw_power_regs": vibit3_effective.get("raw_power_regs"),
+                    "raw_kwh_regs": vibit3_effective.get("raw_kwh_regs"),
+                } if (vibit3_connected or self._last_good_vibit3 is not None) else None,
                 "raw": {
-                    "vibit1": vibit1_data,
-                    "vibit2": vibit2_data,
-                    "vibit3": vibit3_data,
+                    "vibit1": vibit1_effective,
+                    "vibit2": vibit2_effective,
+                    "vibit3": vibit3_effective,
                     "plc": plc_data,
                 },
             }

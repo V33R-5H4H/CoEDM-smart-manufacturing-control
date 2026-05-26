@@ -21,19 +21,29 @@ class TriacBroadcaster:
             host=settings.TRIAC_VIBIT_HOST,
             port=settings.TRIAC_VIBIT_PORT,
             device_id=settings.TRIAC_VIBIT_UNIT_ID,
+            base_address=4000,
+            register_type="input"
         )
         self.vibit_reader_2 = VibitModbusReader(
             host=settings.TRIAC_VIBIT_HOST,
             port=settings.TRIAC_VIBIT_PORT,
             device_id=settings.TRIAC_VIBIT_UNIT_ID_2,
+            base_address=4000,
+            register_type="input"
         )
         self.vibit_reader_3 = VibitModbusReader(
             host=settings.TRIAC_VIBIT_HOST,
             port=settings.TRIAC_VIBIT_PORT,
             device_id=settings.TRIAC_VIBIT_UNIT_ID_3,
+            base_address=4000,
+            register_type="input"
         )
         self._last_modbus_read_time = 0.0
         self._cached_modbus_data = (None, None, None)
+        self._sensor_ids_cached = None
+        self._last_good_vibit1 = None
+        self._last_good_vibit2 = None
+        self._last_good_vibit3 = None
 
         # Physics-based coordinates and G-Code block state for milling visualization
         self.x_pos = 0.0
@@ -56,6 +66,111 @@ class TriacBroadcaster:
             {"block": "G00 X0 Y0 Z50.0 M05 (Return home, Spindle STOP)", "rpm": 0, "feed": 800, "coolant": False, "z": 50, "x": 0, "y": 0, "blockNum": "N100"},
             {"block": "M30 (Program end / Reset cycle)", "rpm": 0, "feed": 0, "coolant": False, "z": 50, "x": 0, "y": 0, "blockNum": "N110"},
         ]
+
+    def _get_sensor_ids(self) -> dict:
+        """Resolve sensor UUIDs dynamically."""
+        if self._sensor_ids_cached:
+            return self._sensor_ids_cached
+            
+        from backend.database.db import SessionLocal
+        from sqlalchemy import text
+        session = SessionLocal()
+        try:
+            rows = session.execute(
+                text("SELECT sensor_id, legacy_key FROM machine_sensors WHERE machine_id = 'triac'")
+            ).fetchall()
+            self._sensor_ids_cached = {row[1]: str(row[0]) for row in rows}
+            return self._sensor_ids_cached
+        except Exception as e:
+            logger.error(f"Error resolving triac sensors: {e}")
+            return {}
+        finally:
+            session.close()
+
+    def _init_last_good_from_db(self):
+        """Load initial last good values from the database at startup."""
+        sensors = self._get_sensor_ids()
+        if not sensors:
+            return
+
+        from backend.database.db import SessionLocal
+        from sqlalchemy import text
+        session = SessionLocal()
+        try:
+            # 1. Load Spindle VibIT 1
+            vibit1_id = sensors.get("triac_vibit1")
+            if vibit1_id and self._last_good_vibit1 is None:
+                res = session.execute(
+                    text("""
+                        SELECT x_rms_acc, y_rms_acc, z_rms_acc,
+                               x_rms_vel, y_rms_vel, z_rms_vel,
+                               x_peak_acc, y_peak_acc, z_peak_acc,
+                               x_peak_vel, y_peak_vel, z_peak_vel,
+                               temperature, rpm, led_status
+                        FROM vibit_readings
+                        WHERE sensor_id = :sensor_id
+                        ORDER BY time DESC LIMIT 1
+                    """),
+                    {"sensor_id": vibit1_id}
+                ).fetchone()
+                if res:
+                    self._last_good_vibit1 = {
+                        "x_rms_acc": res[0], "y_rms_acc": res[1], "z_rms_acc": res[2],
+                        "x_rms_vel": res[3], "y_rms_vel": res[4], "z_rms_vel": res[5],
+                        "x_peak_acc": res[6], "y_peak_acc": res[7], "z_peak_acc": res[8],
+                        "x_peak_vel": res[9], "y_peak_vel": res[10], "z_peak_vel": res[11],
+                        "temperature": res[12], "rpm": res[13], "led_status": res[14]
+                    }
+                    logger.info("[TriacBroadcaster] Loaded initial Spindle VibIT 1 data from DB")
+
+            # 2. Load Tool VibIT 2
+            vibit2_id = sensors.get("triac_vibit2")
+            if vibit2_id and self._last_good_vibit2 is None:
+                res = session.execute(
+                    text("""
+                        SELECT x_rms_acc, y_rms_acc, z_rms_acc,
+                               x_rms_vel, y_rms_vel, z_rms_vel,
+                               x_peak_acc, y_peak_acc, z_peak_acc,
+                               x_peak_vel, y_peak_vel, z_peak_vel,
+                               temperature, rpm, led_status
+                        FROM vibit_readings
+                        WHERE sensor_id = :sensor_id
+                        ORDER BY time DESC LIMIT 1
+                    """),
+                    {"sensor_id": vibit2_id}
+                ).fetchone()
+                if res:
+                    self._last_good_vibit2 = {
+                        "x_rms_acc": res[0], "y_rms_acc": res[1], "z_rms_acc": res[2],
+                        "x_rms_vel": res[3], "y_rms_vel": res[4], "z_rms_vel": res[5],
+                        "x_peak_acc": res[6], "y_peak_acc": res[7], "z_peak_acc": res[8],
+                        "x_peak_vel": res[9], "y_peak_vel": res[10], "z_peak_vel": res[11],
+                        "temperature": res[12], "rpm": res[13], "led_status": res[14]
+                    }
+                    logger.info("[TriacBroadcaster] Loaded initial Tool VibIT 2 data from DB")
+
+            # 3. Load Energy Meter VibIT 3
+            energy_id = sensors.get("triac_energy")
+            if energy_id and self._last_good_vibit3 is None:
+                res = session.execute(
+                    text("""
+                        SELECT total_net_kwh, average_current
+                        FROM energy_meter_data
+                        WHERE sensor_id = :sensor_id
+                        ORDER BY time DESC LIMIT 1
+                    """),
+                    {"sensor_id": energy_id}
+                ).fetchone()
+                if res:
+                    self._last_good_vibit3 = {
+                        "kwh": res[0],
+                        "power": res[1] * 230.0 if res[1] is not None else 0.0
+                    }
+                    logger.info("[TriacBroadcaster] Loaded initial Energy Meter data from DB")
+        except Exception as e:
+            logger.error(f"Error loading initial Modbus data from DB: {e}")
+        finally:
+            session.close()
 
     async def connect(self, websocket: WebSocket):
         """Register a new WebSocket connection"""
@@ -122,25 +237,238 @@ class TriacBroadcaster:
             now = time.time()
             if now - self._last_modbus_read_time >= 2.0:
                 self._last_modbus_read_time = now
-                vibit1_data, vibit2_data, vibit3_data = await asyncio.gather(
-                    asyncio.to_thread(self.vibit_reader_1.read_snapshot),
-                    asyncio.to_thread(self.vibit_reader_2.read_snapshot),
-                    asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, True)
-                )
+                vibit1_data = await asyncio.to_thread(self.vibit_reader_1.read_snapshot)
+                await asyncio.sleep(0.1)
+                vibit2_data = await asyncio.to_thread(self.vibit_reader_2.read_snapshot)
+                await asyncio.sleep(0.1)
+                vibit3_data = await asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, True)
                 self._cached_modbus_data = (vibit1_data, vibit2_data, vibit3_data)
+
+                # Log to DB when we get new snapshots
+                sensors = self._get_sensor_ids()
+                if sensors:
+                    from backend.database.db import SessionLocal
+                    from sqlalchemy import text
+                    from backend.core.timezone import ist_now
+
+                    now_dt = ist_now()
+                    session = SessionLocal()
+                    try:
+                        # 1. Log to triac_sensor_data
+                        plc_sensor_id = sensors.get("triac")
+                        if plc_sensor_id:
+                            # Spindle speed
+                            v1_rpm = vibit1_data.get("rpm") if vibit1_data else None
+                            spindle_speed = float(v1_rpm) if v1_rpm is not None else 0.0
+                            is_running = spindle_speed > 0
+
+                            # Vibration / Temp fallbacks
+                            spindle_temp = float(vibit1_data.get("temperature") or 0.0) if vibit1_data else 0.0
+                            tool_temp = float(vibit2_data.get("temperature") or 0.0) if vibit2_data else 0.0
+
+                            # Spindle vibration (max of x_rms_vel, y_rms_vel, z_rms_vel)
+                            spindle_vibration = 0.0
+                            if vibit1_data:
+                                spindle_vibration = max([v for v in [
+                                    vibit1_data.get("x_rms_vel"),
+                                    vibit1_data.get("y_rms_vel"),
+                                    vibit1_data.get("z_rms_vel")
+                                ] if v is not None] or [0.0])
+
+                            # Tool vibration (max of x_peak_vel, y_peak_vel, z_peak_vel)
+                            tool_vibration = 0.0
+                            if vibit2_data:
+                                tool_vibration = max([v for v in [
+                                    vibit2_data.get("x_peak_vel"),
+                                    vibit2_data.get("y_peak_vel"),
+                                    vibit2_data.get("z_peak_vel")
+                                ] if v is not None] or [0.0])
+
+                            # Get current active block feed rate
+                            total_steps = len(self.gcode_program)
+                            curr_idx = self.gcode_index % total_steps
+                            curr_block = self.gcode_program[curr_idx]
+                            feed_rate = float(curr_block["feed"] if is_running and plc_connected else 0.0)
+
+                            session.execute(
+                                text("""
+                                    INSERT INTO triac_sensor_data (
+                                        time, machine_id, sensor_id,
+                                        x_axis_value, y_axis_value, z_axis_value,
+                                        x_axis_feed, y_axis_feed, z_axis_feed,
+                                        spindle_speed, spindle_temperature, spindle_vibration,
+                                        tool_temperature, tool_vibration, tool_number,
+                                        led_red, led_yellow, led_green, safety_curtain_status
+                                    )
+                                    VALUES (
+                                        :time, 'triac', :sensor_id,
+                                        :x_val, :y_val, :z_val,
+                                        :x_feed, :y_feed, :z_feed,
+                                        :speed, :temp, :vib,
+                                        :tool_temp, :tool_vib, :tool_num,
+                                        :red, :yellow, :green, false
+                                    )
+                                """),
+                                {
+                                    "time": now_dt,
+                                    "sensor_id": plc_sensor_id,
+                                    "x_val": float(self.x_pos or 0.0),
+                                    "y_val": float(self.y_pos or 0.0),
+                                    "z_val": float(self.z_pos or 0.0),
+                                    "x_feed": feed_rate,
+                                    "y_feed": feed_rate,
+                                    "z_feed": feed_rate,
+                                    "speed": spindle_speed,
+                                    "temp": spindle_temp,
+                                    "vib": spindle_vibration,
+                                    "tool_temp": tool_temp,
+                                    "tool_vib": tool_vibration,
+                                    "tool_num": int(2 if is_running else 0),
+                                    "red": bool(not plc_connected),
+                                    "yellow": bool(plc_connected and is_running),
+                                    "green": bool(plc_connected and not is_running)
+                                }
+                            )
+
+                        # 2. Log to vibit_readings for Spindle (VibIT 1)
+                        if vibit1_data and any(v is not None for v in vibit1_data.values()):
+                            vibit1_sensor_id = sensors.get("triac_vibit1")
+                            if vibit1_sensor_id:
+                                session.execute(
+                                    text("""
+                                        INSERT INTO vibit_readings (
+                                            time, machine_id, sensor_id, modbus_unit_id,
+                                            x_rms_acc, y_rms_acc, z_rms_acc,
+                                            x_rms_vel, y_rms_vel, z_rms_vel,
+                                            x_peak_acc, y_peak_acc, z_peak_acc,
+                                            x_peak_vel, y_peak_vel, z_peak_vel,
+                                            temperature, rpm
+                                        )
+                                        VALUES (
+                                            :time, 'triac', :sensor_id, 1,
+                                            :x_rms, :y_rms, :z_rms,
+                                            :x_vel, :y_vel, :z_vel,
+                                            :x_peak, :y_peak, :z_peak,
+                                            :x_pvel, :y_pvel, :z_pvel,
+                                            :temp, :rpm
+                                        )
+                                    """),
+                                    {
+                                        "time": now_dt,
+                                        "sensor_id": vibit1_sensor_id,
+                                        "x_rms": float(vibit1_data.get("x_rms_acc") or 0.0),
+                                        "y_rms": float(vibit1_data.get("y_rms_acc") or 0.0),
+                                        "z_rms": float(vibit1_data.get("z_rms_acc") or 0.0),
+                                        "x_vel": float(vibit1_data.get("x_rms_vel") or 0.0),
+                                        "y_vel": float(vibit1_data.get("y_rms_vel") or 0.0),
+                                        "z_vel": float(vibit1_data.get("z_rms_vel") or 0.0),
+                                        "x_peak": float(vibit1_data.get("x_peak_acc") or 0.0),
+                                        "y_peak": float(vibit1_data.get("y_peak_acc") or 0.0),
+                                        "z_peak": float(vibit1_data.get("z_peak_acc") or 0.0),
+                                        "x_pvel": float(vibit1_data.get("x_peak_vel") or 0.0),
+                                        "y_pvel": float(vibit1_data.get("y_peak_vel") or 0.0),
+                                        "z_pvel": float(vibit1_data.get("z_peak_vel") or 0.0),
+                                        "temp": float(vibit1_data.get("temperature") or 0.0),
+                                        "rpm": float(vibit1_data.get("rpm") or 0.0)
+                                    }
+                                )
+
+                        # 3. Log to vibit_readings for Tool (VibIT 2)
+                        if vibit2_data and any(v is not None for v in vibit2_data.values()):
+                            vibit2_sensor_id = sensors.get("triac_vibit2")
+                            if vibit2_sensor_id:
+                                session.execute(
+                                    text("""
+                                        INSERT INTO vibit_readings (
+                                            time, machine_id, sensor_id, modbus_unit_id,
+                                            x_rms_acc, y_rms_acc, z_rms_acc,
+                                            x_rms_vel, y_rms_vel, z_rms_vel,
+                                            x_peak_acc, y_peak_acc, z_peak_acc,
+                                            x_peak_vel, y_peak_vel, z_peak_vel,
+                                            temperature, rpm
+                                        )
+                                        VALUES (
+                                            :time, 'triac', :sensor_id, 2,
+                                            :x_rms, :y_rms, :z_rms,
+                                            :x_vel, :y_vel, :z_vel,
+                                            :x_peak, :y_peak, :z_peak,
+                                            :x_pvel, :y_pvel, :z_pvel,
+                                            :temp, 0.0
+                                        )
+                                    """),
+                                    {
+                                        "time": now_dt,
+                                        "sensor_id": vibit2_sensor_id,
+                                        "x_rms": float(vibit2_data.get("x_rms_acc") or 0.0),
+                                        "y_rms": float(vibit2_data.get("y_rms_acc") or 0.0),
+                                        "z_rms": float(vibit2_data.get("z_rms_acc") or 0.0),
+                                        "x_vel": float(vibit2_data.get("x_rms_vel") or 0.0),
+                                        "y_vel": float(vibit2_data.get("y_rms_vel") or 0.0),
+                                        "z_vel": float(vibit2_data.get("z_rms_vel") or 0.0),
+                                        "x_peak": float(vibit2_data.get("x_peak_acc") or 0.0),
+                                        "y_peak": float(vibit2_data.get("y_peak_acc") or 0.0),
+                                        "z_peak": float(vibit2_data.get("z_peak_acc") or 0.0),
+                                        "x_pvel": float(vibit2_data.get("x_peak_vel") or 0.0),
+                                        "y_pvel": float(vibit2_data.get("y_peak_vel") or 0.0),
+                                        "z_pvel": float(vibit2_data.get("z_peak_vel") or 0.0),
+                                        "temp": float(vibit2_data.get("temperature") or 0.0)
+                                    }
+                                )
+
+                        # 4. Log to energy_meter_data (VibIT 3)
+                        if vibit3_data and (vibit3_data.get("kwh") is not None or vibit3_data.get("power") is not None):
+                            energy_sensor_id = sensors.get("triac_energy")
+                            if energy_sensor_id:
+                                power = float(vibit3_data.get("power") or 0.0)
+                                session.execute(
+                                    text("""
+                                        INSERT INTO energy_meter_data (
+                                            time, machine_id, sensor_id,
+                                            average_voltage_ln, average_voltage_ll, average_current,
+                                            total_net_kwh
+                                        )
+                                        VALUES (
+                                            :time, 'triac', :sensor_id,
+                                            230.0, 400.0, :current,
+                                            :kwh
+                                        )
+                                    """),
+                                    {
+                                        "time": now_dt,
+                                        "sensor_id": energy_sensor_id,
+                                        "current": power / 230.0,
+                                        "kwh": float(vibit3_data.get("kwh") or 0.0)
+                                    }
+                                )
+
+                        session.commit()
+                    except Exception as e:
+                        logger.error(f"Error logging triac data to DB: {e}")
+                    finally:
+                        session.close()
             else:
                 vibit1_data, vibit2_data, vibit3_data = copy.deepcopy(self._cached_modbus_data)
+
+            # Lazy initialize from DB if not already done
+            if self._last_good_vibit1 is None or self._last_good_vibit2 is None or self._last_good_vibit3 is None:
+                self._init_last_good_from_db()
 
             vibit1_connected = vibit1_data is not None
             vibit2_connected = vibit2_data is not None
             vibit3_connected = vibit3_data is not None
 
-            if not vibit1_data:
-                vibit1_data = {}
-            if not vibit2_data:
-                vibit2_data = {}
-            if not vibit3_data:
-                vibit3_data = {}
+            # Update last good cache if read was successful
+            if vibit1_connected:
+                self._last_good_vibit1 = copy.deepcopy(vibit1_data)
+            if vibit2_connected:
+                self._last_good_vibit2 = copy.deepcopy(vibit2_data)
+            if vibit3_connected:
+                self._last_good_vibit3 = copy.deepcopy(vibit3_data)
+
+            # Use last good cache as fallback for effective readings
+            vibit1_effective = copy.deepcopy(self._last_good_vibit1) if self._last_good_vibit1 else {}
+            vibit2_effective = copy.deepcopy(self._last_good_vibit2) if self._last_good_vibit2 else {}
+            vibit3_effective = copy.deepcopy(self._last_good_vibit3) if self._last_good_vibit3 else {}
 
             # Fill defaults for sensor data
             def fill_defaults(data_dict: dict, connected: bool) -> dict:
@@ -157,11 +485,11 @@ class TriacBroadcaster:
                         data_dict[key] = 0.0 if connected else None
                 return data_dict
 
-            vibit1_data = fill_defaults(vibit1_data, vibit1_connected)
-            vibit2_data = fill_defaults(vibit2_data, vibit2_connected)
+            vibit1_effective = fill_defaults(vibit1_effective, vibit1_connected or bool(self._last_good_vibit1))
+            vibit2_effective = fill_defaults(vibit2_effective, vibit2_connected or bool(self._last_good_vibit2))
 
             # Spindle RPM
-            vibit1_rpm = vibit1_data.get("rpm")
+            vibit1_rpm = vibit1_effective.get("rpm")
             spindle_speed = vibit1_rpm if vibit1_rpm is not None else 0.0
             is_running = spindle_speed > 0
 
@@ -187,22 +515,22 @@ class TriacBroadcaster:
                 },
                 "spindle": {
                     "speed": spindle_speed if plc_connected else None,
-                    "temperature": vibit1_data.get("temperature"),
+                    "temperature": vibit1_effective.get("temperature"),
                     "vibration": max([v for v in [
-                        vibit1_data.get("x_rms_vel"),
-                        vibit1_data.get("y_rms_vel"),
-                        vibit1_data.get("z_rms_vel")
-                    ] if v is not None]) if vibit1_connected else None,
+                        vibit1_effective.get("x_rms_vel"),
+                        vibit1_effective.get("y_rms_vel"),
+                        vibit1_effective.get("z_rms_vel")
+                    ] if v is not None]) if (vibit1_connected or self._last_good_vibit1 is not None) else None,
                 },
                 "tool": {
                     "number": 2 if is_running else 0,
-                    "temperature": vibit2_data.get("temperature"),
+                    "temperature": vibit2_effective.get("temperature"),
                     "vibration": max([v for v in [
-                        vibit2_data.get("x_peak_vel"),
-                        vibit2_data.get("y_peak_vel"),
-                        vibit2_data.get("z_peak_vel")
-                    ] if v is not None]) if vibit2_connected else None,
-                    "reboot_count": vibit2_data.get("reboot_count"),
+                        vibit2_effective.get("x_peak_vel"),
+                        vibit2_effective.get("y_peak_vel"),
+                        vibit2_effective.get("z_peak_vel")
+                    ] if v is not None]) if (vibit2_connected or self._last_good_vibit2 is not None) else None,
+                    "reboot_count": vibit2_effective.get("reboot_count"),
                 },
                 "axes": {
                     "x": {
@@ -225,15 +553,15 @@ class TriacBroadcaster:
                     "index": self.gcode_index if plc_connected else -1,
                 },
                 "energy_meter": {
-                    "power": vibit3_data.get("power"),
-                    "kwh": vibit3_data.get("kwh"),
-                    "raw_power_regs": vibit3_data.get("raw_power_regs"),
-                    "raw_kwh_regs": vibit3_data.get("raw_kwh_regs"),
-                } if vibit3_connected else None,
+                    "power": vibit3_effective.get("power"),
+                    "kwh": vibit3_effective.get("kwh"),
+                    "raw_power_regs": vibit3_effective.get("raw_power_regs"),
+                    "raw_kwh_regs": vibit3_effective.get("raw_kwh_regs"),
+                } if (vibit3_connected or self._last_good_vibit3 is not None) else None,
                 "raw": {
-                    "vibit1": vibit1_data,
-                    "vibit2": vibit2_data,
-                    "vibit3": vibit3_data,
+                    "vibit1": vibit1_effective,
+                    "vibit2": vibit2_effective,
+                    "vibit3": vibit3_effective,
                 },
             }
         except Exception as e:
