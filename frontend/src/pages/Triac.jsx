@@ -4,6 +4,8 @@ import "react-toastify/dist/ReactToastify.css";
 import PageHeader from "../components/PageHeader";
 import TriacStatusRibbon from "./asrs/components/TriacStatusRibbon";
 import TriacControlService from "../services/TriacControl";
+import SensorDot from "../components/SensorDot";
+import DraggableHUD from "../components/DraggableHUD";
 import "./Assembly.css";
 import "./Triac.css";
 
@@ -39,24 +41,6 @@ const getRegRange = (baseAddress, offset) => {
   return `${start}-${start + 1}`;
 };
 
-
-/**
- * Small inline dot indicator for sensor connectivity
- */
-const SensorDot = ({ connected }) => (
-  <span
-    style={{
-      display: "inline-block",
-      width: 6,
-      height: 6,
-      borderRadius: "50%",
-      background: connected ? "#3a9d6e" : "#c4424b",
-      marginRight: 6,
-      verticalAlign: "middle",
-    }}
-  />
-);
-
 /**
  * High-Fidelity SVG milling machine viewer
  */
@@ -68,7 +52,11 @@ const TriacMachineView = ({
   spindleRunning = false,
   toolEngaged = false,
   alarmActive = false,
-  toolNumber = 4
+  toolNumber = 4,
+  vibit1Online = false,
+  vibit1Data = null,
+  vibit2Online = false,
+  vibit2Data = null
 }) => {
   // Map X axis (table left/right): 0 to 300 -> tx: -100 to 100
   const normalizedX = Math.min(1, Math.max(-1, xAxisValue / 150));
@@ -81,6 +69,8 @@ const TriacMachineView = ({
   // Map Z axis (spindle up/down): 0 to 200 -> tz: 0 to 150
   const normalizedZ = Math.min(1, Math.max(0, Math.abs(zAxisValue) / 200));
   const tz = 20 + normalizedZ * 100;
+
+  const containerRef = useRef(null);
 
   // Calculate spin duration for CSS animation from RPM
   const spinDuration = useMemo(() => {
@@ -99,6 +89,7 @@ const TriacMachineView = ({
 
   return (
     <div
+      ref={containerRef}
       style={{
         position: 'relative',
         width: '100%',
@@ -296,7 +287,7 @@ const TriacMachineView = ({
             SPINDLE: {spindleRPM} RPM
           </text>
         </g>
-        
+
         {/* --- Axes Labels Overlay --- */}
         <g transform="translate(780, 440)">
           <path d="M 0 0 L 0 -40 M 0 0 L -40 20 M 0 0 L 40 0" stroke="#9ca3af" strokeWidth="2" fill="none" />
@@ -310,6 +301,104 @@ const TriacMachineView = ({
           <text x="-45" y="10" fill="#9ca3af" fontSize="12" fontFamily="JetBrains Mono" fontWeight="bold">Y+</text>
         </g>
       </svg>
+
+      {/* Premium HTML Glassmorphism HUD for VibIT 1 */}
+      <DraggableHUD id="triac_spindle_vibit" defaultPosition={{ x: 650, y: 32 }} boundsRef={containerRef}>
+        <div style={{
+          width: '200px',
+          background: 'rgba(10, 15, 25, 0.65)',
+          backdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderTop: '1px solid rgba(255, 255, 255, 0.2)',
+          borderRadius: '12px',
+          padding: '16px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}>
+          {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
+          <span style={{ color: '#f8fafc', fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.5px' }}>SPINDLE VIBIT</span>
+          <div style={{ 
+            width: '8px', 
+            height: '8px', 
+            borderRadius: '50%', 
+            background: vibit1Online ? '#10b981' : '#ef4444',
+            boxShadow: vibit1Online ? '0 0 8px rgba(16, 185, 129, 0.6)' : '0 0 8px rgba(239, 68, 68, 0.6)'
+          }} />
+        </div>
+
+        {/* Data Grid */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', color: '#94a3b8' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>X RMS</span>
+            <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{vibit1Online && vibit1Data?.x_rms_vel != null ? vibit1Data.x_rms_vel.toFixed(2) : "0.00"} <span style={{ color: '#64748b' }}>mm/s</span></span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Y RMS</span>
+            <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{vibit1Online && vibit1Data?.y_rms_vel != null ? vibit1Data.y_rms_vel.toFixed(2) : "0.00"} <span style={{ color: '#64748b' }}>mm/s</span></span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Z RMS</span>
+            <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{vibit1Online && vibit1Data?.z_rms_vel != null ? vibit1Data.z_rms_vel.toFixed(2) : "0.00"} <span style={{ color: '#64748b' }}>mm/s</span></span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', paddingTop: '8px', borderTop: '1px dashed rgba(255,255,255,0.05)' }}>
+            <span>TEMP</span>
+            <span style={{ color: '#fbbf24', fontWeight: 500 }}>{vibit1Online && vibit1Data?.temperature != null ? vibit1Data.temperature.toFixed(1) : "0.0"} <span style={{ color: '#64748b' }}>°C</span></span>
+          </div>
+        </div>
+        </div>
+      </DraggableHUD>
+
+      {/* Premium HTML Glassmorphism HUD for VibIT 2 (Bed Vibit) */}
+      <DraggableHUD id="triac_bed_vibit" defaultPosition={{ x: 32, y: 300 }} boundsRef={containerRef}>
+        <div style={{
+          width: '200px',
+          background: 'rgba(10, 15, 25, 0.65)',
+          backdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderTop: '1px solid rgba(255, 255, 255, 0.2)',
+          borderRadius: '12px',
+          padding: '16px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}>
+          {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
+          <span style={{ color: '#f8fafc', fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.5px' }}>BED VIBIT</span>
+          <div style={{ 
+            width: '8px', 
+            height: '8px', 
+            borderRadius: '50%', 
+            background: vibit2Online ? '#10b981' : '#ef4444',
+            boxShadow: vibit2Online ? '0 0 8px rgba(16, 185, 129, 0.6)' : '0 0 8px rgba(239, 68, 68, 0.6)'
+          }} />
+        </div>
+
+        {/* Data Grid */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', color: '#94a3b8' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>X PEAK</span>
+            <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{vibit2Online && vibit2Data?.x_peak_vel != null ? vibit2Data.x_peak_vel.toFixed(2) : "0.00"} <span style={{ color: '#64748b' }}>mm/s</span></span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Y PEAK</span>
+            <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{vibit2Online && vibit2Data?.y_peak_vel != null ? vibit2Data.y_peak_vel.toFixed(2) : "0.00"} <span style={{ color: '#64748b' }}>mm/s</span></span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Z PEAK</span>
+            <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{vibit2Online && vibit2Data?.z_peak_vel != null ? vibit2Data.z_peak_vel.toFixed(2) : "0.00"} <span style={{ color: '#64748b' }}>mm/s</span></span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', paddingTop: '8px', borderTop: '1px dashed rgba(255,255,255,0.05)' }}>
+            <span>TEMP</span>
+            <span style={{ color: '#fbbf24', fontWeight: 500 }}>{vibit2Online && vibit2Data?.temperature != null ? vibit2Data.temperature.toFixed(1) : "0.0"} <span style={{ color: '#64748b' }}>°C</span></span>
+          </div>
+        </div>
+        </div>
+      </DraggableHUD>
     </div>
   );
 };
@@ -928,6 +1017,10 @@ export default function Triac() {
                   alarmActive={data?.status?.red || false}
                   coolantOn={data?.status?.cycle_start || false}
                   toolNumber={data?.tool?.number ?? 0}
+                  vibit1Online={vibit1Online}
+                  vibit1Data={data?.raw?.vibit1}
+                  vibit2Online={vibit2Online}
+                  vibit2Data={data?.raw?.vibit2}
                 />
               </div>
 

@@ -612,6 +612,10 @@ const Mirac = () => {
                   toolEngaged={data?.status?.cycle_start && smoothedX > 10}
                   coolantOn={data?.status?.cycle_start || false}
                   toolNumber={data?.tool?.number ?? 0}
+                  vibit1Online={vibit1Online}
+                  vibit1Data={data?.raw?.vibit1}
+                  vibit2Online={vibit2Online}
+                  vibit2Data={data?.raw?.vibit2}
                 />
               </div>
 
