@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import PageHeader from "../components/PageHeader";
@@ -63,146 +63,256 @@ const SensorDot = ({ connected }) => (
 /**
  * High-Fidelity SVG milling machine viewer
  */
-const TriacMachineView = ({ spindleRPM, xAxisValue, yAxisValue, zAxisValue, spindleRunning, alarmActive, coolantOn, toolNumber }) => {
-  // Normalize axes for display in SVG (0 to 100/150 ranges)
-  const normX = Math.min(1, Math.max(0, xAxisValue / 100));
-  const normY = Math.min(1, Math.max(0, yAxisValue / 100));
-  const normZ = Math.min(1, Math.max(0, zAxisValue / 150));
+const TriacMachineView = ({
+  spindleRPM = 0,
+  xAxisValue = 0,
+  yAxisValue = 0,
+  zAxisValue = 0,
+  spindleRunning = false,
+  toolEngaged = false,
+  alarmActive = false,
+  toolNumber = 4
+}) => {
+  // Map X axis (table left/right): 0 to 300 -> tx: -100 to 100
+  const normalizedX = Math.min(1, Math.max(-1, xAxisValue / 150));
+  const tx = normalizedX * 120;
 
-  // Translate coordinates for visual elements in SVG
-  const bedX = 140 + normX * 80;        // Bed X movement range
-  const bedY = 220 + normY * 20;        // Bed depth representation
-  const spindleHeadZ = 50 + (1 - normZ) * 80; // Spindle head vertical movement
+  // Map Y axis (table depth/tilt): 0 to 300 -> ty: -20 to 20
+  const normalizedY = Math.min(1, Math.max(-1, yAxisValue / 150));
+  const ty = normalizedY * 30;
+
+  // Map Z axis (spindle up/down): 0 to 200 -> tz: 0 to 150
+  const normalizedZ = Math.min(1, Math.max(0, Math.abs(zAxisValue) / 200));
+  const tz = 20 + normalizedZ * 100;
+
+  // Calculate spin duration for CSS animation from RPM
+  const spinDuration = useMemo(() => {
+    if (!spindleRPM || spindleRPM <= 0) return '0s';
+    const duration = Math.max(0.02, 10 / spindleRPM); // Much faster for mill
+    return `${duration}s`;
+  }, [spindleRPM]);
+
+  const spindleAnimState = spindleRunning ? 'running' : 'paused';
+  const alarmAnimState = alarmActive ? 'running' : 'paused';
+
+  const formattedTool = useMemo(() => {
+    const num = toolNumber ?? 4;
+    return `T${String(num).padStart(2, '0')}`;
+  }, [toolNumber]);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%", minHeight: "340px", background: "#060b13", borderRadius: "10px", border: "1px solid var(--border)", overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
-      {/* SVG drawing */}
-      <svg width="100%" height="340" viewBox="0 0 400 340" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ transition: "all 0.3s ease" }}>
-        {/* Background Grid */}
+    <div
+      style={{
+        position: 'relative',
+        width: '100%',
+        backgroundColor: '#0a0a0f',
+        borderRadius: '12px',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        boxShadow: 'inset 0 0 24px rgba(0, 0, 0, 0.95), 0 8px 32px rgba(0, 0, 0, 0.5)',
+        overflow: 'hidden',
+        aspectRatio: '900 / 500'
+      }}
+    >
+      {/* Visual Overlay: Grid Lines */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)',
+          backgroundSize: '30px 30px',
+          pointerEvents: 'none',
+          zIndex: 1
+        }}
+      />
+
+      <style>{`
+        @keyframes spinSpindle {
+          0% { transform: scaleX(1); }
+          50% { transform: scaleX(0.7); filter: brightness(1.2); }
+          100% { transform: scaleX(1); }
+        }
+
+        @keyframes alarmPulse {
+          0%, 100% { opacity: 0.03; }
+          50% { opacity: 0.18; }
+        }
+
+        .asm-spindle-bit {
+          animation: spinSpindle ${spinDuration} linear infinite;
+          animation-play-state: ${spindleAnimState};
+          transform-origin: center;
+        }
+
+        .asm-chip {
+          animation: sparkFloat 0.6s ease-out forwards;
+        }
+        
+        @keyframes sparkFloat {
+          0% { opacity: 1; transform: translate(0, 0) scale(1); }
+          100% { opacity: 0; transform: translate(var(--spark-dx, 0), var(--spark-dy, 0)) scale(0.5); }
+        }
+      `}</style>
+
+      {/* Dynamic Alarm Overlay */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: '#ef4444',
+          opacity: alarmActive ? 0.18 : 0,
+          animation: alarmActive ? 'alarmPulse 1s ease-in-out infinite' : 'none',
+          pointerEvents: 'none',
+          zIndex: 2,
+          transition: 'opacity 0.3s ease'
+        }}
+      />
+
+      <svg
+        viewBox="0 0 900 500"
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'block',
+          position: 'relative',
+          zIndex: 3
+        }}
+        preserveAspectRatio="xMidYMid meet"
+      >
         <defs>
-          <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255, 255, 255, 0.015)" strokeWidth="1"/>
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#grid)" />
-
-        {/* Machine Enclosure */}
-        <rect x="20" y="20" width="360" height="300" rx="6" fill="#090e17" stroke="rgba(255,255,255,0.03)" strokeWidth="2" />
-        <rect x="25" y="25" width="350" height="290" rx="4" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
-
-        {/* Linear rails Z-Axis */}
-        <line x1="180" y1="40" x2="180" y2="220" stroke="rgba(255,255,255,0.08)" strokeWidth="5" strokeLinecap="round" />
-        <line x1="220" y1="40" x2="220" y2="220" stroke="rgba(255,255,255,0.08)" strokeWidth="5" strokeLinecap="round" />
-
-        {/* Vertical Spindle Head (Z-Axis sliding block) */}
-        <g transform={`translate(0, ${spindleHeadZ})`}>
-          {/* Spindle Column Carriage */}
-          <rect x="170" y="-30" width="60" height="80" rx="3" fill="linear-gradient(90deg, #1e293b 0%, #334155 100%)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
-          <rect x="175" y="-25" width="50" height="70" fill="none" stroke="rgba(0,0,0,0.3)" strokeWidth="1" />
-
-          {/* Spindle Motor Block */}
-          <rect x="180" y="0" width="40" height="50" rx="2" fill="url(#spindleGrad)" stroke="#475569" strokeWidth="1" />
-          
-          {/* Spindle Shaft / Chuck */}
-          <rect x="194" y="50" width="12" height="15" fill="#94a3b8" />
-          <rect x="190" y="65" width="20" height="8" rx="1" fill="#475569" />
-
-          {/* Rotating Milling Bit (Cutting tool) */}
-          <path d="M 197 73 L 203 73 L 202 93 L 200 98 L 198 93 Z" fill={spindleRunning ? "#cbd5e1" : "#64748b"} />
-          
-          {/* Spindle rotational arrows (when running) */}
-          {spindleRunning && (
-            <g style={{ transformOrigin: "200px 83px", animation: "spin 0.2s linear infinite" }}>
-              <path d="M 186 83 A 14 14 0 0 1 214 83" stroke="#0ea5e9" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 3" />
-              <path d="M 214 83 A 14 14 0 0 1 186 83" stroke="#0ea5e9" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 3" />
-            </g>
-          )}
-
-          {/* Coolant spray nozzles and liquid lines */}
-          <line x1="175" y1="50" x2="190" y2="78" stroke="#475569" strokeWidth="2.5" />
-          <line x1="225" y1="50" x2="210" y2="78" stroke="#475569" strokeWidth="2.5" />
-          
-          {coolantOn && (
-            <g opacity="0.8">
-              {/* Animated coolant droplets */}
-              <line x1="190" y1="78" x2="196" y2="92" stroke="#38bdf8" strokeWidth="1" strokeDasharray="2 3" style={{ animation: "coolantFlow 0.5s linear infinite" }} />
-              <line x1="210" y1="78" x2="204" y2="92" stroke="#38bdf8" strokeWidth="1" strokeDasharray="2 3" style={{ animation: "coolantFlow 0.5s linear infinite" }} />
-            </g>
-          )}
-        </g>
-
-        {/* Horizontal Slide Guide Rails (X-Axis) */}
-        <rect x="80" y="240" width="240" height="12" fill="#1e293b" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-        <line x1="82" y1="244" x2="318" y2="244" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-        <line x1="82" y1="248" x2="318" y2="248" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-
-        {/* Milling Table (X-Axis block moving horizontally) */}
-        <g transform={`translate(${bedX - 180}, 0)`}>
-          {/* Table saddle structure */}
-          <rect x="120" y="232" width="120" height="12" rx="2" fill="#334155" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
-          
-          {/* Table Slot Lines */}
-          <line x1="130" y1="236" x2="230" y2="236" stroke="#0f172a" strokeWidth="1.5" />
-          <line x1="130" y1="240" x2="230" y2="240" stroke="#0f172a" strokeWidth="1.5" />
-
-          {/* Vise base & jaws */}
-          <rect x="150" y="222" width="60" height="10" fill="#475569" stroke="#334155" strokeWidth="1" />
-          <rect x="155" y="212" width="10" height="10" fill="#64748b" />
-          <rect x="195" y="212" width="10" height="10" fill="#64748b" />
-          
-          {/* Simulated workpiece block (metal stock) */}
-          <rect x="165" y="207" width="30" height="15" fill="#94a3b8" stroke="#cbd5e1" strokeWidth="1" />
-          
-          {/* Cutting Sparks (when spindle running and Z axis is down in cut range) */}
-          {spindleRunning && zAxisValue < 20 && (
-            <g>
-              <circle cx="180" cy="207" r="1.5" fill="#f97316" style={{ animation: "sparkFlicker 0.1s infinite" }} />
-              <path d="M 180 207 L 172 198 M 180 207 L 188 196 M 180 207 L 175 204 M 180 207 L 185 203" stroke="#fca5a5" strokeWidth="1" style={{ animation: "sparkBurst 0.15s infinite" }} />
-            </g>
-          )}
-        </g>
-
-        {/* Gradients */}
-        <defs>
-          <linearGradient id="spindleGrad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#1e293b" />
-            <stop offset="50%" stopColor="#475569" />
-            <stop offset="100%" stopColor="#0f172a" />
+          <linearGradient id="mill-metal" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#374151" />
+            <stop offset="20%" stopColor="#6b7280" />
+            <stop offset="50%" stopColor="#9ca3af" />
+            <stop offset="80%" stopColor="#4b5563" />
+            <stop offset="100%" stopColor="#1f2937" />
           </linearGradient>
+          <linearGradient id="mill-dark-metal" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#1f2937" />
+            <stop offset="100%" stopColor="#111827" />
+          </linearGradient>
+          <linearGradient id="mill-brass" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#b45309" />
+            <stop offset="50%" stopColor="#f59e0b" />
+            <stop offset="100%" stopColor="#78350f" />
+          </linearGradient>
+          <linearGradient id="mill-bit" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#9ca3af" />
+            <stop offset="50%" stopColor="#f3f4f6" />
+            <stop offset="100%" stopColor="#6b7280" />
+          </linearGradient>
+
+          <filter id="mill-glow">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+            <feMerge>
+              <feMergeNode in="coloredBlur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
+
+        {/* --- Background Machine Frame --- */}
+        <g transform="translate(450, 250)">
+          {/* Main Column */}
+          <rect x="-100" y="-250" width="200" height="400" fill="url(#mill-dark-metal)" rx="4" />
+          <rect x="-80" y="-200" width="160" height="300" fill="#111827" rx="2" />
+          
+          {/* Base */}
+          <path d="M-200 150 L200 150 L250 250 L-250 250 Z" fill="url(#mill-dark-metal)" />
+        </g>
+
+        {/* --- Table Assembly (X/Y Axes) --- */}
+        <g style={{ transform: `translate(450px, 350px) translate(${tx}px, ${ty}px)`, transition: 'transform 0.1s cubic-bezier(0.2, 0.8, 0.2, 1)' }}>
+          {/* Saddle / Cross Slide (Y Axis representation) */}
+          <rect x="-180" y="-30" width="360" height="40" fill="url(#mill-dark-metal)" rx="2" />
+          
+          {/* Mill Table (X Axis representation) */}
+          <rect x="-220" y="-50" width="440" height="30" fill="url(#mill-metal)" rx="2" />
+          
+          {/* T-Slots */}
+          <rect x="-220" y="-45" width="440" height="4" fill="#111827" />
+          <rect x="-220" y="-35" width="440" height="4" fill="#111827" />
+          <rect x="-220" y="-25" width="440" height="4" fill="#111827" />
+
+          {/* Vice */}
+          <g transform="translate(0, -65)">
+            <rect x="-60" y="-20" width="120" height="35" fill="url(#mill-dark-metal)" />
+            <rect x="-50" y="-40" width="20" height="20" fill="url(#mill-metal)" />
+            <rect x="30" y="-40" width="20" height="20" fill="url(#mill-metal)" />
+            
+            {/* Workpiece */}
+            <rect x="-30" y="-35" width="60" height="20" fill="url(#mill-brass)" rx="1" />
+          </g>
+        </g>
+
+        {/* --- Spindle Head (Z Axis) --- */}
+        <g style={{ transform: `translate(450px, ${tz}px)`, transition: 'transform 0.1s cubic-bezier(0.2, 0.8, 0.2, 1)' }}>
+          {/* Spindle Housing */}
+          <path d="M-70 -150 L70 -150 L70 50 L-70 50 Z" fill="url(#mill-metal)" />
+          <rect x="-60" y="-140" width="120" height="180" fill="#1f2937" rx="2" />
+          
+          {/* Z-Axis Label */}
+          <text x="0" y="-120" fill="#9ca3af" fontSize="14" fontFamily="Inter" fontWeight="bold" textAnchor="middle" letterSpacing="2">
+            TRIAC VMC
+          </text>
+
+          {/* Motor / Top section */}
+          <rect x="-40" y="-200" width="80" height="50" fill="url(#mill-dark-metal)" rx="4" />
+          <rect x="-30" y="-220" width="60" height="20" fill="#111827" rx="2" />
+
+          {/* Spindle Chuck/Collet */}
+          <rect x="-30" y="50" width="60" height="40" fill="url(#mill-dark-metal)" />
+          <rect x="-25" y="90" width="50" height="20" fill="url(#mill-metal)" />
+          
+          {/* Tool Assembly */}
+          <g className="asm-spindle-bit" transform="translate(0, 110)">
+            <rect x="-20" y="0" width="40" height="15" fill="url(#mill-dark-metal)" />
+            {/* End Mill / Cutter */}
+            <path d="M-6 15 L6 15 L3 60 L-3 60 Z" fill="url(#mill-bit)" />
+            <rect x="-4" y="60" width="8" height="5" fill="#f3f4f6" />
+          </g>
+
+          {/* Tool Label Pill */}
+          <g transform="translate(60, 20)">
+            <rect x="0" y="0" width="60" height="24" rx="12" fill="#1f2937" stroke="#374151" />
+            <circle cx="12" cy="12" r="4" fill={spindleRunning ? '#10b981' : '#6b7280'} filter="url(#mill-glow)" />
+            <text x="24" y="16" fill="#f3f4f6" fontSize="12" fontFamily="JetBrains Mono" fontWeight="bold">
+              {formattedTool}
+            </text>
+          </g>
+        </g>
+
+        {/* --- HUD Information --- */}
+        <g transform="translate(30, 40)">
+          <text x="0" y="0" fill="#f3f4f6" fontSize="16" fontFamily="Inter" fontWeight="bold" letterSpacing="1">
+            MACHINE VIEW
+          </text>
+          <text x="0" y="24" fill={spindleRunning ? '#10b981' : '#9ca3af'} fontSize="13" fontFamily="Inter">
+            STATUS: {spindleRunning ? (toolEngaged ? 'CUTTING' : 'RUNNING') : 'IDLE'}
+          </text>
+          <text x="0" y="44" fill="#9ca3af" fontSize="13" fontFamily="Inter">
+            SPINDLE: {spindleRPM} RPM
+          </text>
+        </g>
+        
+        {/* --- Axes Labels Overlay --- */}
+        <g transform="translate(780, 440)">
+          <path d="M 0 0 L 0 -40 M 0 0 L -40 20 M 0 0 L 40 0" stroke="#9ca3af" strokeWidth="2" fill="none" />
+          {/* Arrows */}
+          <path d="M -5 -35 L 0 -45 L 5 -35 Z" fill="#9ca3af" />
+          <path d="M 35 -5 L 45 0 L 35 5 Z" fill="#9ca3af" />
+          <path d="M -32 20 L -45 25 L -38 12 Z" fill="#9ca3af" />
+          {/* Text */}
+          <text x="10" y="-35" fill="#9ca3af" fontSize="12" fontFamily="JetBrains Mono" fontWeight="bold">Z+</text>
+          <text x="35" y="-10" fill="#9ca3af" fontSize="12" fontFamily="JetBrains Mono" fontWeight="bold">X+</text>
+          <text x="-45" y="10" fill="#9ca3af" fontSize="12" fontFamily="JetBrains Mono" fontWeight="bold">Y+</text>
+        </g>
       </svg>
-
-      {/* CSS Styles for animations */}
-      <style>
-        {`
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-          @keyframes coolantFlow {
-            0% { stroke-dashoffset: 0; }
-            100% { stroke-dashoffset: -5; }
-          }
-          @keyframes sparkFlicker {
-            0%, 100% { opacity: 0.2; transform: scale(0.8); }
-            50% { opacity: 1; transform: scale(1.3); }
-          }
-          @keyframes sparkBurst {
-            0% { opacity: 0; transform: translate(0, 0) scale(0.5); }
-            50% { opacity: 1; }
-            100% { opacity: 0; transform: translate(var(--x, 2px), var(--y, -3px)) scale(1.2); }
-          }
-        `}
-      </style>
-
-      {/* Safety curtain breached overlay */}
-      {alarmActive && (
-        <div style={{ position: "absolute", inset: 0, background: "rgba(239,68,68,0.12)", border: "2px solid #ef4444", borderRadius: "10px", pointerEvents: "none", zIndex: 10, display: "flex", alignItems: "center", justifyContent: "center", animation: "flashBorder 1s infinite alternate" }}>
-          <div style={{ background: "rgba(15,23,42,0.95)", border: "1px solid #ef4444", padding: "10px 16px", borderRadius: "4px", color: "#ef4444", fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 700, letterSpacing: "0.08em" }}>
-            SAFETY SHUTDOWN ACTIVE
-          </div>
-        </div>
-      )}
     </div>
   );
 };
