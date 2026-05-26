@@ -6,7 +6,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--bg-primary);
+  background: #1b1e24 !important;
 }
 
 .asm-header {
@@ -82,19 +82,21 @@
 .asm-sidebar {
   width: 220px;
   flex-shrink: 0;
-  border-right: 1px solid var(--border);
+  border-right: 1px solid #323842;
   overflow-y: auto;
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  background: #1b1e24 !important;
 }
 .asm-side__section h3 {
-  font-size: 0.62rem;
-  font-weight: 700;
-  color: var(--text-muted);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #8f9097 !important;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em !important;
   margin-bottom: 10px;
 }
 
@@ -144,63 +146,66 @@
   50% { opacity: 0.4; transform: scale(1.15); }
 }
 
-/* Glassmorphic HUD Panel Style */
+/* Glassmorphic HUD Panel Style (Flattened) */
 .asm-hud-card {
-  background: rgba(25, 28, 34, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: var(--radius-lg);
-  padding: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(8px);
+  background: #252932 !important;
+  border: 1px solid #323842 !important;
+  border-radius: 4px !important;
+  padding: 12px !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px !important;
 }
 .asm-hud-header {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: var(--text-muted);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #e1e2ea !important;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  padding-bottom: 6px;
+  letter-spacing: 0.05em !important;
+  border-bottom: 1px solid #323842 !important;
+  padding-bottom: 6px !important;
 }
 
 .asm-val {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px !important;
 }
 .asm-val__label {
-  font-size: 0.58rem;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #8f9097 !important;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em !important;
 }
 .asm-val__num {
-  font-family: var(--font-mono);
-  font-size: 1.4rem;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 20px !important;
+  font-weight: 500 !important;
+  color: #e1e2ea !important;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.05);
+  text-shadow: none !important;
 }
 .asm-val__num--sm {
-  font-size: 0.88rem;
+  font-size: 14px !important;
 }
 .asm-val__num--glowing-blue {
-  color: #38bdf8;
-  text-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+  color: #38bdf8 !important;
+  text-shadow: none !important;
 }
 .asm-val__num--glowing-green {
-  color: #4ade80;
-  text-shadow: 0 0 8px rgba(74, 222, 128, 0.3);
+  color: #4ade80 !important;
+  text-shadow: none !important;
 }
 .asm-val__unit {
-  font-size: 0.65rem;
-  color: var(--text-muted);
-  font-family: var(--font-sans);
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  font-family: 'Inter', sans-serif !important;
+  color: #8f9097 !important;
   margin-left: 2px;
 }
 
@@ -218,9 +223,9 @@
 .asm-viz {
   flex: 1;
   min-height: 400px;
-  background: var(--bg-machine);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  background: #252932 !important;
+  border: 1px solid #323842 !important;
+  border-radius: 4px !important;
   position: relative;
   overflow: hidden;
   display: flex;
@@ -230,15 +235,17 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
+  padding: 8px 12px;
+  border-bottom: 1px solid #323842 !important;
+  background: #14161a !important;
 }
 .asm-viz__bar span {
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #e1e2ea !important;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em !important;
 }
 .asm-workpiece-badge {
   font-family: var(--font-mono);
@@ -260,12 +267,13 @@
   justify-content: center;
   position: relative;
   padding: 24px;
-  background: 
-    radial-gradient(circle at center, rgba(17, 24, 39, 0.5) 0%, rgba(3, 7, 18, 0.9) 100%),
-    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
-  background-size: 100% 100%, 20px 20px, 20px 20px;
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  background-color: #0a0a0f !important;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px) !important;
+  background-size: 30px 30px !important;
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.95), 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+  border-radius: 0 0 4px 4px !important;
 }
 
 .asm-grid-container {
@@ -612,18 +620,19 @@
   display: flex;
   gap: 8px;
   padding: 10px 16px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  background: #252932 !important;
+  border: 1px solid #323842 !important;
+  border-radius: 4px !important;
   flex-shrink: 0;
   align-items: center;
 }
 .asm-cmd__label {
-  font-size: 0.62rem;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #8f9097 !important;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em !important;
   margin-right: auto;
 }
 
@@ -631,14 +640,14 @@
 .asm-safety-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.85) !important;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 24px;
-  border-radius: var(--radius-lg);
+  border-radius: 4px !important;
   z-index: 20;
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  border: 1px solid #c4424b !important;
   padding: 32px;
 }
 .asm-safety-overlay__icon { animation: asm-blink 1.2s ease-in-out infinite; }
