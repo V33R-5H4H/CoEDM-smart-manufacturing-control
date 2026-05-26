@@ -1,14 +1,8 @@
 """
 backend/crud/asrs/transaction.py
 ================================
-Queries against the "Transactions" table (case-sensitive PostgreSQL).
-
-Schema:
-  Transactions.tran_id       SERIAL PK
-  Transactions.item_id       INTEGER FK → Items
-  Transactions.subcom_place  VARCHAR(3) FK → SubCompartments
-  Transactions.action        VARCHAR(45)  e.g. 'added' | 'retrieved' | 'ordered'
-  Transactions.time          TIMESTAMP
+Refactored for Integrated Schema v2 (PostgreSQL lowercase tables).
+Maps internal compartment_id -> subcom_place, and action values ('add' -> 'added', 'retrieve' -> 'retrieved').
 """
 from sqlalchemy import text
 from backend.database.inventory_db import InventorySessionLocal
@@ -33,18 +27,24 @@ class TransactionController:
         try:
             where_clause = ""
             if sort == "added_only":
-                where_clause = "WHERE t.action = 'added'"
+                where_clause = "WHERE t.action = 'add'"
             elif sort == "retrieved_only":
-                where_clause = "WHERE t.action = 'retrieved'"
+                where_clause = "WHERE t.action = 'retrieve'"
 
             order_clause = "ORDER BY t.time ASC" if sort != "newest_first" else "ORDER BY t.time DESC"
 
             result = session.execute(
                 text(f"""
                     SELECT t.tran_id, t.item_id, i.name AS item_name,
-                           t.subcom_place, t.action, t.time
-                    FROM "Transactions" t
-                    LEFT JOIN "Items" i ON t.item_id = i.item_id
+                           t.compartment_id AS subcom_place,
+                           CASE t.action
+                               WHEN 'add'      THEN 'added'
+                               WHEN 'retrieve' THEN 'retrieved'
+                               ELSE t.action
+                           END AS action,
+                           t.time
+                    FROM storage_transactions t
+                    LEFT JOIN storage_items i ON t.item_id = i.item_id
                     {where_clause}
                     {order_clause}
                     LIMIT :limit
@@ -66,9 +66,15 @@ class TransactionController:
             result = session.execute(
                 text("""
                     SELECT t.tran_id, t.item_id, i.name AS item_name,
-                           t.subcom_place, t.action, t.time
-                    FROM "Transactions" t
-                    LEFT JOIN "Items" i ON t.item_id = i.item_id
+                           t.compartment_id AS subcom_place,
+                           CASE t.action
+                               WHEN 'add'      THEN 'added'
+                               WHEN 'retrieve' THEN 'retrieved'
+                               ELSE t.action
+                           END AS action,
+                           t.time
+                    FROM storage_transactions t
+                    LEFT JOIN storage_items i ON t.item_id = i.item_id
                     WHERE t.tran_id = :tran_id
                 """),
                 {"tran_id": tran_id}
@@ -90,13 +96,19 @@ class TransactionController:
             result = session.execute(
                 text("""
                     SELECT t.tran_id, t.item_id, i.name AS item_name,
-                           t.subcom_place, t.action, t.time
-                    FROM "Transactions" t
-                    LEFT JOIN "Items" i ON t.item_id = i.item_id
+                           t.compartment_id AS subcom_place,
+                           CASE t.action
+                               WHEN 'add'      THEN 'added'
+                               WHEN 'retrieve' THEN 'retrieved'
+                               ELSE t.action
+                           END AS action,
+                           t.time
+                    FROM storage_transactions t
+                    LEFT JOIN storage_items i ON t.item_id = i.item_id
                     WHERE t.item_id = :item_id
                     ORDER BY t.time DESC
                 """),
-                {"item_id": item_id}
+                {"item_id": int(item_id)}
             )
             columns = result.keys()
             return [dict(zip(columns, row)) for row in result.fetchall()]
@@ -117,16 +129,18 @@ class TransactionController:
             if not item_id or not action:
                 raise ValueError("item_id and action are required")
 
+            db_action = 'add' if action in ['added', 'add'] else 'retrieve'
+
             result = session.execute(
                 text("""
-                    INSERT INTO "Transactions" (item_id, subcom_place, action, time)
+                    INSERT INTO storage_transactions (item_id, compartment_id, action, time)
                     VALUES (:item_id, :subcom_place, :action, :time)
                     RETURNING tran_id
                 """),
                 {
-                    "item_id":      item_id,
+                    "item_id":      int(item_id),
                     "subcom_place": subcom_place,
-                    "action":       action,
+                    "action":       db_action,
                     "time":         datetime.now(),
                 }
             )
@@ -158,16 +172,19 @@ class TransactionController:
                 subcom_place = td.get("subcom_place")
                 if not item_id or not action:
                     raise ValueError("Each transaction must have item_id and action")
+                
+                db_action = 'add' if action in ['added', 'add'] else 'retrieve'
+
                 result = session.execute(
                     text("""
-                        INSERT INTO "Transactions" (item_id, subcom_place, action, time)
+                        INSERT INTO storage_transactions (item_id, compartment_id, action, time)
                         VALUES (:item_id, :subcom_place, :action, :time)
                         RETURNING tran_id
                     """),
                     {
-                        "item_id":      item_id,
+                        "item_id":      int(item_id),
                         "subcom_place": subcom_place,
-                        "action":       action,
+                        "action":       db_action,
                         "time":         datetime.now(),
                     }
                 )
@@ -185,3 +202,4 @@ class TransactionController:
             raise Exception(f"Error creating transactions: {e}")
         finally:
             session.close()
+

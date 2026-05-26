@@ -37,11 +37,19 @@ class ShuttleState:
             session = self._session()
             try:
                 result = session.execute(
-                    text("SELECT row_num, column_letter, state, command FROM shuttle_state WHERE id = 1")
+                    text("""
+                        SELECT to_row, to_col, current_state, last_command 
+                        FROM v_shuttle_state 
+                        WHERE machine_id = 'asrs'
+                    """)
                 ).fetchone()
                 
                 if result:
-                    self.row_num, self.column_letter, self.state, self.active_command = result
+                    to_row, to_col, state, last_command = result
+                    self.row_num = to_row if to_row is not None else 7
+                    self.column_letter = to_col if to_col is not None else "A"
+                    self.state = state if state is not None else "idle"
+                    self.active_command = last_command
                     logging.info(f"[Shuttle] Loaded state from DB: {self.column_letter}{self.row_num}, state={self.state}")
                 else:
                     logging.warning("[Shuttle] No state found in DB, using defaults")
@@ -51,13 +59,16 @@ class ShuttleState:
                 session.close()
 
     def save_to_db(self):
-        """Persist current shuttle state to database"""
+        """Persist current shuttle state to database by inserting a movement record"""
         with self.lock:
             logging.info(f"[Shuttle] Saving state to DB: {self.column_letter}{self.row_num}, state={self.state}, command={self.active_command}")
             session = self._session()
             try:
                 session.execute(
-                    text("UPDATE shuttle_state SET row_num=:row, column_letter=:col, state=:state, command=:cmd WHERE id=1"),
+                    text("""
+                        INSERT INTO shuttle_movements (machine_id, command, state, to_row, to_col, initiated_by)
+                        VALUES ('asrs', :cmd, :state, :row, :col, 'operator')
+                    """),
                     {
                         "row": self.row_num,
                         "col": self.column_letter,
@@ -66,7 +77,7 @@ class ShuttleState:
                     }
                 )
                 session.commit()
-                logging.info("[Shuttle] State saved to DB successfully")
+                logging.info("[Shuttle] State saved to DB successfully (new movement recorded)")
             except Exception as e:
                 logging.error(f"[Shuttle] Error saving state to DB: {e}")
                 session.rollback()
