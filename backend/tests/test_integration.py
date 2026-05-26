@@ -39,9 +39,9 @@ pytestmark = pytest.mark.skipif(
 @pytest.fixture(scope="module")
 def live_client():
     """TestClient connected to a fully-booted FastAPI app with real DB."""
-    with patch("backend.stations.asrs_station.OPCUAConnection"):
-        with patch("backend.stations.hydraulic_station.OPCUAConnection"):
-            with patch("backend.stations.cnc_mirac_station.OPCUAConnection"):
+    with patch("backend.stations.asrs.asrs_station.OPCUAConnection"):
+        with patch("backend.stations.assembly.hydraulic_station.OPCUAConnection"):
+            with patch("backend.stations.mirac.cnc_mirac_station.OPCUAConnection"):
                 with patch("backend.communication.modbus_driver.AsyncModbusTcpClient"):
                     from backend.api.main import app
                     with TestClient(app, raise_server_exceptions=True) as c:

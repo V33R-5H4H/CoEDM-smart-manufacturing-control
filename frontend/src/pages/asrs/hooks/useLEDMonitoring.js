@@ -4,11 +4,19 @@ export function useLEDMonitoring() {
   const [ledStates, setLedStates] = useState({});
   const [shuttleState, setShuttleState] = useState({ col: 'A', row: 7, state: 'idle', command: null });
   const [connected, setConnected] = useState(false);
+  const [safetyCurtain, setSafetyCurtain] = useState(false);
   const wsRef = useRef(null);
 
   useEffect(() => {
+    const apiBase = import.meta.env.VITE_API_URL || '/api';
+    const httpBase = apiBase.startsWith('http') ? apiBase : `${window.location.origin}${apiBase}`;
+    const wsBase = import.meta.env.VITE_WS_URL || httpBase.replace(/^http/, 'ws');
+
+    const wsUrl = `${wsBase}/api/control/asrs/ws/led-status`;
+    const shuttleStateUrl = `${httpBase}/control/asrs/shuttle_state`;
+
     function connect() {
-      const ws = new WebSocket('ws://100.97.200.68:8000/api/control/asrs/ws/led-status');
+      const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -18,7 +26,7 @@ export function useLEDMonitoring() {
         // Fetch latest shuttle state immediately on connection (fire and forget)
         (async () => {
           try {
-            const res = await fetch('http://100.97.200.68:8000/api/control/asrs/shuttle_state');
+            const res = await fetch(shuttleStateUrl);
             if (res.ok) {
               const data = await res.json();
               console.log('Initial shuttle state fetched:', data);
@@ -45,6 +53,9 @@ export function useLEDMonitoring() {
             // Initial state snapshot
             console.log('LED snapshot received:', data.states);
             setLedStates(data.states);
+            if (data.safety) {
+              setSafetyCurtain(!!data.safety.curtain);
+            }
             break;
 
           case 'led':
@@ -66,6 +77,12 @@ export function useLEDMonitoring() {
               state: data.payload.state,
               command: data.payload.command
             }));
+            break;
+
+          case 'safety':
+            // Safety curtain update
+            console.log('Safety update:', data.payload.curtain);
+            setSafetyCurtain(!!data.payload.curtain);
             break;
 
           default:
@@ -92,5 +109,5 @@ export function useLEDMonitoring() {
     };
   }, []);
 
-  return { ledStates, shuttleState, connected };
+  return { ledStates, shuttleState, connected, safetyCurtain };
 }

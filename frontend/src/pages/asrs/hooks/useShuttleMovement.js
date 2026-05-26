@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react';
  * - STORE: Shuttle appears to go from drop-off → destination
  * - RETRIEVE: Shuttle appears to go from destination → drop-off
  */
-export function useShuttleMovement(webSocketShuttle, operationMode) {
+export function useShuttleMovement(webSocketShuttle) {
   const [visualShuttle, setVisualShuttle] = useState({
     col: 'DROP_OFF',
     row: 0,
