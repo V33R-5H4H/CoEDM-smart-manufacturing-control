@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:8000/api/control/mirac";
+const API_URL = `${import.meta.env.VITE_API_URL || "/api"}/control/mirac`;
 
 class MiracControlService {
     /**

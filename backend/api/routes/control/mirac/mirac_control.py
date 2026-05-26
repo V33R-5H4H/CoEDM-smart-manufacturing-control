@@ -21,6 +21,12 @@ from backend.stations.mirac.cnc_mirac_backend import (
     get_vibit_connectivity,
     set_read_interval,
 )
+from backend.stations.mirac.cnc_mirac_station import (
+    connect_mirac,
+    disconnect_mirac,
+    get_mirac_status,
+)
+from backend.websockets.mirac_broadcaster import mirac_broadcaster
 import asyncio
 import json
 import logging
@@ -33,16 +39,15 @@ router = APIRouter(prefix="/api/control/mirac", tags=["MIRAC"])
 # ── Data endpoints ──────────────────────────────────────────────────────────
 
 @router.get("/vibit-data")
-async def get_vibit_metrics():
+async def get_vibit_metrics(sensor: str = None):
     """
-    Get merged VIBIT metrics (spindle slave 1 + tool slave 2).
-
-    Returns:
-        All spindle-side fields (x_rms_acceleration, …) plus tool-side
-        fields prefixed with 'tool_' (tool_x_rms_acceleration, …) and
-        connectivity booleans (connected, vibit2_connected).
+    Get current VIBIT sensor metrics
+    
+    Args:
+        sensor: Optional sensor ID (vibit1, vibit2, vibit3) to query a specific sensor.
+                If not specified, all sensors are returned combined.
     """
-    data = get_vibit_data()
+    data = get_vibit_data(sensor)
     if not data:
         raise HTTPException(status_code=503, detail="VIBIT data unavailable")
     return data
@@ -148,35 +153,48 @@ async def set_read_rate(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ── WebSocket ───────────────────────────────────────────────────────────────
+@router.get("/connection-status")
+async def get_connection_status():
+    """Check OPC UA and VIBIT data gateway connection status"""
+    status = get_mirac_status()
+    return {
+        "connected": status.get("connected", False),
+        "is_reading": mirac_gateway.is_reading,
+        "read_interval_ms": int(mirac_gateway.read_interval * 1000) if mirac_gateway.read_interval else 100,
+        "host": mirac_gateway.host,
+        "port": mirac_gateway.port,
+    }
+
+@router.post("/connect")
+async def connect_mirac_endpoint():
+    try:
+        success, message = connect_mirac()
+        return {"success": success, "message": message}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/disconnect")
+async def disconnect_mirac_endpoint():
+    try:
+        success, message = disconnect_mirac()
+        return {"success": success, "message": message}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.websocket("/ws/vibit-data")
 async def vibit_data_websocket(websocket: WebSocket):
-    """Real-time merged VIBIT metrics stream (10Hz cadence)."""
-    await websocket.accept()
-    logger.info("VIBIT WebSocket client connected")
+    """
+    WebSocket endpoint for real-time unified MIRAC CNC and VIBIT metrics streaming.
+    """
+    await mirac_broadcaster.connect(websocket)
     try:
         while True:
-            try:
-                payload = {
-                    "merged": get_vibit_data(),
-                    "unit1": get_vibit_unit_data(1),
-                    "unit2": get_vibit_unit_data(2),
-                }
-                await websocket.send_text(json.dumps(payload, default=str))
-                await asyncio.sleep(0.1)
-            except asyncio.CancelledError:
-                break
-            except RuntimeError as e:
-                if "close message has been sent" in str(e) or "Unexpected state" in str(e):
-                    break
-                logger.error(f"WebSocket RuntimeError: {e}")
-                break
-            except Exception as e:
-                import traceback
-                logger.error(f"WebSocket loop error: {e}\n{traceback.format_exc()}")
-                break
+            # Keep connection open and receive optional messages
+            await websocket.receive_text()
     except WebSocketDisconnect:
-        logger.info("VIBIT WebSocket client disconnected")
+        mirac_broadcaster.disconnect(websocket)
     except Exception as e:
-        logger.error(f"VIBIT WebSocket error: {e}")
+        mirac_broadcaster.disconnect(websocket)
+        logger.error(f"MIRAC WebSocket error: {e}")
+        raise

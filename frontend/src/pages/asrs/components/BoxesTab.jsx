@@ -9,7 +9,7 @@ import { useLEDMonitoring } from '../hooks/useLEDMonitoring';
 import { useOperationShadowState } from '../hooks/useOperationShadowState';
 import { toast } from 'react-toastify';
 
-function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = null, ledConnected = false }) {
+function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = null, ledConnected = false, safetyCurtainTriggered = false }) {
 
   // Open delete modal for a box
   const openDeleteModal = (boxId) => {
@@ -50,6 +50,14 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
     ledStatesRef.current = ledStates;
   }, [ledStates]);
 
+  // Auto-close details panel if safety curtain is triggered
+  useEffect(() => {
+    if (safetyCurtainTriggered) {
+      setShowDetails(false);
+      setSelectedBox(null);
+    }
+  }, [safetyCurtainTriggered]);
+
   const handleStoreOperation = async (boxId, subId, itemId) => {
     // 1. Immediately minimize the bottom sheet
     setShowDetails(false);
@@ -64,6 +72,9 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
         subId,
         itemId: Number(itemId)
       });
+
+      // Instantly refresh inventory list to reflect database changes
+      fetchBoxes();
 
       // 3. Show persistent background transition toast
       toast.info('Store operation initiated. Shuttle dispatching...', { autoClose: false, toastId: 'store-wait' });
@@ -122,6 +133,9 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
         quantity: 1
       });
 
+      // Instantly refresh inventory list to reflect database changes
+      fetchBoxes();
+
       // 3. Show persistent background transition toast
       toast.info('Retrieve operation initiated. Shuttle dispatching...', { autoClose: false, toastId: 'retrieve-wait' });
 
@@ -164,6 +178,10 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
   };
 
   const handleHomeShuttle = async () => {
+    if (safetyCurtainTriggered) {
+      toast.warning("Homing operation locked due to safety curtain alert.");
+      return;
+    }
     try {
       const API_BASE = `${import.meta.env.VITE_API_URL || "/api"}/control/asrs`;
       const res = await fetch(`${API_BASE}/home`, { method: "POST" });
@@ -271,6 +289,7 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
           getEffectiveLEDState={getEffectiveLEDState}
           isSourceBlinking={isSourceBlinking}
           setSelectedBox={(b) => {
+            if (safetyCurtainTriggered) return;
             setSelectedBox(b);
             setShowDetails(true);
           }}
@@ -278,6 +297,7 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
           operationPhase={operationPhase}
           selectedBoxId={selectedBox?.box_id}
           onHomeShuttle={handleHomeShuttle}
+          safetyCurtainTriggered={safetyCurtainTriggered}
         />
       </div>
 
@@ -509,7 +529,8 @@ function RackView({
   shuttle,
   operationPhase,
   selectedBoxId,
-  onHomeShuttle
+  onHomeShuttle,
+  safetyCurtainTriggered = false
 }) {
   const columns = ['A', 'B', 'C', 'D', 'E'];
   const rows = [1, 2, 3, 4, 5, 6, 7]; // Render from top to bottom (1 -> 7)
@@ -624,32 +645,36 @@ function RackView({
           <button
             type="button"
             onClick={onHomeShuttle}
+            disabled={safetyCurtainTriggered}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '4px',
-              background: 'var(--primary-dark)',
-              border: '1px solid var(--primary)',
-              color: 'var(--primary-light)',
+              background: safetyCurtainTriggered ? 'var(--bg-disabled)' : 'var(--primary-dark)',
+              border: `1px solid ${safetyCurtainTriggered ? 'var(--border)' : 'var(--primary)'}`,
+              color: safetyCurtainTriggered ? 'var(--text-disabled)' : 'var(--primary-light)',
               fontSize: '10px',
               fontFamily: 'var(--font-mono)',
               fontWeight: 700,
               padding: '2px 8px',
               borderRadius: '3px',
-              cursor: 'pointer',
+              cursor: safetyCurtainTriggered ? 'not-allowed' : 'pointer',
               textTransform: 'uppercase',
               transition: 'all 150ms ease-out',
-              marginRight: '8px'
+              marginRight: '8px',
+              opacity: safetyCurtainTriggered ? 0.6 : 1
             }}
             onMouseEnter={(e) => {
+              if (safetyCurtainTriggered) return;
               e.currentTarget.style.background = 'var(--primary)';
               e.currentTarget.style.color = 'var(--bg-primary)';
             }}
             onMouseLeave={(e) => {
+              if (safetyCurtainTriggered) return;
               e.currentTarget.style.background = 'var(--primary-dark)';
               e.currentTarget.style.color = 'var(--primary-light)';
             }}
-            title="Dispatch shuttle to Home A7"
+            title={safetyCurtainTriggered ? "Homing locked due to safety curtain alert" : "Dispatch shuttle to Home A7"}
           >
             <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>home</span>
             Home Shuttle
@@ -674,12 +699,14 @@ function RackView({
         flex: 1,
         padding: '16px',
         paddingBottom: selectedBoxId ? '370px' : '16px',
-        transition: 'padding-bottom 300ms cubic-bezier(0.4, 0, 0.2, 1)',
         overflow: 'auto',
         background: 'var(--bg-secondary)',
         backgroundImage: 'radial-gradient(var(--bg-hover) 1px, transparent 0)',
         backgroundSize: '20px 20px',
-        backgroundPosition: '-10px -10px'
+        backgroundPosition: '-10px -10px',
+        pointerEvents: safetyCurtainTriggered ? 'none' : 'auto',
+        opacity: safetyCurtainTriggered ? 0.35 : 1,
+        transition: 'padding-bottom 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)'
       }}>
         <div
           id="asrs-rack-grid"

@@ -4,6 +4,7 @@ from .items import router as items_router
 from .orders import router as orders_router
 from .subcompartments import router as subcompartments_router
 from .transactions import router as transactions_router
+from .queue import router as queue_router
 
 # Create main ASRS Data router with /api/asrs-data prefix
 router = APIRouter(prefix="/api/asrs-data")
@@ -14,3 +15,4 @@ router.include_router(items_router)
 router.include_router(orders_router)
 router.include_router(subcompartments_router)
 router.include_router(transactions_router)
+router.include_router(queue_router)

@@ -64,13 +64,16 @@ class Settings(BaseSettings):
     # ── VIBIT Vibration Sensor (Modbus TCP) — on MIRAC ───────────────────────
     VIBIT_HOST: str = "10.10.14.103"
     VIBIT_PORT: int = 502
-    VIBIT_UNIT_ID: int = 1              # Modbus slave/unit ID — sensor 1 (spindle)
-    VIBIT_UNIT_ID_2: int = 2            # Modbus slave/unit ID — sensor 2 (tool/bearing)
+    VIBIT_UNIT_ID: int = 1              # Modbus slave/unit ID
+    VIBIT_UNIT_ID_2: int = 2            # Modbus slave/unit ID for second VIBIT sensor
+    VIBIT_UNIT_ID_3: int = 3            # Modbus slave/unit ID for third VIBIT sensor
 
     # ── VIBIT Vibration Sensor (Modbus TCP) — on TRIAC ───────────────────────
     TRIAC_VIBIT_HOST: str = "10.10.14.129"
     TRIAC_VIBIT_PORT: int = 502
     TRIAC_VIBIT_UNIT_ID: int = 1        # Modbus slave/unit ID
+    TRIAC_VIBIT_UNIT_ID_2: int = 2      # Modbus slave/unit ID for second VIBIT sensor
+    TRIAC_VIBIT_UNIT_ID_3: int = 3      # Modbus slave/unit ID for third VIBIT sensor
 
     # ── TM Cobot (Raw TCP / TMSCT) ─────────────────────────────────────────
     COBOT_HOST: str = "10.10.14.106"

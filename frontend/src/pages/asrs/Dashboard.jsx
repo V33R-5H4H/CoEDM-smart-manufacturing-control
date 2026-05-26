@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import BoxesTab from "./components/BoxesTab";
 import ItemsTab from "./components/ItemsTab";
 import TransactionsTab from "./components/TransactionsTab";
@@ -9,6 +9,7 @@ import { useTheme } from "../../theme/ThemeContext";
 import { ToastContainer, toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import "react-toastify/dist/ReactToastify.css";
+import "../Assembly.css";
 
 const API_BASE = `${import.meta.env.VITE_API_URL || "/api"}/control/asrs`;
 
@@ -16,25 +17,24 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState("boxes");
   const [isConnected, setIsConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
-  const { shuttleState, connected: ledConnected, ledStates, safetyCurtainActive } = useLEDMonitoring();
+  const { shuttleState, connected: ledConnected, ledStates, safetyCurtain } = useLEDMonitoring();
   const { resolved: theme } = useTheme();
 
-  // Edge-triggered safety alerts
-  const prevSafetyRef = useRef(false);
+  const prevSafetyCurtainRef = useRef(false);
 
+  // Trigger edge-triggered toast notifications for ASRS Safety Curtain status
   useEffect(() => {
-    const prev = prevSafetyRef.current;
-    if (safetyCurtainActive && !prev) {
-      toast.error('⚠️ SAFETY CURTAIN TRIGGERED — Human presence detected!', {
-        toastId: 'curtain-alert',
+    if (safetyCurtain && !prevSafetyCurtainRef.current) {
+      toast.error("⚠️ SAFETY CURTAIN TRIGGERED — Human presence detected!", {
+        toastId: "asrs-curtain-alert",
         autoClose: false,
         closeOnClick: false,
       });
-    } else if (!safetyCurtainActive && prev) {
-      toast.dismiss('curtain-alert');
+    } else if (!safetyCurtain && prevSafetyCurtainRef.current) {
+      toast.dismiss("asrs-curtain-alert");
     }
-    prevSafetyRef.current = safetyCurtainActive;
-  }, [safetyCurtainActive]);
+    prevSafetyCurtainRef.current = safetyCurtain;
+  }, [safetyCurtain]);
 
   useEffect(() => {
     const checkConnection = async () => {
@@ -85,8 +85,22 @@ function Dashboard() {
     }
   };
 
+  // Derive status tower light conditions: Green (RUN), Orange (BUSY), Red (FLT)
+  const isSafetyInterrupted = safetyCurtain;
+  const greenActive = isConnected && !isSafetyInterrupted && shuttleState?.state !== "moving" && shuttleState?.state !== "busy";
+  const orangeActive = isConnected && !isSafetyInterrupted && (shuttleState?.state === "moving" || shuttleState?.state === "busy");
+  const redActive = isSafetyInterrupted || shuttleState?.state === "error" || shuttleState?.state === "fault";
+
   const tabPanels = {
-    boxes: <BoxesTab isServerConnected={isConnected} ledStates={ledStates} shuttleState={shuttleState} ledConnected={ledConnected} />,
+    boxes: (
+      <BoxesTab
+        isServerConnected={isConnected}
+        ledStates={ledStates}
+        shuttleState={shuttleState}
+        ledConnected={ledConnected}
+        safetyCurtainTriggered={isSafetyInterrupted}
+      />
+    ),
     items: <ItemsTab isServerConnected={isConnected} />,
     transactions: <TransactionsTab isServerConnected={isConnected} />,
   };
@@ -106,36 +120,7 @@ function Dashboard() {
         subtitle="Inventory"
         actions={
           <>
-            {isConnected && (
-              <button
-                type="button"
-                disabled={safetyCurtainActive}
-                onClick={async () => {
-                  try {
-                    const res = await fetch(`${API_BASE}/home`, { method: "POST" });
-                    if (res.ok) toast.info("Resetting shuttle to Home (A7)…");
-                  } catch {
-                    toast.error("Failed to reset shuttle");
-                  }
-                }}
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: safetyCurtainActive ? 'var(--text-muted)' : 'var(--status-error)',
-                  border: `1px solid ${safetyCurtainActive ? 'var(--border)' : 'var(--status-error)'}`,
-                  background: 'transparent',
-                  padding: '4px 12px',
-                  borderRadius: '2px',
-                  cursor: safetyCurtainActive ? 'not-allowed' : 'pointer',
-                  opacity: safetyCurtainActive ? 0.5 : 1,
-                }}
-                title={safetyCurtainActive ? "Disabled due to safety curtain breach" : "Force reset shuttle position to A7"}
-              >
-                Reset A7
-              </button>
-            )}
+
             <TopStatusRibbon
               plcConnected={isConnected}
               ledConnected={ledConnected}
@@ -227,6 +212,81 @@ function Dashboard() {
             </button>
           ))}
         </div>
+
+        {/* 3-LED Status Tower Indicator */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '0 8px',
+          background: 'rgba(255,255,255,0.01)',
+          borderLeft: '1px solid var(--border)',
+          height: '28px'
+        }}>
+          <span style={{
+            fontSize: '9px',
+            fontFamily: 'var(--font-mono)',
+            fontWeight: 700,
+            color: 'var(--text-muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            marginRight: '2px'
+          }}>STATUS TOWER:</span>
+
+          {/* RUN LED */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }} title="System Connected and Ready">
+            <div style={{
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              border: '1.5px solid #333',
+              background: greenActive
+                ? 'radial-gradient(circle, #4ade80, #22c55e)'
+                : 'radial-gradient(circle, #1a1a1a, #0a0a0a)',
+              boxShadow: greenActive
+                ? '0 0 8px rgba(74, 222, 128, 0.75), inset 0 1px 1px rgba(255,255,255,0.3)'
+                : 'inset 0 1px 2px rgba(0,0,0,0.5)',
+              transition: 'all 0.3s ease'
+            }} />
+            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: greenActive ? '#4ade80' : 'var(--text-disabled)' }}>RUN</span>
+          </div>
+
+          {/* BUSY LED */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }} title="Shuttle Moving or Active">
+            <div style={{
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              border: '1.5px solid #333',
+              background: orangeActive
+                ? 'radial-gradient(circle, #fbbf24, #f59e0b)'
+                : 'radial-gradient(circle, #1a1a1a, #0a0a0a)',
+              boxShadow: orangeActive
+                ? '0 0 8px rgba(251, 191, 36, 0.75), inset 0 1px 1px rgba(255,255,255,0.3)'
+                : 'inset 0 1px 2px rgba(0,0,0,0.5)',
+              transition: 'all 0.3s ease'
+            }} />
+            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: orangeActive ? '#fbbf24' : 'var(--text-disabled)' }}>BUSY</span>
+          </div>
+
+          {/* FLT LED */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }} title="Safety Curtain Triggered or Fault Active">
+            <div style={{
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              border: '1.5px solid #333',
+              background: redActive
+                ? 'radial-gradient(circle, #ef4444, #dc2626)'
+                : 'radial-gradient(circle, #1a1a1a, #0a0a0a)',
+              boxShadow: redActive
+                ? '0 0 8px rgba(239, 68, 68, 0.75), inset 0 1px 1px rgba(255,255,255,0.3)'
+                : 'inset 0 1px 2px rgba(0,0,0,0.5)',
+              transition: 'all 0.3s ease'
+            }} />
+            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: redActive ? '#ef4444' : 'var(--text-disabled)' }}>FLT</span>
+          </div>
+        </div>
       </div>
 
       {/* Workspace — fills remaining space */}
@@ -235,134 +295,46 @@ function Dashboard() {
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        pointerEvents: safetyCurtainActive ? 'none' : 'auto',
-        opacity: safetyCurtainActive ? 0.35 : 1,
-        transition: 'opacity 300ms ease-in-out',
+        position: 'relative'
       }}>
         {tabPanels[activeTab]}
-      </div>
 
-      {/* SAFETY INTERRUPT OVERLAY */}
-      <AnimatePresence>
-        {safetyCurtainActive && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: `
-                linear-gradient(0deg, rgba(220, 38, 38, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(220, 38, 38, 0.03) 1px, transparent 1px),
-                #000000e0
-              `,
-              backgroundSize: '40px 40px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '1.5rem',
-              zIndex: 9999,
-              border: '2px solid #dc2626',
-              boxShadow: 'inset 0 0 100px rgba(220, 38, 38, 0.3)',
-              padding: '2rem',
-              backdropFilter: 'blur(3px)',
-            }}
-          >
+        {/* SAFETY INTERRUPT OVERLAY */}
+        {isSafetyInterrupted && (
+          <div className="asm-safety-overlay" style={{ background: "rgba(0,0,0,0.92)", borderRadius: 0 }}>
             <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '2.5rem',
-              flexWrap: 'wrap',
-              maxWidth: '800px',
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "1.5rem",
+              flexWrap: "wrap",
+              padding: "2rem"
             }}>
-              {/* Warning Triangle */}
-              <motion.div
-                animate={{
-                  opacity: [1, 0.5, 1],
-                  scale: [1, 1.02, 1]
-                }}
-                transition={{
-                  duration: 1.5,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="1.5">
+              <div className="asm-safety-overlay__icon" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="84" height="84" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5">
                   <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                   <line x1="12" y1="9" x2="12" y2="13" strokeWidth="2" />
-                  <circle cx="12" cy="17" r="0.5" fill="#dc2626" />
+                  <circle cx="12" cy="17" r="0.5" fill="#ef4444" />
                 </svg>
-              </motion.div>
-
-              {/* Text Warning Details */}
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1rem',
-                alignItems: 'flex-start'
-              }}>
-                <motion.div
-                  animate={{ opacity: [1, 0.8, 1] }}
-                  transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-                  style={{
-                    fontSize: 'clamp(2rem, 3.6vw, 3.5rem)',
-                    fontWeight: 900,
-                    color: '#dc2626',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.15em',
-                    fontFamily: 'monospace',
-                    textShadow: '0 0 20px rgba(220, 38, 38, 0.8), 0 0 40px rgba(220, 38, 38, 0.5)',
-                    lineHeight: 1.1
-                  }}
-                >
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", alignItems: "flex-start" }}>
+                <div className="asm-safety-overlay__title">
                   SAFETY<br />INTERRUPT
-                </motion.div>
-
-                <div style={{
-                  fontSize: 'clamp(0.95rem, 1.8vw, 1.15rem)',
-                  fontWeight: 600,
-                  color: '#fca5a5',
-                  fontFamily: 'monospace',
-                  letterSpacing: '0.05em',
-                  maxWidth: '560px',
-                  lineHeight: 1.5
-                }}>
-                  Human presence detected in smart cell area. Physical safety light curtain has been breached. All AS/RS shuttle motion has been locked.
                 </div>
-
-                <div style={{
-                  fontSize: '0.85rem',
-                  fontWeight: 700,
-                  color: '#dc2626',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.1em',
-                  marginTop: '0.5rem',
-                  padding: '0.6rem 1.2rem',
-                  background: 'rgba(220, 38, 38, 0.15)',
-                  border: '2px solid #dc2626',
-                  borderRadius: '0',
-                  fontFamily: 'monospace',
-                  boxShadow: '0 0 15px rgba(220, 38, 38, 0.4)'
-                }}>
-                  ■ MOTION LOCKOUT ACTIVE · AWAITING CLEARANCE
+                <div className="asm-safety-overlay__sub" style={{ maxWidth: "420px", fontSize: "0.85rem", margin: 0 }}>
+                  Human presence detected in ASRS area (safety curtain breached).
+                </div>
+                <div className="asm-safety-overlay__badge">
+                  ASRS Operations Locked Out
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
+      </div>
+
+      {/* BUZZER ALARM VIEWPORT RING */}
+      {safetyCurtain && <div className="asm-buzzer-ring" />}
 
       <ToastContainer
         position="bottom-right"

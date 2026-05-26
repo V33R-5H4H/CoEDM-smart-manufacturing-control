@@ -17,15 +17,20 @@ from backend.database.db import engine, verify_db
 from backend.api.routes.control.asrs import asrs_control
 from backend.api.routes.control.assembly import assembly_control
 from backend.api.routes.control.mirac import mirac_control
+from backend.api.routes.control.triac import triac_control
 from backend.api.routes.control.asrs.shuttle import router as shuttle_router
 from backend.api.routes.data.asrs.asrs_data import router as asrs_data_router
-from backend.api.routes import sensor_data
+from backend.api.routes.data.machines import router as machines_router
+from backend.api.routes.data.users import router as users_router
+from backend.api.routes.data.events import router as events_router
+from backend.api.routes.data.telemetry import router as telemetry_router
 from backend.stations.asrs.asrs_singleton import asrs_controller
 from backend.websockets.assembly_broadcaster import hydraulic_broadcaster
 from backend.websockets.mirac_broadcaster import mirac_broadcaster
 from backend.websockets.asrs_broadcaster import led_ws_manager
 from backend.stations.assembly.hydraulic_station import opcua_connection as hydraulic_opcua_connection
 from backend.stations.mirac.cnc_mirac_station import opcua_connection as mirac_opcua_connection
+from backend.stations.triac import triac_opcua_connection
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -55,9 +60,13 @@ app.add_middleware(
 app.include_router(asrs_control.router)
 app.include_router(assembly_control.router)
 app.include_router(mirac_control.router)
+app.include_router(triac_control.router)
 app.include_router(shuttle_router)
 app.include_router(asrs_data_router)
-app.include_router(sensor_data.router)
+app.include_router(machines_router)
+app.include_router(users_router)
+app.include_router(events_router)
+app.include_router(telemetry_router)
 
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -102,6 +111,16 @@ async def startup_event():
     asrs_controller.shuttle.register_callback(_shuttle_callback)
     logger.info("[Startup] ✓ Shuttle broadcast callback registered")
 
+    # 5. Safety state-change → WebSocket broadcast
+    def _safety_callback(active: bool, prev: bool):
+        asyncio.run_coroutine_threadsafe(
+            led_ws_manager.broadcast_safety_change(active),
+            loop,
+        )
+
+    asrs_controller.led_service.register_safety_callback(_safety_callback)
+    logger.info("[Startup] ✓ Safety broadcast callback registered")
+
     logger.info(
         "[Startup] Application ready  host=%s  port=%s  debug=%s  log=%s",
         settings.API_HOST, settings.API_PORT, settings.DEBUG, settings.LOG_LEVEL,
@@ -117,6 +136,7 @@ async def shutdown_event():
         ("ASRS",      asrs_controller),
         ("Hydraulic", hydraulic_opcua_connection),
         ("MIRAC",     mirac_opcua_connection),
+        ("TRIAC",     triac_opcua_connection),
     ]:
         try:
             if name == "ASRS":
@@ -140,6 +160,7 @@ async def health_check():
     - ASRS OPC-UA connection
     - Hydraulic OPC-UA connection
     - MIRAC OPC-UA connection
+    - TRIAC OPC-UA connection
     """
     db = verify_db()
 
@@ -163,12 +184,43 @@ async def health_check():
                 "connected": mirac_opcua_connection.connected,
                 "url": settings.MIRAC_OPCUA_URL,
             },
+            "triac": {
+                "connected": triac_opcua_connection.connected,
+                "url": settings.TRIAC_OPCUA_URL,
+            },
         },
         "modbus": {
             "vibit": {
-                "host": settings.VIBIT_HOST,
-                "port": settings.VIBIT_PORT,
-                "unit_id": settings.VIBIT_UNIT_ID,
+                "mirac_spindle": {
+                    "host": settings.VIBIT_HOST,
+                    "port": settings.VIBIT_PORT,
+                    "unit_id": settings.VIBIT_UNIT_ID,
+                },
+                "mirac_tool": {
+                    "host": settings.VIBIT_HOST,
+                    "port": settings.VIBIT_PORT,
+                    "unit_id": settings.VIBIT_UNIT_ID_2,
+                },
+                "mirac_axes": {
+                    "host": settings.VIBIT_HOST,
+                    "port": settings.VIBIT_PORT,
+                    "unit_id": settings.VIBIT_UNIT_ID_3,
+                },
+                "triac_spindle": {
+                    "host": settings.TRIAC_VIBIT_HOST,
+                    "port": settings.TRIAC_VIBIT_PORT,
+                    "unit_id": settings.TRIAC_VIBIT_UNIT_ID,
+                },
+                "triac_tool": {
+                    "host": settings.TRIAC_VIBIT_HOST,
+                    "port": settings.TRIAC_VIBIT_PORT,
+                    "unit_id": settings.TRIAC_VIBIT_UNIT_ID_2,
+                },
+                "triac_axes": {
+                    "host": settings.TRIAC_VIBIT_HOST,
+                    "port": settings.TRIAC_VIBIT_PORT,
+                    "unit_id": settings.TRIAC_VIBIT_UNIT_ID_3,
+                },
             }
         },
     }

@@ -4,7 +4,7 @@ export function useLEDMonitoring() {
   const [ledStates, setLedStates] = useState({});
   const [shuttleState, setShuttleState] = useState({ col: 'A', row: 7, state: 'idle', command: null });
   const [connected, setConnected] = useState(false);
-  const [safetyCurtainActive, setSafetyCurtainActive] = useState(false);
+  const [safetyCurtain, setSafetyCurtain] = useState(false);
   const wsRef = useRef(null);
 
   useEffect(() => {
@@ -12,7 +12,7 @@ export function useLEDMonitoring() {
     const httpBase = apiBase.startsWith('http') ? apiBase : `${window.location.origin}${apiBase}`;
     const wsBase = import.meta.env.VITE_WS_URL || httpBase.replace(/^http/, 'ws');
 
-    const wsUrl = `${wsBase}/control/asrs/ws/led-status`;
+    const wsUrl = `${wsBase}/api/control/asrs/ws/led-status`;
     const shuttleStateUrl = `${httpBase}/control/asrs/shuttle_state`;
 
     function connect() {
@@ -53,8 +53,8 @@ export function useLEDMonitoring() {
             // Initial state snapshot
             console.log('LED snapshot received:', data.states);
             setLedStates(data.states);
-            if (data.safety !== undefined) {
-              setSafetyCurtainActive(data.safety);
+            if (data.safety) {
+              setSafetyCurtain(!!data.safety.curtain);
             }
             break;
 
@@ -80,8 +80,9 @@ export function useLEDMonitoring() {
             break;
 
           case 'safety':
-            console.log('Safety curtain update:', data.payload.active);
-            setSafetyCurtainActive(data.payload.active);
+            // Safety curtain update
+            console.log('Safety update:', data.payload.curtain);
+            setSafetyCurtain(!!data.payload.curtain);
             break;
 
           default:
@@ -108,5 +109,5 @@ export function useLEDMonitoring() {
     };
   }, []);
 
-  return { ledStates, shuttleState, connected, safetyCurtainActive };
+  return { ledStates, shuttleState, connected, safetyCurtain };
 }

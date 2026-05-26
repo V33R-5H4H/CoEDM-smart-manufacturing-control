@@ -82,14 +82,9 @@ class MIRACDataGateway:
         self.unit_id_2 = unit_id_2 if unit_id_2 is not None else settings.VIBIT_UNIT_ID_2
 
         self.state: Dict[str, VIBITMetrics] = {
-            "vibit1": VIBITMetrics(
-                timestamp=datetime.now().isoformat(),
-                unit_id=self.unit_id_1
-            ),
-            "vibit2": VIBITMetrics(
-                timestamp=datetime.now().isoformat(),
-                unit_id=self.unit_id_2
-            ),
+            "vibit1": VIBITMetrics(timestamp=datetime.now().isoformat()),
+            "vibit2": VIBITMetrics(timestamp=datetime.now().isoformat()),
+            "vibit3": VIBITMetrics(timestamp=datetime.now().isoformat()),
         }
 
         # Connectivity tracking — per slave + OPC-UA
@@ -103,150 +98,118 @@ class MIRACDataGateway:
         self.read_interval = 0.5   # 500ms — safe default
         self.is_reading = False
         self._lock = threading.Lock()
-        self._read_thread: Optional[threading.Thread] = None
 
-    # ──────────────────────────────────────────────────────────────
-    # Public API
-    # ──────────────────────────────────────────────────────────────
+    @staticmethod
+    def decode_float32(low_word: int, high_word: int) -> float:
+        """
+        Decode IEEE 754 float from Modbus word-swapped registers
+        
+        Many Modbus devices swap words, so we need:
+            buf[0:2] = high_word (bytes 0-1)
+            buf[2:4] = low_word  (bytes 2-3)
+        
+        Args:
+            low_word: First register value
+            high_word: Second register value
+            
+        Returns:
+            Decoded float32 value
+        """
+        try:
+            buf = bytearray(4)
+            # Word-swap + big-endian
+            buf[0:2] = high_word.to_bytes(2, byteorder='big')
+            buf[2:4] = low_word.to_bytes(2, byteorder='big')
 
-    def get_state(self, sensor: str = "vibit1") -> Optional[Dict]:
-        """Get current metrics for one slave (vibit1 or vibit2)."""
+            int_val = int.from_bytes(buf, byteorder='big', signed=False)
+            return struct.unpack('>f', struct.pack('>I', int_val))[0]
+        except Exception as e:
+            logger.error(f"Decode error for registers {low_word}, {high_word}: {e}")
+            return 0.0
+
+    def validate_registers(self, payload: list) -> bool:
+        """Validate Modbus read response"""
+        if not payload or len(payload) < 2:
+            logger.warning("Invalid Modbus response: missing data")
+            return False
+        if not all(isinstance(x, int) for x in payload):
+            logger.warning("Invalid Modbus response: non-integer values")
+            return False
+        return True
+
+    async def read_sensor_data(self, client) -> Optional[Dict]:
+        """
+        Read all VIBIT1 sensor data from Modbus
+        
+        Returns:
+            Dictionary of decoded metrics or None on error
+        """
+        try:
+            metrics = {}
+            
+            # Read all registers (2 registers per metric for 32-bit float)
+            for metric_name, register_addr in self.REGISTER_MAP.items():
+                try:
+                    # Read 2 registers (32-bit float = 2 × 16-bit registers)
+                    payload = await asyncio.wait_for(
+                        self._read_registers(client, register_addr, 2),
+                        timeout=1.0
+                    )
+                    
+                    if not self.validate_registers(payload):
+                        continue
+                    
+                    # Decode: low_word, high_word → float32
+                    value = self.decode_float32(payload[0], payload[1])
+                    metrics[metric_name] = round(value, 2)
+                    
+                except asyncio.TimeoutError:
+                    logger.warning(f"Timeout reading {metric_name} @ register {register_addr}")
+                    continue
+                except Exception as e:
+                    logger.warning(f"Error reading {metric_name}: {e}")
+                    continue
+            
+            return metrics if metrics else None
+            
+        except Exception as e:
+            logger.error(f"Read sensor data error: {e}")
+            return None
+
+    async def _read_registers(self, client, addr: int, count: int):
+        """Placeholder for actual Modbus read (implement with pymodbus)"""
+        # This would use pymodbus client:
+        # result = await client.read_holding_registers(addr, count, slave=1)
+        # return result.registers
+        raise NotImplementedError("Use pymodbus for actual Modbus reads")
+
+    def update_state(self, sensor: str, metrics: Dict) -> None:
+        """Update global state with decoded metrics for a specific sensor"""
+        if not metrics:
+            return
+        
         with self._lock:
             if sensor in self.state:
-                return asdict(self.state[sensor])
-        return None
+                current = self.state[sensor]
+                for key, value in metrics.items():
+                    if hasattr(current, key):
+                        setattr(current, key, value)
+                current.timestamp = datetime.now().isoformat()
 
-    def get_merged_state(self) -> Dict:
-        """
-        Merged view: vibit1 provides spindle-side metrics,
-        vibit2 provides tool-side metrics.  All OPC-UA tags
-        are taken from vibit1 state (set by background thread).
-        """
+    def get_state(self, sensor: str = None) -> Optional[Dict]:
+        """Get current sensor state. If sensor is None, returns all sensors combined."""
         with self._lock:
-            s1 = asdict(self.state["vibit1"])
-            s2 = asdict(self.state["vibit2"])
+            if sensor:
+                if sensor in self.state:
+                    return asdict(self.state[sensor])
+                return None
+            return {k: asdict(v) for k, v in self.state.items()}
 
-        merged = dict(s1)  # start with slave-1 (spindle)
-        # Overlay slave-2 metrics with "tool_" prefix for UI separation
-        merged["tool_x_rms_acceleration"]  = s2["x_rms_acceleration"]
-        merged["tool_y_rms_acceleration"]  = s2["y_rms_acceleration"]
-        merged["tool_z_rms_acceleration"]  = s2["z_rms_acceleration"]
-        merged["tool_x_rms_velocity"]      = s2["x_rms_velocity"]
-        merged["tool_y_rms_velocity"]      = s2["y_rms_velocity"]
-        merged["tool_z_rms_velocity"]      = s2["z_rms_velocity"]
-        merged["tool_x_peak_acceleration"] = s2["x_peak_acceleration"]
-        merged["tool_y_peak_acceleration"] = s2["y_peak_acceleration"]
-        merged["tool_z_peak_acceleration"] = s2["z_peak_acceleration"]
-        merged["tool_x_peak_velocity"]     = s2["x_peak_velocity"]
-        merged["tool_y_peak_velocity"]     = s2["y_peak_velocity"]
-        merged["tool_z_peak_velocity"]     = s2["z_peak_velocity"]
-        merged["tool_temperature"]         = s2["temperature"]
-        merged["tool_rpm"]                 = s2["rpm"]
-        merged["tool_led_status"]          = s2["led_status"]
-        merged["tool_reboot_count"]        = s2["reboot_count"]
-        merged["vibit2_connected"]         = s2["connected"]
-        return merged
-
-    def get_connectivity(self) -> Dict:
-        """Return per-device connectivity status."""
-        with self._lock:
-            conn = dict(self._connectivity)
-        return {
-            "host": self.host,
-            "port": self.port,
-            "vibit1": {
-                "unit_id": self.unit_id_1,
-                "label": "Spindle sensor",
-                "connected": conn["vibit1"],
-            },
-            "vibit2": {
-                "unit_id": self.unit_id_2,
-                "label": "Tool / bearing sensor",
-                "connected": conn["vibit2"],
-            },
-            "opcua": {
-                "url": None,
-                "connected": conn["opcua"],
-            },
-            "any_connected": any(conn.values()),
-        }
-
-    # ──────────────────────────────────────────────────────────────
-    # Lifecycle
-    # ──────────────────────────────────────────────────────────────
-
-    def connect(self) -> dict:
-        """Connect to OPC-UA (optional) and start dual-slave read loop."""
-        opc_ok, opc_msg = False, ""
-        try:
-            from backend.stations.mirac.cnc_mirac_station import connect_mirac as opc_connect
-            opc_ok, opc_msg = opc_connect()
-        except Exception as e:
-            logger.error(f"[MIRAC] OPC-UA connection failed: {e}")
-            opc_msg = str(e)
-
-        self.is_connected = True
-        if not self.is_reading:
-            self.is_reading = True
-            self._read_thread = threading.Thread(
-                target=self._run_sync_read_loop, daemon=True
-            )
-            self._read_thread.start()
-            logger.info("MIRAC dual-slave background reading thread started")
-
-        return {
-            "opc_ua": {"success": opc_ok, "message": opc_msg},
-            "modbus": {"success": True, "message": "Dual-slave VIBIT reader started"},
-        }
-
-    def disconnect(self) -> dict:
-        """Stop reads and disconnect OPC-UA."""
-        self.is_reading = False
-        self.is_connected = False
-        with self._lock:
-            self._connectivity["vibit1"] = False
-            self._connectivity["vibit2"] = False
-            self._connectivity["opcua"] = False
-
-        opc_ok, opc_msg = False, ""
-        try:
-            from backend.stations.mirac.cnc_mirac_station import disconnect_mirac as opc_disconnect
-            opc_ok, opc_msg = opc_disconnect()
-        except Exception as e:
-            logger.error(f"[MIRAC] OPC-UA disconnect failed: {e}")
-            opc_msg = str(e)
-
-        return {
-            "opc_ua": {"success": opc_ok, "message": opc_msg},
-            "modbus": {"success": True, "message": "VIBIT readers stopped"},
-        }
-
-    # ──────────────────────────────────────────────────────────────
-    # Background read loop
-    # ──────────────────────────────────────────────────────────────
-
-    def _run_sync_read_loop(self) -> None:
-        """
-        Background thread: polls both Modbus slave IDs and OPC-UA.
-        Each slave is read independently using a single shared TCP 
-        connection to avoid connection drops.
-        """
-        from backend.communication.vibit_modbus import VibitModbusReader
-        from backend.stations.mirac.cnc_mirac_station import opcua_connection, MIRAC_DATA_TAGS
-        from backend.database.sensor_data import write_vibit_reading, write_mirac_plc_reading
-        import math, random
-
-        # Throttle DB writes to ~1 Hz (every 10 ticks)
-        self._db_tick = 0
-
-        # Use ONE shared reader to prevent Modbus TCP connection limits
-        reader = VibitModbusReader(host=self.host, port=self.port)
-        logger.info(
-            f"Dual-slave shared reader: {self.host}:{self.port} "
-            f"unit1={self.unit_id_1}, unit2={self.unit_id_2}"
-        )
-
-        step = 0
+    async def start_reading(self, client) -> None:
+        """Start continuous Modbus reads at safe interval"""
+        self.is_reading = True
+        logger.info(f"Starting VIBIT data reads at {self.read_interval * 1000}ms interval")
+        
         while self.is_reading:
             try:
                 now = datetime.now().isoformat()
@@ -357,20 +320,9 @@ class MIRACDataGateway:
 mirac_gateway = MIRACDataGateway()
 
 
-def get_vibit_data() -> Optional[Dict]:
-    """Legacy API — returns merged (spindle + tool) view of vibit1."""
-    return mirac_gateway.get_merged_state()
-
-
-def get_vibit_unit_data(unit: int) -> Optional[Dict]:
-    """Get raw data for a specific slave unit (1 or 2)."""
-    key = f"vibit{unit}"
-    return mirac_gateway.get_state(key)
-
-
-def get_vibit_connectivity() -> Dict:
-    """Get per-device connectivity status."""
-    return mirac_gateway.get_connectivity()
+def get_vibit_data(sensor: str = None) -> Optional[Dict]:
+    """API endpoint to get current VIBIT metrics"""
+    return mirac_gateway.get_state(sensor)
 
 
 def set_read_interval(interval_ms: int) -> None:
