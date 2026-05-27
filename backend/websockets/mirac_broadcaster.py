@@ -66,6 +66,8 @@ class MiracBroadcaster:
     async def connect(self, websocket: WebSocket):
         """Register a new WebSocket connection"""
         await websocket.accept()
+        # Yield to event loop to ensure ASGI server completes the 101 Upgrade response
+        await asyncio.sleep(0.1)
         self.active_connections.add(websocket)
         logger.info(f"Mirac WebSocket connected. Total connections: {len(self.active_connections)}")
 

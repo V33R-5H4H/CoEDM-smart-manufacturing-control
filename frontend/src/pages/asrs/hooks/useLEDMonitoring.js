@@ -12,7 +12,7 @@ export function useLEDMonitoring() {
     const httpBase = apiBase.startsWith('http') ? apiBase : `${window.location.origin}${apiBase}`;
     const wsBase = import.meta.env.VITE_WS_URL || httpBase.replace(/^http/, 'ws');
 
-    const wsUrl = `${wsBase}/api/control/asrs/ws/led-status`;
+    const wsUrl = `${wsBase}/control/asrs/ws/led-status`;
     const shuttleStateUrl = `${httpBase}/control/asrs/shuttle_state`;
 
     function connect() {

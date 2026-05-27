@@ -273,7 +273,7 @@ class ASRSController:
                         except Exception as e:
                             logging.warning(f"[ASRS] LED {tag} unavailable: {e}")
 
-                # Also subscribe to the native ASRS saftey curtain node
+                # Also subscribe to the native ASRS safety curtain node
                 safety_tag = "saftey"
                 safety_node_id = f"ns={PLC_NAMESPACE};s={safety_tag}"
                 try:

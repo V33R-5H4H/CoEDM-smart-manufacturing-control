@@ -227,7 +227,7 @@ function Dashboard() {
             letterSpacing: '0.08em',
             marginRight: '2px'
           }}>STATUS TOWER:</span>
-          
+
           {/* RUN LED */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }} title="System Connected and Ready">
             <div style={{
@@ -295,7 +295,7 @@ function Dashboard() {
         {tabPanels[activeTab]}
 
         {/* SAFETY INTERRUPT OVERLAY */}
-        <SafetyOverlay 
+        <SafetyOverlay
           isVisible={isSafetyInterrupted}
           message="Human presence detected in ASRS area (safety curtain breached)."
           badgeText="ASRS Operations Locked Out"
