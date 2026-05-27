@@ -10,6 +10,12 @@ from backend.database.db import SessionLocal
 from sqlalchemy import text
 from backend.core.timezone import ist_now
 from backend.config import settings
+from backend.core.delta import (
+    compute_delta,
+    build_snapshot_message,
+    build_delta_message,
+    build_heartbeat_message,
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -53,13 +59,23 @@ class MiracBroadcaster:
         self._last_good_vibit1 = None
         self._last_good_vibit2 = None
         self._last_good_vibit3 = None
+        # Delta-send state
+        self._last_broadcast_payload: dict = {}
+        self._heartbeat_tick: int = 0
         
     async def connect(self, websocket: WebSocket):
         """Register a new WebSocket connection"""
         await websocket.accept()
         self.active_connections.add(websocket)
         logger.info(f"Mirac WebSocket connected. Total connections: {len(self.active_connections)}")
-        
+
+        # Immediately send the last known full state so the new client isn't blank
+        if self._last_broadcast_payload:
+            try:
+                await websocket.send_text(build_snapshot_message(self._last_broadcast_payload))
+            except Exception as e:
+                logger.warning(f"Could not send initial snapshot to new Mirac client: {e}")
+
         # Start broadcasting if this is the first connection
         if not self.is_broadcasting:
             self.broadcast_task = asyncio.create_task(self._broadcast_loop())
@@ -673,34 +689,54 @@ class MiracBroadcaster:
             return None
     
     async def _broadcast_loop(self):
-        """Main broadcast loop - reads and sends data continuously"""
+        """Main broadcast loop — reads data at 10 Hz and sends only changed fields."""
         self.is_broadcasting = True
+        # Send a heartbeat every 50 ticks (5 seconds) when nothing changes
+        HEARTBEAT_INTERVAL = 50
         logger.info("Mirac broadcast loop started")
-        
+
         try:
             while self.is_broadcasting and len(self.active_connections) > 0:
-                # Read mirac data
                 data = await self._read_mirac_data()
-                
+
                 if data:
-                    # Broadcast to all connected clients
-                    message = json.dumps(data)
+                    self._heartbeat_tick += 1
+                    is_first = not self._last_broadcast_payload
+
+                    if is_first:
+                        # Very first tick — send full snapshot to all clients
+                        message = build_snapshot_message(data)
+                        self._last_broadcast_payload = copy.deepcopy(data)
+                        self._heartbeat_tick = 0
+                    else:
+                        delta = compute_delta(self._last_broadcast_payload, data)
+                        if delta:
+                            # Include timestamp so frontend knows the message is fresh
+                            delta["timestamp"] = data["timestamp"]
+                            message = build_delta_message(delta)
+                            self._last_broadcast_payload = copy.deepcopy(data)
+                            self._heartbeat_tick = 0
+                        elif self._heartbeat_tick >= HEARTBEAT_INTERVAL:
+                            # Nothing changed — send a lightweight keep-alive
+                            message = build_heartbeat_message(data["timestamp"])
+                            self._heartbeat_tick = 0
+                        else:
+                            # Nothing changed and heartbeat not due — skip send entirely
+                            await asyncio.sleep(0.1)
+                            continue
+
                     disconnected = set()
-                    
                     for connection in self.active_connections:
                         try:
                             await connection.send_text(message)
                         except Exception as e:
-                            logger.error(f"Error sending to client: {e}")
+                            logger.error(f"Error sending to Mirac client: {e}")
                             disconnected.add(connection)
-                    
-                    # Clean up disconnected clients
                     for conn in disconnected:
                         self.disconnect(conn)
-                
-                # Wait before next update (10 Hz update rate for smooth coordinate changes)
+
                 await asyncio.sleep(0.1)
-        
+
         except asyncio.CancelledError:
             logger.info("Mirac broadcast loop cancelled")
         except Exception as e:

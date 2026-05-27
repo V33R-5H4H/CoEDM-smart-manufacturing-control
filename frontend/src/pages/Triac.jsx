@@ -5,6 +5,7 @@ import PageHeader from "../components/PageHeader";
 import TriacStatusRibbon from "./asrs/components/TriacStatusRibbon";
 import TriacControlService from "../services/TriacControl";
 import SensorDot from "../components/SensorDot";
+import { deepMerge } from "../utils/deepMerge";
 import "./Assembly.css";
 import "./Triac.css";
 
@@ -468,6 +469,8 @@ export default function Triac() {
   // WebSocket references
   const wsRef = useRef(null);
   const reconnectTimerRef = useRef(null);
+  // Ref that always holds the latest merged data (avoids stale closure in onmessage)
+  const dataRef = useRef(null);
 
   // Data source connectivity flags from backend
   const dataSources = data?.data_sources || {};
@@ -499,21 +502,29 @@ export default function Triac() {
 
     ws.onmessage = (e) => {
       try {
-        const payload = JSON.parse(e.data);
-        if (payload) {
-          setData(payload);
+        const msg = JSON.parse(e.data);
 
-          // Capture raw coordinates instantly in refs for physics loop to bypass React lag
-          if (payload.axes?.x?.value !== undefined && payload.axes?.x?.value !== null) {
-            targetXRef.current = payload.axes.x.value;
-          }
-          if (payload.axes?.y?.value !== undefined && payload.axes?.y?.value !== null) {
-            targetYRef.current = payload.axes.y.value;
-          }
-          if (payload.axes?.z?.value !== undefined && payload.axes?.z?.value !== null) {
-            targetZRef.current = payload.axes.z.value;
-          }
+        if (msg.type === "snapshot") {
+          // Full state replacement — first message or new client
+          dataRef.current = msg.data;
+          setData(msg.data);
+          if (msg.data.axes?.x?.value != null) targetXRef.current = msg.data.axes.x.value;
+          if (msg.data.axes?.y?.value != null) targetYRef.current = msg.data.axes.y.value;
+          if (msg.data.axes?.z?.value != null) targetZRef.current = msg.data.axes.z.value;
+
+        } else if (msg.type === "delta") {
+          // Partial update — merge into current state
+          const merged = deepMerge(dataRef.current, msg.data);
+          dataRef.current = merged;
+          setData(merged);
+          // Only update axis refs when those keys are present in the delta
+          if (msg.data.axes?.x?.value != null) targetXRef.current = msg.data.axes.x.value;
+          if (msg.data.axes?.y?.value != null) targetYRef.current = msg.data.axes.y.value;
+          if (msg.data.axes?.z?.value != null) targetZRef.current = msg.data.axes.z.value;
+
         }
+        // heartbeat: connection is alive, nothing to update in the UI
+
       } catch (err) {
         console.error("[Triac] Error parsing WebSocket message:", err);
       }

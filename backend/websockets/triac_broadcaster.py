@@ -8,6 +8,12 @@ from fastapi import WebSocket
 from backend.communication.vibit_modbus import VibitModbusReader
 from backend.config import settings
 from backend.stations.triac.cnc_triac_station import opcua_connection as triac_opcua_connection
+from backend.core.delta import (
+    compute_delta,
+    build_snapshot_message,
+    build_delta_message,
+    build_heartbeat_message,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +50,9 @@ class TriacBroadcaster:
         self._last_good_vibit1 = None
         self._last_good_vibit2 = None
         self._last_good_vibit3 = None
+        # Delta-send state
+        self._last_broadcast_payload: dict = {}
+        self._heartbeat_tick: int = 0
 
         # Physics-based coordinates and G-Code block state for milling visualization
         self.x_pos = 0.0
@@ -177,6 +186,13 @@ class TriacBroadcaster:
         await websocket.accept()
         self.active_connections.add(websocket)
         logger.info(f"Triac WebSocket connected. Total connections: {len(self.active_connections)}")
+
+        # Immediately send the last known full state so the new client isn't blank
+        if self._last_broadcast_payload:
+            try:
+                await websocket.send_text(build_snapshot_message(self._last_broadcast_payload))
+            except Exception as e:
+                logger.warning(f"Could not send initial snapshot to new Triac client: {e}")
 
         # Start broadcasting if this is the first connection
         if not self.is_broadcasting:
@@ -569,24 +585,44 @@ class TriacBroadcaster:
             return None
 
     async def _broadcast_loop(self):
-        """Main broadcast loop for TRIAC - streams data at 10 Hz"""
+        """Main broadcast loop for TRIAC — streams data at 10 Hz, sending only changed fields."""
         self.is_broadcasting = True
+        HEARTBEAT_INTERVAL = 50  # ticks → 50 * 0.1s = 5 seconds
         logger.info("Triac broadcast loop started")
 
         try:
             while self.is_broadcasting and len(self.active_connections) > 0:
                 data = await self._read_triac_data()
                 if data:
-                    message = json.dumps(data)
-                    disconnected = set()
+                    self._heartbeat_tick += 1
+                    is_first = not self._last_broadcast_payload
 
+                    if is_first:
+                        # Very first tick — send full snapshot to all clients
+                        message = build_snapshot_message(data)
+                        self._last_broadcast_payload = copy.deepcopy(data)
+                        self._heartbeat_tick = 0
+                    else:
+                        delta = compute_delta(self._last_broadcast_payload, data)
+                        if delta:
+                            delta["timestamp"] = data["timestamp"]
+                            message = build_delta_message(delta)
+                            self._last_broadcast_payload = copy.deepcopy(data)
+                            self._heartbeat_tick = 0
+                        elif self._heartbeat_tick >= HEARTBEAT_INTERVAL:
+                            message = build_heartbeat_message(data["timestamp"])
+                            self._heartbeat_tick = 0
+                        else:
+                            await asyncio.sleep(0.1)
+                            continue
+
+                    disconnected = set()
                     for connection in self.active_connections:
                         try:
                             await connection.send_text(message)
                         except Exception as e:
-                            logger.error(f"Error sending to client: {e}")
+                            logger.error(f"Error sending to Triac client: {e}")
                             disconnected.add(connection)
-
                     for conn in disconnected:
                         self.disconnect(conn)
 
