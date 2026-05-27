@@ -5,7 +5,7 @@ import time
 from fastapi import WebSocket
 from typing import Set
 from backend.stations.mirac.cnc_mirac_station import opcua_connection, MIRAC_DATA_TAGS
-from backend.communication.vibit_modbus import VibitModbusReader
+from backend.communication.vibit import VibitModbusReader
 from backend.database.db import SessionLocal
 from sqlalchemy import text
 from backend.core.timezone import ist_now

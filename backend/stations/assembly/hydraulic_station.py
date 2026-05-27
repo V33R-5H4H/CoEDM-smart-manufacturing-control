@@ -1,4 +1,4 @@
-from backend.communication.opcua_driver import OPCUAConnection
+from backend.communication.opcua import OPCUAConnection
 from backend.config import settings
 import logging
 

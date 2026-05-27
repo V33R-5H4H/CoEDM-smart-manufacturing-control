@@ -14,6 +14,35 @@ This project extends the existing centralized control software for the autonomou
 ## Manufacturing Line
 Customer Order → AS/RS → AMR Transfer → Assembly → Inspection → [Decision] → CNC / Storage
 
+## Project Structure
+
+```
+CoEDM-smart-manufacturing-control/
+├── backend/              # Python/FastAPI backend
+│   ├── api/             # REST API layer
+│   ├── communication/   # Protocol drivers (OPC-UA, Modbus)
+│   ├── core/            # Shared utilities
+│   ├── database/        # Data layer
+│   ├── services/        # Business logic layer
+│   ├── stations/        # Hardware abstraction
+│   ├── websockets/      # WebSocket broadcasters
+│   ├── tests/           # Test suite
+│   └── scripts/         # Backend utilities
+├── frontend/            # React frontend
+│   └── src/
+│       ├── components/  # Reusable UI components
+│       ├── pages/       # Page components
+│       ├── services/    # API client wrappers
+│       ├── hooks/       # Custom React hooks
+│       ├── styles/      # Global styles
+│       └── theme/       # Theme context
+├── docs/                # Documentation
+├── scripts/             # Utility scripts
+├── reference/           # Reference materials
+└── stitch_designs/      # UI mockup assets
+```
+
+See `reference/structure.md` for detailed directory structure.
 
 ## Tech Stack
 
@@ -25,5 +54,19 @@ Customer Order → AS/RS → AMR Transfer → Assembly → Inspection → [Decis
 | Communication | OPC-UA, Modbus TCP/RTU, (optional) MQTT |
 | Testing | pytest, httpx |
 
+## Getting Started
+
+See `CONTRIBUTING.md` for development setup and contribution guidelines.
+
+## Documentation
+
+- `ARCHITECTURE.md` - System architecture overview
+- `CONTRIBUTING.md` - Development guidelines
+- `reference/context.md` - Project context
+- `reference/structure.md` - Directory structure
+
+## License
+
+Proprietary — Center of Excellence in Digital Manufacturing (CoEDM)
 
 *CoEDM Internship Program — May 2026 | BVM Engineering College, Vallabh Vidyanagar, Anand 388120*

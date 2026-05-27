@@ -8,7 +8,7 @@ Key design choices:
 - disconnect() always cleans up subscription before dropping the session.
 """
 
-from backend.communication.opcua_driver import OPCUAConnection
+from backend.communication.opcua import OPCUAConnection
 from backend.stations.asrs.shuttle import ShuttleState
 from backend.stations.asrs.led_service import LEDService
 from backend.stations.asrs.led_handler import LEDHandler
@@ -274,7 +274,7 @@ class ASRSController:
                             logging.warning(f"[ASRS] LED {tag} unavailable: {e}")
 
                 # Also subscribe to the native ASRS saftey curtain node
-                safety_tag = "saftey"
+                safety_tag = "saftey_PB"
                 safety_node_id = f"ns={PLC_NAMESPACE};s={safety_tag}"
                 try:
                     safety_node = asrs_connection.client.get_node(safety_node_id)

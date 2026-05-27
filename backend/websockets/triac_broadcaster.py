@@ -5,7 +5,7 @@ import logging
 import time
 from typing import Dict, Any, Set
 from fastapi import WebSocket
-from backend.communication.vibit_modbus import VibitModbusReader
+from backend.communication.vibit import VibitModbusReader
 from backend.config import settings
 from backend.stations.triac.cnc_triac_station import opcua_connection as triac_opcua_connection
 from backend.core.delta import (

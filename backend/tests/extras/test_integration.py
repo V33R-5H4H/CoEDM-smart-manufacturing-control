@@ -42,7 +42,7 @@ def live_client():
     with patch("backend.stations.asrs.asrs_station.OPCUAConnection"):
         with patch("backend.stations.assembly.hydraulic_station.OPCUAConnection"):
             with patch("backend.stations.mirac.cnc_mirac_station.OPCUAConnection"):
-                with patch("backend.communication.modbus_driver.AsyncModbusTcpClient"):
+                with patch("backend.communication.modbus.AsyncModbusTcpClient"):
                     from backend.api.main import app
                     with TestClient(app, raise_server_exceptions=True) as c:
                         yield c
