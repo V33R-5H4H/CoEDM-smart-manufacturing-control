@@ -670,99 +670,7 @@ const Mirac = () => {
                   vibit2Data={data?.raw?.vibit2}
                 />
 
-                {/* Premium HTML Glassmorphism HUD for Spindle VibIT */}
-                <div style={{
-                  position: 'absolute',
-                  top: '24px',
-                  left: '24px',
-                  zIndex: 10,
-                  width: '200px',
-                  background: 'rgba(10, 15, 25, 0.65)',
-                  backdropFilter: 'blur(16px)',
-                  borderRadius: '12px',
-                  padding: '16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px',
-                  transition: 'border 0.3s, box-shadow 0.3s',
-                  ...spindleGlow
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
-                    <span style={{ color: '#f8fafc', fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.5px' }}>SPINDLE VIBIT</span>
-                    <div style={{ 
-                      width: '8px', 
-                      height: '8px', 
-                      borderRadius: '50%', 
-                      background: vibit1Online ? '#10b981' : '#ef4444',
-                      boxShadow: vibit1Online ? '0 0 8px rgba(16, 185, 129, 0.6)' : '0 0 8px rgba(239, 68, 68, 0.6)'
-                    }} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', color: '#94a3b8' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>X RMS</span>
-                      <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{vibit1Online && data?.raw?.vibit1?.x_rms_vel != null ? data.raw.vibit1.x_rms_vel.toFixed(2) : "0.00"} <span style={{ color: '#64748b' }}>mm/s</span></span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Y RMS</span>
-                      <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{vibit1Online && data?.raw?.vibit1?.y_rms_vel != null ? data.raw.vibit1.y_rms_vel.toFixed(2) : "0.00"} <span style={{ color: '#64748b' }}>mm/s</span></span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Z RMS</span>
-                      <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{vibit1Online && data?.raw?.vibit1?.z_rms_vel != null ? data.raw.vibit1.z_rms_vel.toFixed(2) : "0.00"} <span style={{ color: '#64748b' }}>mm/s</span></span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', paddingTop: '8px', borderTop: '1px dashed rgba(255,255,255,0.05)' }}>
-                      <span>TEMP</span>
-                      <span style={{ color: '#fbbf24', fontWeight: 500 }}>{vibit1Online && data?.raw?.vibit1?.temperature != null ? data.raw.vibit1.temperature.toFixed(1) : "0.0"} <span style={{ color: '#64748b' }}>°C</span></span>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Premium HTML Glassmorphism HUD for Tool VibIT */}
-                <div style={{
-                  position: 'absolute',
-                  top: '24px',
-                  right: '24px',
-                  zIndex: 10,
-                  width: '200px',
-                  background: 'rgba(10, 15, 25, 0.65)',
-                  backdropFilter: 'blur(16px)',
-                  borderRadius: '12px',
-                  padding: '16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px',
-                  transition: 'border 0.3s, box-shadow 0.3s',
-                  ...toolGlow
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
-                    <span style={{ color: '#f8fafc', fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.5px' }}>TOOL VIBIT</span>
-                    <div style={{ 
-                      width: '8px', 
-                      height: '8px', 
-                      borderRadius: '50%', 
-                      background: vibit2Online ? '#10b981' : '#ef4444',
-                      boxShadow: vibit2Online ? '0 0 8px rgba(16, 185, 129, 0.6)' : '0 0 8px rgba(239, 68, 68, 0.6)'
-                    }} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.8rem', fontFamily: 'JetBrains Mono', color: '#94a3b8' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>X PEAK</span>
-                      <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{vibit2Online && data?.raw?.vibit2?.x_peak_vel != null ? data.raw.vibit2.x_peak_vel.toFixed(2) : "0.00"} <span style={{ color: '#64748b' }}>mm/s</span></span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Y PEAK</span>
-                      <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{vibit2Online && data?.raw?.vibit2?.y_peak_vel != null ? data.raw.vibit2.y_peak_vel.toFixed(2) : "0.00"} <span style={{ color: '#64748b' }}>mm/s</span></span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Z PEAK</span>
-                      <span style={{ color: '#e2e8f0', fontWeight: 500 }}>{vibit2Online && data?.raw?.vibit2?.z_peak_vel != null ? data.raw.vibit2.z_peak_vel.toFixed(2) : "0.00"} <span style={{ color: '#64748b' }}>mm/s</span></span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', paddingTop: '8px', borderTop: '1px dashed rgba(255,255,255,0.05)' }}>
-                      <span>TEMP</span>
-                      <span style={{ color: '#fbbf24', fontWeight: 500 }}>{vibit2Online && data?.raw?.vibit2?.temperature != null ? data.raw.vibit2.temperature.toFixed(1) : "0.0"} <span style={{ color: '#64748b' }}>°C</span></span>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               {/* Bottom Quick-Metrics Panel */}
@@ -798,7 +706,10 @@ const Mirac = () => {
           {/* COLUMN 3: RIGHT HUD (OPC-UA connection status, controls, and axis telemetry feed) */}
           <div className="mirac-column">
             {/* Live Axis Telemetry */}
-            <div className="asm-hud-card">
+            <div
+              className="asm-hud-card asm-hud-card--clickable"
+              onClick={() => setActiveModal("axis")}
+            >
               <div className="asm-hud-header">
                 <span><SensorDot connected={plcOnline} />Axis Positions</span>
                 <span className={`asm-hud-badge ${plcOnline ? "asm-hud-badge--active" : ""}`}>
@@ -951,25 +862,31 @@ const Mirac = () => {
                         ? (vibit1Online ? "#3a9d6e" : "transparent")
                         : activeModal === "tool"
                         ? (vibit2Online ? "#3a9d6e" : "transparent")
-                        : (vibit3Online ? "#3a9d6e" : "transparent"),
+                        : activeModal === "energy"
+                        ? (vibit3Online ? "#3a9d6e" : "transparent")
+                        : (plcOnline ? "#3a9d6e" : "transparent"),
                     border:
                       activeModal === "spindle"
                         ? (vibit1Online ? "none" : "1px solid #c4424b")
                         : activeModal === "tool"
                         ? (vibit2Online ? "none" : "1px solid #c4424b")
-                        : (vibit3Online ? "none" : "1px solid #c4424b"),
+                        : activeModal === "energy"
+                        ? (vibit3Online ? "none" : "1px solid #c4424b")
+                        : (plcOnline ? "none" : "1px solid #c4424b"),
                   }}
                 />
                 <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, color: "#e1e2ea", fontFamily: "Inter" }}>
                   {activeModal === "spindle" && "Spindle Diagnostics Panel"}
                   {activeModal === "tool" && "Tool Diagnostics Panel"}
                   {activeModal === "energy" && "Energy Meter Diagnostics Panel"}
+                  {activeModal === "axis" && "Axis Kinematics Panel"}
                 </h3>
               </div>
               <p style={{ margin: 0, fontSize: "11px", color: "#8f9097", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, fontFamily: "Inter" }}>
                 {activeModal === "spindle" && "Sensor Model: VibIT-VIB-S01 • Device ID 1"}
                 {activeModal === "tool" && "Sensor Model: VibIT-VIB-S01 • Device ID 2"}
                 {activeModal === "energy" && "Sensor Model: VibIT-PEM-E02 • Device ID 3"}
+                {activeModal === "axis" && "Controller: SIEMENS 828D • Node: MIRAC_PC"}
               </p>
             </div>
 
@@ -979,12 +896,25 @@ const Mirac = () => {
                 Hardware Specifications
               </h4>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "11px", fontFamily: "Inter" }}>
-                <div><span style={{ color: "#8f9097" }}>Target Host:</span> <span style={{ fontFamily: "JetBrains Mono", color: "#e1e2ea" }}>10.10.14.103</span></div>
-                <div><span style={{ color: "#8f9097" }}>Modbus Port:</span> <span style={{ fontFamily: "JetBrains Mono", color: "#e1e2ea" }}>502</span></div>
-                <div><span style={{ color: "#8f9097" }}>Protocol:</span> <span style={{ fontFamily: "JetBrains Mono", color: "#e1e2ea" }}>Modbus TCP/IP</span></div>
-                <div><span style={{ color: "#8f9097" }}>Unit ID:</span> <span style={{ fontFamily: "JetBrains Mono", color: "#e1e2ea" }}>{activeModal === "spindle" ? "1" : activeModal === "tool" ? "2" : "3"}</span></div>
-                <div><span style={{ color: "#8f9097" }}>Register Type:</span> <span style={{ fontFamily: "JetBrains Mono", color: "#e1e2ea" }}>{activeModal === "spindle" ? (data?.raw?.vibit1?.is_holding === 1 ? "Holding Registers" : "Input Registers") : activeModal === "tool" ? (data?.raw?.vibit2?.is_holding === 1 ? "Holding Registers" : "Input Registers") : "Input Registers"}</span></div>
-                <div><span style={{ color: "#8f9097" }}>Status:</span> <span style={{ fontWeight: 700, fontFamily: "Inter", color: activeModal === "spindle" ? (vibit1Online ? "#3a9d6e" : "#c4424b") : activeModal === "tool" ? (vibit2Online ? "#3a9d6e" : "#c4424b") : (vibit3Online ? "#3a9d6e" : "#c4424b") }}>{activeModal === "spindle" ? (vibit1Online ? "ONLINE" : "OFFLINE") : activeModal === "tool" ? (vibit2Online ? "ONLINE" : "OFFLINE") : (vibit3Online ? "ONLINE" : "OFFLINE")}</span></div>
+                {activeModal === "axis" ? (
+                  <>
+                    <div><span style={{ color: "#8f9097" }}>Target Host:</span> <span style={{ fontFamily: "JetBrains Mono", color: "#e1e2ea" }}>10.10.14.103</span></div>
+                    <div><span style={{ color: "#8f9097" }}>Port:</span> <span style={{ fontFamily: "JetBrains Mono", color: "#e1e2ea" }}>4840</span></div>
+                    <div><span style={{ color: "#8f9097" }}>Protocol:</span> <span style={{ fontFamily: "JetBrains Mono", color: "#e1e2ea" }}>OPC-UA (TCP/IP)</span></div>
+                    <div><span style={{ color: "#8f9097" }}>Namespace:</span> <span style={{ fontFamily: "JetBrains Mono", color: "#e1e2ea" }}>ns=3</span></div>
+                    <div><span style={{ color: "#8f9097" }}>Variable Type:</span> <span style={{ fontFamily: "JetBrains Mono", color: "#e1e2ea" }}>Double (Float64)</span></div>
+                    <div><span style={{ color: "#8f9097" }}>Status:</span> <span style={{ fontWeight: 700, fontFamily: "Inter", color: plcOnline ? "#3a9d6e" : "#c4424b" }}>{plcOnline ? "ONLINE" : "OFFLINE"}</span></div>
+                  </>
+                ) : (
+                  <>
+                    <div><span style={{ color: "#8f9097" }}>Target Host:</span> <span style={{ fontFamily: "JetBrains Mono", color: "#e1e2ea" }}>10.10.14.103</span></div>
+                    <div><span style={{ color: "#8f9097" }}>Modbus Port:</span> <span style={{ fontFamily: "JetBrains Mono", color: "#e1e2ea" }}>502</span></div>
+                    <div><span style={{ color: "#8f9097" }}>Protocol:</span> <span style={{ fontFamily: "JetBrains Mono", color: "#e1e2ea" }}>Modbus TCP/IP</span></div>
+                    <div><span style={{ color: "#8f9097" }}>Unit ID:</span> <span style={{ fontFamily: "JetBrains Mono", color: "#e1e2ea" }}>{activeModal === "spindle" ? "1" : activeModal === "tool" ? "2" : "3"}</span></div>
+                    <div><span style={{ color: "#8f9097" }}>Register Type:</span> <span style={{ fontFamily: "JetBrains Mono", color: "#e1e2ea" }}>{activeModal === "spindle" ? (data?.raw?.vibit1?.is_holding === 1 ? "Holding Registers" : "Input Registers") : activeModal === "tool" ? (data?.raw?.vibit2?.is_holding === 1 ? "Holding Registers" : "Input Registers") : "Input Registers"}</span></div>
+                    <div><span style={{ color: "#8f9097" }}>Status:</span> <span style={{ fontWeight: 700, fontFamily: "Inter", color: activeModal === "spindle" ? (vibit1Online ? "#3a9d6e" : "#c4424b") : activeModal === "tool" ? (vibit2Online ? "#3a9d6e" : "#c4424b") : (vibit3Online ? "#3a9d6e" : "#c4424b") }}>{activeModal === "spindle" ? (vibit1Online ? "ONLINE" : "OFFLINE") : activeModal === "tool" ? (vibit2Online ? "ONLINE" : "OFFLINE") : (vibit3Online ? "ONLINE" : "OFFLINE")}</span></div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -1038,22 +968,38 @@ const Mirac = () => {
                     </div>
                   </>
                 )}
+                {activeModal === "axis" && (
+                  <>
+                    <div style={{ background: "#14161a", border: "1px solid #323842", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
+                      <div style={{ fontSize: "11px", color: "#8f9097", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>X Axis Position</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "#e1e2ea", marginTop: "4px" }}>{data?.axes?.x?.value != null ? data.axes.x.value.toFixed(3) : "---"} <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "Inter" }}>mm</span></div>
+                    </div>
+                    <div style={{ background: "#14161a", border: "1px solid #323842", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
+                      <div style={{ fontSize: "11px", color: "#8f9097", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Z Axis Position</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "#e1e2ea", marginTop: "4px" }}>{data?.axes?.z?.value != null ? data.axes.z.value.toFixed(3) : "---"} <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "Inter" }}>mm</span></div>
+                    </div>
+                    <div style={{ background: "#14161a", border: "1px solid #323842", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
+                      <div style={{ fontSize: "11px", color: "#8f9097", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Feed Rate</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "#e1e2ea", marginTop: "4px" }}>{data?.axes?.x?.feed != null ? data.axes.x.feed.toFixed(1) : "---"} <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "Inter" }}>mm/min</span></div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
             {/* Modbus Direct Registers */}
             <div>
               <h4 style={{ margin: "0 0 8px 0", fontSize: "11px", color: "#8f9097", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, fontFamily: "Inter" }}>
-                Modbus Telemetry Register Table (16-bit word representation)
+                {activeModal === "axis" ? "OPC-UA Tag Namespace Binding" : "Modbus Telemetry Register Table (16-bit word representation)"}
               </h4>
               <div style={{ overflowX: "auto", border: "1px solid #323842", borderRadius: "4px" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", textAlign: "left", fontFamily: "JetBrains Mono" }}>
                   <thead>
                     <tr style={{ background: "#14161a", borderBottom: "1px solid #323842" }}>
-                      <th style={{ padding: "8px 12px", color: "#8f9097", fontSize: "10px" }}>ADDRESS</th>
+                      <th style={{ padding: "8px 12px", color: "#8f9097", fontSize: "10px" }}>{activeModal === "axis" ? "NODE ID" : "ADDRESS"}</th>
                       <th style={{ padding: "8px 12px", color: "#8f9097", fontSize: "10px" }}>VARIABLE NAME</th>
-                      <th style={{ padding: "8px 12px", color: "#8f9097", fontSize: "10px" }}>RAW INT16[2]</th>
-                      <th style={{ padding: "8px 12px", color: "#8f9097", fontSize: "10px" }}>HEX WORD</th>
+                      <th style={{ padding: "8px 12px", color: "#8f9097", fontSize: "10px" }}>{activeModal === "axis" ? "RAW DOUBLE" : "RAW INT16[2]"}</th>
+                      <th style={{ padding: "8px 12px", color: "#8f9097", fontSize: "10px" }}>{activeModal === "axis" ? "BYTE LENGTH" : "HEX WORD"}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1138,6 +1084,28 @@ const Mirac = () => {
                           <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>Total Active Energy (kWh)</td>
                           <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>{data?.energy_meter?.raw_kwh_regs?.join(", ") || "---"}</td>
                           <td style={{ padding: "8px 12px", color: "#8f9097" }}>{data?.energy_meter?.raw_kwh_regs?.map(r => "0x" + r.toString(16).toUpperCase()).join(", ") || "---"}</td>
+                        </tr>
+                      </>
+                    )}
+                    {activeModal === "axis" && (
+                      <>
+                        <tr style={{ borderBottom: "1px solid #323842" }}>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>ns=3;s="Axis_X_Pos"</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>Transverse X Position</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>{data?.axes?.x?.value != null ? data.axes.x.value.toFixed(8) : "---"}</td>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>8 bytes</td>
+                        </tr>
+                        <tr style={{ borderBottom: "1px solid #323842" }}>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>ns=3;s="Axis_Z_Pos"</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>Longitudinal Z Position</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>{data?.axes?.z?.value != null ? data.axes.z.value.toFixed(8) : "---"}</td>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>8 bytes</td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>ns=3;s="Feed_Rate"</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>Current Feed Rate</td>
+                          <td style={{ padding: "8px 12px", color: "#e1e2ea" }}>{data?.axes?.x?.feed != null ? data.axes.x.feed.toFixed(4) : "---"}</td>
+                          <td style={{ padding: "8px 12px", color: "#8f9097" }}>8 bytes</td>
                         </tr>
                       </>
                     )}

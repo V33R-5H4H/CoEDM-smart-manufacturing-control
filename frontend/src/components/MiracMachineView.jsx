@@ -166,65 +166,9 @@ const MiracMachineView = ({
         <g id="headstock">
           <rect x="10" y="70" width="110" height="260" fill="#1b1c23" rx="4" stroke="#121318" strokeWidth="2.5" />
           
-          {/* LCD Screen Bezel */}
-          <rect x="16" y="80" width="98" height="240" fill="#050608" rx="2" stroke="#2a2e3d" strokeWidth="2" />
-          <rect x="18" y="82" width="94" height="236" fill="url(#mill-dark-metal)" rx="1" opacity="0.3" />
-          
-          {/* Screen Glass Tint */}
-          <rect x="18" y="82" width="94" height="236" fill="rgba(16, 185, 129, 0.03)" rx="1" />
 
-          {/* Header */}
-          <circle cx="28" cy="98" r="3.5" fill={vibit1Online ? "#10b981" : "#ef4444"} filter={vibit1Online ? "url(#glow)" : ""} />
-          <text x="36" y="101" fill="#94a3b8" fontSize="10" fontFamily="Inter" fontWeight="bold" letterSpacing="0.05em">
-            SPINDLE
-          </text>
-          
-          {/* Divider */}
-          <line x1="22" y1="112" x2="108" y2="112" stroke="#1e293b" strokeWidth="1.5" />
 
-          {/* Metrics Group */}
-          <g transform="translate(0, 10)">
-            {/* X-AXIS */}
-            <text x="24" y="125" fill="#64748b" fontSize="8" fontFamily="Inter" fontWeight="bold">X-AXIS (mm/s)</text>
-            <text x="106" y="138" fill={vibit1Online ? "#38bdf8" : "#334155"} fontSize="12" fontFamily="JetBrains Mono" fontWeight="bold" textAnchor="end">
-              {vibit1Online && vibit1Data?.x_rms_vel != null ? vibit1Data.x_rms_vel.toFixed(2) : "0.00"}
-            </text>
-            {/* Mini Bar */}
-            <rect x="24" y="132" width="40" height="4" fill="#1e293b" rx="2" />
-            {vibit1Online && vibit1Data?.x_rms_vel != null && (
-              <rect x="24" y="132" width={Math.min(40, (vibit1Data.x_rms_vel / 5) * 40)} height="4" fill="#38bdf8" rx="2" filter="url(#glow)" />
-            )}
 
-            {/* Y-AXIS */}
-            <text x="24" y="160" fill="#64748b" fontSize="8" fontFamily="Inter" fontWeight="bold">Y-AXIS (mm/s)</text>
-            <text x="106" y="173" fill={vibit1Online ? "#38bdf8" : "#334155"} fontSize="12" fontFamily="JetBrains Mono" fontWeight="bold" textAnchor="end">
-              {vibit1Online && vibit1Data?.y_rms_vel != null ? vibit1Data.y_rms_vel.toFixed(2) : "0.00"}
-            </text>
-            {/* Mini Bar */}
-            <rect x="24" y="167" width="40" height="4" fill="#1e293b" rx="2" />
-            {vibit1Online && vibit1Data?.y_rms_vel != null && (
-              <rect x="24" y="167" width={Math.min(40, (vibit1Data.y_rms_vel / 5) * 40)} height="4" fill="#38bdf8" rx="2" filter="url(#glow)" />
-            )}
-
-            {/* Z-AXIS */}
-            <text x="24" y="195" fill="#64748b" fontSize="8" fontFamily="Inter" fontWeight="bold">Z-AXIS (mm/s)</text>
-            <text x="106" y="208" fill={vibit1Online ? "#38bdf8" : "#334155"} fontSize="12" fontFamily="JetBrains Mono" fontWeight="bold" textAnchor="end">
-              {vibit1Online && vibit1Data?.z_rms_vel != null ? vibit1Data.z_rms_vel.toFixed(2) : "0.00"}
-            </text>
-            {/* Mini Bar */}
-            <rect x="24" y="202" width="40" height="4" fill="#1e293b" rx="2" />
-            {vibit1Online && vibit1Data?.z_rms_vel != null && (
-              <rect x="24" y="202" width={Math.min(40, (vibit1Data.z_rms_vel / 5) * 40)} height="4" fill="#38bdf8" rx="2" filter="url(#glow)" />
-            )}
-
-            {/* TEMPERATURE */}
-            <line x1="22" y1="225" x2="108" y2="225" stroke="#1e293b" strokeWidth="1.5" strokeDasharray="2,2" />
-            
-            <text x="24" y="242" fill="#64748b" fontSize="8" fontFamily="Inter" fontWeight="bold">TEMP (°C)</text>
-            <text x="106" y="258" fill={vibit1Online ? "#f59e0b" : "#334155"} fontSize="14" fontFamily="JetBrains Mono" fontWeight="bold" textAnchor="end">
-              {vibit1Online && vibit1Data?.temperature != null ? vibit1Data.temperature.toFixed(1) : "0.0"}
-            </text>
-          </g>
         </g>
 
         {/* Chuck Adapter */}
@@ -285,68 +229,7 @@ const MiracMachineView = ({
               rx="4"
             />
 
-            {/* Embedded Tool VibIT Screen */}
-            <rect x="595" y="155" width="110" height="150" fill="#050608" rx="2" stroke="#2a2e3d" strokeWidth="2" />
-            <rect x="597" y="157" width="106" height="146" fill="rgba(16, 185, 129, 0.03)" rx="1" />
-            
-            {/* Header: Status Dot & Tool Number */}
-            <circle cx="605" cy="168" r="3" fill={vibit2Online ? "#10b981" : "#ef4444"} filter={vibit2Online ? "url(#glow)" : ""} />
-            <text x="612" y="171" fill="#94a3b8" fontSize="9" fontFamily="Inter" fontWeight="bold" letterSpacing="0.05em">
-              TOOL {formattedTool}
-            </text>
 
-            {/* Tool Engaged Indicator (Moved from old sensor block) */}
-            <circle
-              cx="692"
-              cy="168"
-              r="4"
-              fill={toolEngaged ? '#f59e0b' : '#3c2500'}
-              className="asm-sensor-led"
-              stroke="#1b1c23"
-              strokeWidth="1"
-            />
-
-            <line x1="600" y1="178" x2="700" y2="178" stroke="#1e293b" strokeWidth="1.5" />
-
-            {/* Metrics */}
-            <g fontFamily="JetBrains Mono" fontSize="11" fontWeight="600">
-              {/* X */}
-              <text x="602" y="195" fill="#475569" fontSize="8" fontFamily="Inter">X</text>
-              <rect x="615" y="190" width="40" height="3" fill="#1e293b" rx="1.5" />
-              {vibit2Online && vibit2Data?.x_rms_vel != null && (
-                <rect x="615" y="190" width={Math.min(40, (vibit2Data.x_rms_vel / 5) * 40)} height="3" fill="#38bdf8" rx="1.5" filter="url(#glow)" />
-              )}
-              <text x="698" y="195" fill={vibit2Online ? "#38bdf8" : "#334155"} textAnchor="end">
-                {vibit2Online && vibit2Data?.x_rms_vel != null ? vibit2Data.x_rms_vel.toFixed(2) : "0.00"}
-              </text>
-
-              {/* Y */}
-              <text x="602" y="215" fill="#475569" fontSize="8" fontFamily="Inter">Y</text>
-              <rect x="615" y="210" width="40" height="3" fill="#1e293b" rx="1.5" />
-              {vibit2Online && vibit2Data?.y_rms_vel != null && (
-                <rect x="615" y="210" width={Math.min(40, (vibit2Data.y_rms_vel / 5) * 40)} height="3" fill="#38bdf8" rx="1.5" filter="url(#glow)" />
-              )}
-              <text x="698" y="215" fill={vibit2Online ? "#38bdf8" : "#334155"} textAnchor="end">
-                {vibit2Online && vibit2Data?.y_rms_vel != null ? vibit2Data.y_rms_vel.toFixed(2) : "0.00"}
-              </text>
-
-              {/* Z */}
-              <text x="602" y="235" fill="#475569" fontSize="8" fontFamily="Inter">Z</text>
-              <rect x="615" y="230" width="40" height="3" fill="#1e293b" rx="1.5" />
-              {vibit2Online && vibit2Data?.z_rms_vel != null && (
-                <rect x="615" y="230" width={Math.min(40, (vibit2Data.z_rms_vel / 5) * 40)} height="3" fill="#38bdf8" rx="1.5" filter="url(#glow)" />
-              )}
-              <text x="698" y="235" fill={vibit2Online ? "#38bdf8" : "#334155"} textAnchor="end">
-                {vibit2Online && vibit2Data?.z_rms_vel != null ? vibit2Data.z_rms_vel.toFixed(2) : "0.00"}
-              </text>
-
-              {/* TEMP */}
-              <line x1="598" y1="250" x2="702" y2="250" stroke="#1e293b" strokeWidth="1.5" strokeDasharray="2,2" />
-              <text x="602" y="268" fill="#64748b" fontSize="8" fontFamily="Inter">TEMP</text>
-              <text x="698" y="268" fill={vibit2Online ? "#f59e0b" : "#334155"} textAnchor="end">
-                {vibit2Online && vibit2Data?.temperature != null ? vibit2Data.temperature.toFixed(1) : "0.0"}°
-              </text>
-            </g>
 
             {/* Tool post block */}
             <rect
@@ -359,6 +242,10 @@ const MiracMachineView = ({
               strokeWidth="2"
               rx="2"
             />
+            {/* Tool Number Display */}
+            <text x="650" y="130" fill="#94a3b8" fontSize="14" fontFamily="JetBrains Mono" fontWeight="bold" textAnchor="middle">
+              {formattedTool}
+            </text>
 
             {/* Yellow cutter triangle (pointing up-left) */}
             <polygon

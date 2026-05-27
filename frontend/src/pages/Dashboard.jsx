@@ -21,6 +21,8 @@ export default function Dashboard() {
   const [triacSpindle, setTriacSpindle] = useState(null);
   const [triacFeed, setTriacFeed] = useState(null);
 
+  const [transactions, setTransactions] = useState([]);
+
   // Fetch initial ASRS inventory count
   useEffect(() => {
     const fetchASRSInventory = async () => {
@@ -180,6 +182,32 @@ export default function Dashboard() {
     };
   }, []);
 
+  // Fetch transaction log
+  useEffect(() => {
+    const apiBase = import.meta.env.VITE_API_URL || '/api';
+    const httpBase = apiBase.startsWith('http') ? apiBase : `${window.location.origin}${apiBase}`;
+    let isMounted = true;
+    
+    const fetchEvents = async () => {
+      try {
+        const res = await fetch(`${httpBase}/data/events?limit=25`);
+        const json = await res.json();
+        if (json.success && isMounted) {
+          setTransactions(json.data);
+        }
+      } catch (e) {
+        console.error("Failed to fetch events:", e);
+      }
+    };
+    
+    fetchEvents();
+    const interval = setInterval(fetchEvents, 3000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
   const stations = [
     {
       name: "AS/RS",
@@ -229,40 +257,70 @@ export default function Dashboard() {
       statusColor: triacConnected ? "var(--status-ok)" : "var(--status-idle)",
       statusText: triacConnected ? "CONNECTED" : "OFFLINE",
     },
+    {
+      name: "Testing Station",
+      to: "/testing-station",
+      icon: "fact_check",
+      description: "Quality Assurance",
+      metrics: [
+        { label: "STATUS", value: "---", unit: "" },
+        { label: "THROUGHPUT", value: "---", unit: "u/h" },
+      ],
+      statusColor: "var(--status-idle)",
+      statusText: "OFFLINE",
+    },
+    {
+      name: "AMR",
+      to: "/amr",
+      icon: "local_shipping",
+      description: "Autonomous Mobile Robots",
+      metrics: [
+        { label: "FLEET", value: "---", unit: "" },
+        { label: "BATTERY", value: "---", unit: "%" },
+      ],
+      statusColor: "var(--status-idle)",
+      statusText: "OFFLINE",
+    },
+    {
+      name: "Cobot",
+      to: "/cobot",
+      icon: "smart_toy",
+      description: "Collaborative Robot Arm",
+      metrics: [
+        { label: "STATE", value: "---", unit: "" },
+        { label: "PAYLOAD", value: "---", unit: "kg" },
+      ],
+      statusColor: "var(--status-idle)",
+      statusText: "OFFLINE",
+    },
+    {
+      name: "Inspection",
+      to: "/inspection",
+      icon: "policy",
+      description: "Visual Defect Inspection",
+      metrics: [
+        { label: "PASS RATE", value: "---", unit: "%" },
+        { label: "REJECTS", value: "---", unit: "" },
+      ],
+      statusColor: "var(--status-idle)",
+      statusText: "OFFLINE",
+    }
   ];
 
   return (
     <div className="asm-page">
       <PageHeader
         title="Smart Manufacturing Control Portal"
-        status="SYS_ACTIVE // 99.9% UPTIME // SECURE SCADA"
       />
 
       <div className="asm-main" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-        {/* Facility Overview Header */}
-        <div>
-          <h2 style={{
-            fontSize: '15px',
-            fontWeight: 800,
-            color: 'var(--text-primary)',
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-            marginBottom: '4px',
-          }}>Facility Overview</h2>
-          <p style={{
-            fontSize: '11px',
-            color: 'var(--text-muted)',
-            margin: 0,
-            textTransform: 'uppercase',
-            letterSpacing: '0.02em',
-          }}>Real-time cyber-physical station telemetry streams</p>
-        </div>
-
-        {/* Station Cards Grid */}
+        {/* Station Cards Grid (Top Half) */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridAutoRows: '1fr',
           gap: '16px',
+          alignContent: 'start',
         }}>
           {stations.map((s) => (
             <Link
@@ -404,13 +462,14 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {[
-                  { time: '10:01:45.712', node: 'AS/RS', event: 'Shuttle moved to A7. Pallet retrieved.', code: 'OP_OK' },
-                  { time: '10:01:18.204', node: 'ASSEMBLY', event: 'Piston actuation cycle complete (12ms).', code: 'OP_OK' },
-                  { time: '10:29:05.891', node: 'MIRAC', event: 'Spindle RPM variance detected (+48 RPM). Compensating.', code: 'WARN_01' },
-                  { time: '10:28:47.553', node: 'AS/RS', event: 'Inventory update. Item ID: R0214 stored at D2.', code: 'OP_OK' },
-                  { time: '10:25:00.001', node: 'TRIAC', event: 'Connection timeout. Heartbeat lost. Node marked offline.', code: 'ERR_TIMEOUT' },
-                ].map((row, i) => (
+                {transactions.map((row, i) => {
+                  const eventTime = new Date(row.time);
+                  let timeStr = row.time;
+                  try { timeStr = eventTime.toISOString().substring(11, 23); } catch (e) {}
+                  let code = "OP_OK";
+                  if (row.severity === "warning") code = "WARN";
+                  if (row.severity === "critical") code = "ERR";
+                  return (
                   <tr key={i} style={{
                     borderBottom: '1px solid var(--border-light)',
                     transition: 'background 150ms ease-out',
@@ -420,25 +479,27 @@ export default function Dashboard() {
                   >
                     <td style={{
                       padding: '10px 16px',
-                      color: row.code.startsWith('ERR') ? 'var(--status-error)' : row.code.startsWith('WARN') ? 'var(--status-warn)' : 'var(--text-secondary)',
-                    }}>{row.time}</td>
+                      color: code.startsWith('ERR') ? 'var(--status-error)' : code.startsWith('WARN') ? 'var(--status-warn)' : 'var(--text-secondary)',
+                    }}>{timeStr}</td>
                     <td style={{
                       padding: '10px 16px',
                       fontWeight: 800,
                       color: 'var(--text-primary)',
-                    }}>{row.node}</td>
+                      textTransform: 'uppercase'
+                    }}>{row.machine_id}</td>
                     <td style={{
                       padding: '10px 16px',
                       color: 'var(--text-secondary)',
                       fontFamily: 'var(--font-sans)'
-                    }}>{row.event}</td>
+                    }}>{row.title}</td>
                     <td style={{
                       padding: '10px 16px',
                       fontWeight: 700,
-                      color: row.code.startsWith('ERR') ? 'var(--status-error)' : row.code.startsWith('WARN') ? 'var(--status-warn)' : 'var(--status-ok)',
-                    }}>{row.code}</td>
+                      color: code.startsWith('ERR') ? 'var(--status-error)' : code.startsWith('WARN') ? 'var(--status-warn)' : 'var(--status-ok)',
+                    }}>{code}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

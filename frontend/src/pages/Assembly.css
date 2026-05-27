@@ -30,17 +30,19 @@
 
 /* Buttons */
 .asm-btn {
-  height: 28px;
-  font-size: 0.68rem;
-  font-weight: 600;
-  padding: 0 12px;
+  height: 44px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 0 16px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: 6px;
   cursor: pointer;
   font-family: var(--font-sans);
   background: transparent;
   color: var(--text-secondary);
   transition: all var(--transition-fast);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 .asm-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 .asm-btn--bearing {
@@ -298,10 +300,10 @@
 
 .asm-grid-container {
   display: grid;
-  grid-template-columns: 200px 1fr 200px;
+  grid-template-columns: 200px 1fr 200px auto;
   gap: 1.5rem;
   width: 100%;
-  max-width: 820px;
+  max-width: 950px;
   align-items: center;
 }
 

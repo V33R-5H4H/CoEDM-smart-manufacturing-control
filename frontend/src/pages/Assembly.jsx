@@ -795,46 +795,37 @@ export default function Assembly() {
                     </div>
                   </div>
                 </div>
+                {/* Fourth Column: Hydraulic Controls */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', justifyContent: 'center' }}>
+                  <span className="asm-cmd__label" style={{ marginBottom: '0', textAlign: 'center', color: '#8f9097', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Controls</span>
+                  <button
+                    type="button"
+                    className="asm-btn asm-btn--bearing"
+                    onClick={handleBearingToggle}
+                    disabled={isLoading || isSafetyFault || !isConnected}
+                  >
+                    {isLoading ? 'Processing…' : 'Bearing ON'}
+                  </button>
+                  <button
+                    type="button"
+                    className="asm-btn asm-btn--shaft"
+                    onClick={handleShaftToggle}
+                    disabled={isLoading || isSafetyFault || !isConnected}
+                  >
+                    {isLoading ? 'Processing…' : 'Shaft ON'}
+                  </button>
+                  <button
+                    type="button"
+                    className={`asm-btn ${plantData?.vice?.close ? 'asm-btn--vice-open' : 'asm-btn--vice-close'}`}
+                    onClick={plantData?.vice?.close ? handleViceOpen : handleViceClose}
+                    disabled={isLoading || isSafetyFault || !isConnected}
+                  >
+                    {isLoading && lastCommand?.includes('Vice') 
+                      ? (lastCommand === 'Vice OPEN' ? 'Opening…' : 'Closing…') 
+                      : (plantData?.vice?.close ? 'Open Vice' : 'Close Vice')}
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-
-          {/* Action controls panel */}
-          <div className="asm-cmd" style={{ marginTop: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
-            <span className="asm-cmd__label">Hydraulic Control Commands:</span>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                type="button"
-                className="asm-btn asm-btn--bearing"
-                onClick={handleBearingToggle}
-                disabled={isLoading || isSafetyFault || !isConnected}
-              >
-                {isLoading ? 'Processing…' : 'Bearing ON'}
-              </button>
-              <button
-                type="button"
-                className="asm-btn asm-btn--shaft"
-                onClick={handleShaftToggle}
-                disabled={isLoading || isSafetyFault || !isConnected}
-              >
-                {isLoading ? 'Processing…' : 'Shaft ON'}
-              </button>
-              <button
-                type="button"
-                className="asm-btn asm-btn--vice-open"
-                onClick={handleViceOpen}
-                disabled={isLoading || isSafetyFault || !isConnected || plantData?.vice?.open === true}
-              >
-                {isLoading && lastCommand === 'Vice OPEN' ? 'Opening…' : 'Open Vice'}
-              </button>
-              <button
-                type="button"
-                className="asm-btn asm-btn--vice-close"
-                onClick={handleViceClose}
-                disabled={isLoading || isSafetyFault || !isConnected || plantData?.vice?.close === true}
-              >
-                {isLoading && lastCommand === 'Vice CLOSE' ? 'Closing…' : 'Close Vice'}
-              </button>
             </div>
           </div>
         </main>
