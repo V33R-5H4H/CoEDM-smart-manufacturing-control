@@ -33,8 +33,8 @@ class ModbusConnectionManager:
         self.client = None
         self.is_connected = False
         self.reconnect_attempts = 0
-        self.max_reconnect_attempts = 5
-        self.reconnect_delay = 2  # seconds
+        self.max_reconnect_attempts = 3
+        self.reconnect_delay = 0.5  # seconds
 
     async def connect(self) -> bool:
         """Establish Modbus TCP connection"""
@@ -42,7 +42,7 @@ class ModbusConnectionManager:
             self.client = AsyncModbusTcpClient(
                 host=self.host,
                 port=self.port,
-                timeout=3,
+                timeout=0.5,
             )
             
             await self.client.connect()

@@ -66,6 +66,8 @@
   box-shadow: 0 0 8px rgba(14, 165, 233, 0.3);
 }
 .asm-btn--vice-open {
+  height: 32px;
+  font-size: 0.72rem;
   color: #f59e0b;
   border-color: rgba(245, 158, 11, 0.4);
   background: rgba(245, 158, 11, 0.05);
@@ -76,6 +78,8 @@
   box-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
 }
 .asm-btn--vice-close {
+  height: 32px;
+  font-size: 0.72rem;
   color: #a78bfa;
   border-color: rgba(167, 139, 250, 0.4);
   background: rgba(167, 139, 250, 0.05);

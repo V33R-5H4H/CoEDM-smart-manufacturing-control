@@ -57,7 +57,7 @@ class VibitModbusReader:
     _locks = {}
     _global_lock = threading.Lock()
 
-    def __init__(self, host: str, port: int = 502, device_id: int = 1, timeout: float = 3.0, base_address: int = None, register_type: str = None):
+    def __init__(self, host: str, port: int = 502, device_id: int = 1, timeout: float = 0.5, base_address: int = None, register_type: str = None):
         self.host = host
         self.port = port
         self.device_id = device_id
@@ -71,13 +71,10 @@ class VibitModbusReader:
             self._base_address = 4001
             self._register_type = "holding"
 
-        key = (host, port)
-        with self._global_lock:
-            if key not in self._clients:
-                self._clients[key] = ModbusTcpClient(host, port=port, timeout=timeout)
-                self._locks[key] = threading.RLock()
-            self.client = self._clients[key]
-            self.lock = self._locks[key]
+        # Each reader gets its own client and lock so concurrent asyncio.gather
+        # calls can run in parallel threads without serialising on a shared lock.
+        self.client = ModbusTcpClient(host, port=port, timeout=timeout)
+        self.lock = threading.RLock()
 
     def _log_throttled(self, key: str, msg: str, *args, level=logging.WARNING, exc_info=None):
         import time
