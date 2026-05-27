@@ -11,9 +11,11 @@ export function useLEDMonitoring() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsBase = import.meta.env.VITE_WS_URL || `${protocol}//${window.location.host}`;
     const wsUrl = `${wsBase}/api/control/asrs/ws/led-status`;
-
     const apiBase = import.meta.env.VITE_API_URL || '/api';
     const httpBase = apiBase.startsWith('http') ? apiBase : `${window.location.origin}${apiBase}`;
+    // const wsBase = import.meta.env.VITE_WS_URL || httpBase.replace(/^http/, 'ws');
+
+    // const wsUrl = `${wsBase}/control/asrs/ws/led-status`;
     const shuttleStateUrl = `${httpBase}/control/asrs/shuttle_state`;
 
     function connect() {
