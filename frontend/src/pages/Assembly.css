@@ -63,6 +63,26 @@
   border-color: #0ea5e9;
   box-shadow: 0 0 8px rgba(14, 165, 233, 0.3);
 }
+.asm-btn--vice-open {
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.05);
+}
+.asm-btn--vice-open:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
+}
+.asm-btn--vice-close {
+  color: #a78bfa;
+  border-color: rgba(167, 139, 250, 0.4);
+  background: rgba(167, 139, 250, 0.05);
+}
+.asm-btn--vice-close:hover:not(:disabled) {
+  background: rgba(167, 139, 250, 0.15);
+  border-color: #a78bfa;
+  box-shadow: 0 0 8px rgba(167, 139, 250, 0.3);
+}
 .asm-btn--clear {
   color: var(--text-muted);
   font-size: 0.6rem;

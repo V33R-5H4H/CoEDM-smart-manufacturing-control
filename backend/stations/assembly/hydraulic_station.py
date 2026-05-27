@@ -7,6 +7,8 @@ SERVER_URL = settings.HYDRAULIC_OPCUA_URL
 HYDRAULIC_TAGS = {
     "BEARING_ON": "|var|AX-308EA0MA1P.Application.PLC_PRG.Opration_Bering_On",
     "SHAFT_ON":   "|var|AX-308EA0MA1P.Application.PLC_PRG.Opration_Shaft_On",
+    "VICE_OPEN":  "|var|AX-308EA0MA1P.Application.PLC_PRG.Relay4",
+    "VICE_CLOSE": "|var|AX-308EA0MA1P.Application.PLC_PRG.Relay4",
 }
 
 # Hydraulic system monitoring variables (for reading data)
@@ -122,6 +124,12 @@ def run_hydraulic(command: str) -> dict:
         elif cmd == "SHAFT_ON":
             opcua_connection.set_node_state(HYDRAULIC_TAGS["SHAFT_ON"], True)
             opcua_connection.set_node_state(HYDRAULIC_TAGS["BEARING_ON"], False)
+        elif cmd == "VICE_OPEN":
+            # Write True to Relay4 to open the vice
+            opcua_connection.set_node_state(HYDRAULIC_TAGS["VICE_OPEN"], False)
+        elif cmd == "VICE_CLOSE":
+            # Write False to Relay4 to close the vice
+            opcua_connection.set_node_state(HYDRAULIC_TAGS["VICE_CLOSE"], True)
         logging.info("[HYDRAULIC] Command executed: %s", cmd)
 
         return {

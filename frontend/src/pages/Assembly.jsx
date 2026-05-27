@@ -450,6 +450,33 @@ export default function Assembly() {
       setIsLoading(false);
     }
   };
+
+  const handleViceOpen = async () => {
+    setIsLoading(true);
+    try {
+      const response = await AssemblyControlService.runCommand('VICE_OPEN');
+      setLastCommand('Vice OPEN');
+      toast.success(response.message || 'Vice open command executed');
+    } catch (e) {
+      toast.error(`Failed to execute Vice Open command: ${e.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleViceClose = async () => {
+    setIsLoading(true);
+    try {
+      const response = await AssemblyControlService.runCommand('VICE_CLOSE');
+      setLastCommand('Vice CLOSE');
+      toast.success(response.message || 'Vice close command executed');
+    } catch (e) {
+      toast.error(`Failed to execute Vice Close command: ${e.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const isSafetyFault = !!(plantData?.safety?.curtain || plantData?.safety?.buzzer);
   const displacementFloat = smoothedPosition != null ? Math.max(0, smoothedPosition - 43) : 0;
   const displacement = smoothedPosition != null ? Math.round(displacementFloat) : null;
@@ -791,6 +818,22 @@ export default function Assembly() {
                 disabled={isLoading || isSafetyFault || !isConnected}
               >
                 {isLoading ? 'Processing…' : 'Shaft ON'}
+              </button>
+              <button
+                type="button"
+                className="asm-btn asm-btn--vice-open"
+                onClick={handleViceOpen}
+                disabled={isLoading || isSafetyFault || !isConnected || plantData?.vice?.open === true}
+              >
+                {isLoading && lastCommand === 'Vice OPEN' ? 'Opening…' : 'Open Vice'}
+              </button>
+              <button
+                type="button"
+                className="asm-btn asm-btn--vice-close"
+                onClick={handleViceClose}
+                disabled={isLoading || isSafetyFault || !isConnected || plantData?.vice?.close === true}
+              >
+                {isLoading && lastCommand === 'Vice CLOSE' ? 'Closing…' : 'Close Vice'}
               </button>
             </div>
           </div>
