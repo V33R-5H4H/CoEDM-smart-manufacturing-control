@@ -10,6 +10,7 @@ const Assembly = lazy(() => import("./pages/Assembly"));
 const TestingStation = lazy(() => import("./pages/TestingStation"));
 const Amr = lazy(() => import("./pages/Amr"));
 const Cobot = lazy(() => import("./pages/Cobot"));
+const Inspection = lazy(() => import("./pages/Inspection"));
 
 export default function App() {
   return (
@@ -104,6 +105,7 @@ export default function App() {
             <Route path="/testing-station" element={<TestingStation />} />
             <Route path="/amr" element={<Amr />} />
             <Route path="/cobot" element={<Cobot />} />
+            <Route path="/inspection" element={<Inspection />} />
           </Routes>
         </Suspense>
       </main>
@@ -137,6 +139,7 @@ export default function App() {
           <NavItem to="/triac" icon="precision_manufacturing" label="Smart TRIAC" />
           <NavItem to="/assembly" icon="factory" label="Assembly" />
           <NavItem to="/testing-station" icon="fact_check" label="Testing Station" />
+          <NavItem to="/inspection" icon="policy" label="Inspection" />
           <NavItem to="/amr" icon="local_shipping" label="AMR" />
           <NavItem to="/cobot" icon="smart_toy" label="Cobot" />
         </div>

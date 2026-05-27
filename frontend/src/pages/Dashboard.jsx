@@ -222,18 +222,6 @@ export default function Dashboard() {
       statusText: asrsConnected ? "CONNECTED" : "OFFLINE",
     },
     {
-      name: "Assembly Station",
-      to: "/assembly",
-      icon: "factory",
-      description: "Hydraulic Press Control",
-      metrics: [
-        { label: "PISTON POS", value: assemblyConnected && assemblyPosition !== null ? assemblyPosition : "---", unit: assemblyConnected && assemblyPosition !== null ? "mm" : "" },
-        { label: "SAFETY SYS", value: assemblyConnected ? assemblySafety : "---", sub: "" },
-      ],
-      statusColor: assemblyConnected ? "var(--status-ok)" : "var(--status-idle)",
-      statusText: assemblyConnected ? "CONNECTED" : "OFFLINE",
-    },
-    {
       name: "Smart MIRAC",
       to: "/mirac",
       icon: "settings_input_component",
@@ -258,6 +246,18 @@ export default function Dashboard() {
       statusText: triacConnected ? "CONNECTED" : "OFFLINE",
     },
     {
+      name: "Assembly Station",
+      to: "/assembly",
+      icon: "factory",
+      description: "Hydraulic Press Control",
+      metrics: [
+        { label: "PISTON POS", value: assemblyConnected && assemblyPosition !== null ? assemblyPosition : "---", unit: assemblyConnected && assemblyPosition !== null ? "mm" : "" },
+        { label: "SAFETY SYS", value: assemblyConnected ? assemblySafety : "---", sub: "" },
+      ],
+      statusColor: assemblyConnected ? "var(--status-ok)" : "var(--status-idle)",
+      statusText: assemblyConnected ? "CONNECTED" : "OFFLINE",
+    },
+    {
       name: "Testing Station",
       to: "/testing-station",
       icon: "fact_check",
@@ -265,6 +265,18 @@ export default function Dashboard() {
       metrics: [
         { label: "STATUS", value: "---", unit: "" },
         { label: "THROUGHPUT", value: "---", unit: "u/h" },
+      ],
+      statusColor: "var(--status-idle)",
+      statusText: "OFFLINE",
+    },
+    {
+      name: "Inspection",
+      to: "/inspection",
+      icon: "policy",
+      description: "Visual Defect Inspection",
+      metrics: [
+        { label: "PASS RATE", value: "---", unit: "%" },
+        { label: "REJECTS", value: "---", unit: "" },
       ],
       statusColor: "var(--status-idle)",
       statusText: "OFFLINE",
@@ -289,18 +301,6 @@ export default function Dashboard() {
       metrics: [
         { label: "STATE", value: "---", unit: "" },
         { label: "PAYLOAD", value: "---", unit: "kg" },
-      ],
-      statusColor: "var(--status-idle)",
-      statusText: "OFFLINE",
-    },
-    {
-      name: "Inspection",
-      to: "/inspection",
-      icon: "policy",
-      description: "Visual Defect Inspection",
-      metrics: [
-        { label: "PASS RATE", value: "---", unit: "%" },
-        { label: "REJECTS", value: "---", unit: "" },
       ],
       statusColor: "var(--status-idle)",
       statusText: "OFFLINE",

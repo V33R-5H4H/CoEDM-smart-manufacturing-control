@@ -147,7 +147,6 @@ export default function Assembly() {
       prevSafetyRef.current = {
         curtain: data.safety?.curtain || false,
         buzzer: data.safety?.buzzer || false,
-        buzzer: data.safety?.buzzer || false,
       };
 
       // Continuously collect data points for plotting
@@ -155,7 +154,6 @@ export default function Assembly() {
         time: plotTimestampRef.current,
         displacement: data.position?.displacement_mm || 0,
         bearing: data.assembly?.bearing ? 1 : 0,
-        shaft: data.assembly?.shaft ? 1 : 0,
         shaft: data.assembly?.shaft ? 1 : 0,
       };
       plotDataPointsRef.current.push(newPoint);
@@ -257,12 +255,7 @@ export default function Assembly() {
         setSmoothedDataPoints(points => [...points.slice(-99), {
           value: Math.max(0, newVal - 43),
           workpiece,
-          timestamp: Date.now()
-        setSmoothedDataPoints(points => [...points.slice(-99), {
-      value: Math.max(0, newVal - 43),
-      workpiece,
-      timestamp: Date.now()
-    }]);
+        }]);
   lastRenderUpdateRef.current = now;
 }
 
@@ -585,11 +578,9 @@ const tabPanels = {
                 <div className="asm-val">
                   <div className="asm-val__label">Piston Extension</div>
                   <div
-                    <div
                     className="asm-val__num"
                     style={{
                       color: isPressActive
-                        color: isPressActive
                         ? (plantData?.assembly?.bearing ? '#ff6b6b' : plantData?.assembly?.shaft ? '#38bdf8' : 'var(--text-primary)')
                         : 'var(--text-primary)'
                     }}
@@ -606,13 +597,7 @@ const tabPanels = {
                       : isPressActive
                         ? '#fbbf24'
                         : 'var(--text-secondary)'
-                        < div className="asm-val__num asm-val__num--sm" style={{
-                      color: isSafetyFault
-                  ? '#ef4444'
-                  : isPressActive
-                  ? '#fbbf24'
-                  : 'var(--text-secondary)'
-                    }}>
+                  }}>
                   {isSafetyFault ? 'FAULTED' : isPressActive ? 'PRESS ACTIVE' : 'SYSTEM IDLE'}
                 </div>
               </div>
@@ -629,21 +614,17 @@ const tabPanels = {
               {/* Left Hydraulic Pipe */}
               <div className="asm-pipe asm-pipe--left">
                 <div className={`asm-pipe__fluid ${isPressActive
-                  < div className={`asm-pipe__fluid ${isPressActive
                     ? (plantData?.assembly?.bearing ? 'asm-pipe__fluid--active-bearing' : plantData?.assembly?.shaft ? 'asm-pipe__fluid--active-shaft' : '')
                     : ''
-                    }`} />
-                      }`} />
+                  }`} />
               </div>
 
               {/* Right Hydraulic Pipe */}
               <div className="asm-pipe asm-pipe--right">
                 <div className={`asm-pipe__fluid ${isPressActive
-                  < div className={`asm-pipe__fluid ${isPressActive
                     ? (plantData?.assembly?.bearing ? 'asm-pipe__fluid--active-bearing' : plantData?.assembly?.shaft ? 'asm-pipe__fluid--active-shaft' : '')
                     : ''
-                    }`} />
-                      }`} />
+                  }`} />
               </div>
 
               {/* Ruler Scale */}
@@ -658,14 +639,10 @@ const tabPanels = {
                 <div
                   className="asm-ruler__pointer"
                   style={{
-                    < div
-                      className="asm-ruler__pointer"
-                  style={{
                     top: `${Math.max(0, Math.min(185, displacementFloat))}px`,
                     borderLeftColor: plantData?.assembly?.bearing ? '#ff6b6b' : plantData?.assembly?.shaft ? '#38bdf8' : 'var(--primary)'
                   }}
-                      }}
-                    />
+                />
               </div>
 
               {/* Top Flange */}
@@ -703,19 +680,13 @@ const tabPanels = {
                     className="asm-press-head__glow"
                     style={{
                       backgroundColor: isPressActive
-                        < div
-                        className="asm-press-head__glow"
-                        style={{
-                          backgroundColor: isPressActive
-                  ? (plantData?.assembly?.bearing ? '#ff6b6b' : plantData?.assembly?.shaft ? '#38bdf8' : '#dc2626')
-                  : 'rgba(255, 255, 255, 0.08)',
-                  boxShadow: isPressActive
-                  ? `0 0 10px ${plantData?.assembly?.bearing ? '#ff6b6b' : '#38bdf8'}, 0 0 4px ${plantData?.assembly?.bearing ? '#ff6b6b' : '#38bdf8'}`
-                  boxShadow: isPressActive
-                  ? `0 0 10px ${plantData?.assembly?.bearing ? '#ff6b6b' : '#38bdf8'}, 0 0 4px ${plantData?.assembly?.bearing ? '#ff6b6b' : '#38bdf8'}`
-                  : 'none'
-                        }}
-                      />
+                        ? (plantData?.assembly?.bearing ? '#ff6b6b' : plantData?.assembly?.shaft ? '#38bdf8' : '#dc2626')
+                        : 'rgba(255, 255, 255, 0.08)',
+                      boxShadow: isPressActive
+                        ? `0 0 10px ${plantData?.assembly?.bearing ? '#ff6b6b' : '#38bdf8'}, 0 0 4px ${plantData?.assembly?.bearing ? '#ff6b6b' : '#38bdf8'}`
+                        : 'none'
+                    }}
+                  />
                 </motion.div>
               </div>
 
@@ -801,26 +772,18 @@ const tabPanels = {
                 <div className="asm-val__label">Vice Jaws Status</div>
                 <div className={`asm-val__num asm-val__num--sm ${plantData?.vice?.close ? 'asm-val__num--glowing-blue' : 'asm-val__num--glowing-green'
                   }`}>
-                  <div className={`asm-val__num asm-val__num--sm ${plantData?.vice?.close ? 'asm-val__num--glowing-blue' : 'asm-val__num--glowing-green'
-                    }`}>
-                    {plantData?.vice?.close ? 'CLOSED' : plantData?.vice?.open ? 'OPEN' : 'UNKNOWN'}
-                  </div>
+                  {plantData?.vice?.close ? 'CLOSED' : plantData?.vice?.open ? 'OPEN' : 'UNKNOWN'}
                 </div>
-                <div className="asm-val">
-                  <div className="asm-val__label">Active Workpiece</div>
-                  <div className="asm-val__num asm-val__num--sm" style={{
-                    color: plantData?.assembly?.bearing
-                      ? '#ff6b6b'
-                      : plantData?.assembly?.shaft
-                        ? '#38bdf8'
-                        : 'var(--text-muted)'
-                        < div className="asm-val__num asm-val__num--sm" style={{
-                      color: plantData?.assembly?.bearing
-                  ? '#ff6b6b'
-                  : plantData?.assembly?.shaft
-                  ? '#38bdf8'
-                  : 'var(--text-muted)'
-                    }}>
+              </div>
+              <div className="asm-val">
+                <div className="asm-val__label">Active Workpiece</div>
+                <div className="asm-val__num asm-val__num--sm" style={{
+                  color: plantData?.assembly?.bearing
+                    ? '#ff6b6b'
+                    : plantData?.assembly?.shaft
+                      ? '#38bdf8'
+                      : 'var(--text-muted)'
+                }}>
                   {plantData?.assembly?.bearing ? 'BEARING' : plantData?.assembly?.shaft ? 'SHAFT' : 'NONE'}
                 </div>
               </div>
@@ -833,13 +796,10 @@ const tabPanels = {
             </div>
           </div>
         </div>
-    </div>
-              </div >
-            </div >
-          </div >
+      </div>
 
-  {/* Action controls panel */ }
-  < div className = "asm-cmd" style = {{ marginTop: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+      {/* Action controls panel */}
+      <div className="asm-cmd" style={{ marginTop: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
             <span className="asm-cmd__label">Press Commands:</span>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
@@ -904,20 +864,18 @@ plots: (
         <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', flex: 1 }}>
           <div style={{ position: 'relative', width: '100%', flex: 1, display: 'flex' }}>
             <canvas
-                <canvas
               ref={rawCanvasRef}
               width={1200}
               height={250}
               style={{
-                style={{
-                    border: '1px solid var(--border)',
-            borderRadius: '3px',
-            display: 'block',
-            width: '100%',
-            height: '100%',
-            background: '#1a1a1a'
-                  }}
-                />
+                border: '1px solid var(--border)',
+                borderRadius: '3px',
+                display: 'block',
+                width: '100%',
+                height: '100%',
+                background: '#1a1a1a'
+              }}
+            />
             <div style={{ position: 'absolute', top: '4px', left: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
               {rawDataPoints[rawDataPoints.length - 1]?.workpiece === 'bearing' ? '185' : '135'}mm
             </div>
@@ -956,20 +914,18 @@ plots: (
         <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', flex: 1 }}>
           <div style={{ position: 'relative', width: '100%', flex: 1, display: 'flex' }}>
             <canvas
-                <canvas
               ref={smoothedCanvasRef}
               width={1200}
               height={250}
               style={{
-                style={{
-                    border: '1px solid var(--border)',
-            borderRadius: '3px',
-            display: 'block',
-            width: '100%',
-            height: '100%',
-            background: '#1a1a1a'
-                  }}
-                />
+                border: '1px solid var(--border)',
+                borderRadius: '3px',
+                display: 'block',
+                width: '100%',
+                height: '100%',
+                background: '#1a1a1a'
+              }}
+            />
             <div style={{ position: 'absolute', top: '4px', left: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
               {smoothedDataPoints[smoothedDataPoints.length - 1]?.workpiece === 'bearing' ? '185' : '135'}mm
             </div>
@@ -1263,7 +1219,6 @@ return (
 
       {/* SAFETY INTERRUPT OVERLAY */}
       <SafetyOverlay
-        <SafetyOverlay
         isVisible={isSafetyFault}
         message={
           plantData?.safety?.curtain && plantData?.safety?.buzzer
@@ -1271,8 +1226,6 @@ return (
             : plantData?.safety?.curtain
               ? "Human presence detected in hydraulic station area (safety curtain breached)."
               : "Emergency buzzer active."
-                ? "Human presence detected in hydraulic station area (safety curtain breached)."
-                : "Emergency buzzer active."
         }
         badgeText="Hydraulic Press Operations Locked Out"
       />
@@ -1282,16 +1235,6 @@ return (
 
     {/* Interactive Sensor Pop-Up Overlay */}
     {activeModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0, 0, 0, 0.85)",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center"
-          }}
         <div
           style={{
             position: "fixed",
@@ -1317,47 +1260,9 @@ return (
               flexDirection: "column",
               gap: "20px"
             }}
-          <div
-            style={{
-              background: "#252932",
-              border: "1px solid #323842",
-              borderRadius: "4px",
-              width: "580px",
-              maxWidth: "95%",
-              padding: "24px",
-              position: "relative",
-              display: "flex",
-              flexDirection: "column",
-              gap: "20px"
-            }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
-            <button
-              onClick={() => setActiveModal(null)}
-              style={{
-                position: "absolute",
-                top: "16px",
-                right: "16px",
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                color: "var(--text-secondary)",
-                borderRadius: "50%",
-                width: "28px",
-                height: "28px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                transition: "all 0.2s"
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.background = "rgba(255,255,255,0.08)";
-                e.target.style.color = "var(--text-primary)";
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = "rgba(255,255,255,0.03)";
-                e.target.style.color = "var(--text-secondary)";
             <button
               onClick={() => setActiveModal(null)}
               style={{
