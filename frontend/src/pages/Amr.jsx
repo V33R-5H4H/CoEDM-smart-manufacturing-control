@@ -3,7 +3,7 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import PageHeader from "../components/PageHeader";
 import SensorDot from "../components/SensorDot";
-import DraggableHUD from "../components/DraggableHUD";
+
 import "./Assembly.css";
 import "./Triac.css";
 
@@ -318,46 +318,51 @@ export default function Amr() {
               <div className="asm-viz-panel" style={{ position: "relative" }}>
                 
                 {/* Embedded Draggable HUD for AMR Live Telemetry */}
-                <DraggableHUD id="amr_telemetry_hud" defaultPosition={{ x: 430, y: 15 }} boundsRef={containerRef}>
-                  <div style={{
-                    width: '180px',
-                    background: 'rgba(10, 15, 25, 0.7)',
-                    backdropFilter: 'blur(16px)',
-                    borderRadius: '12px',
-                    padding: '14px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px',
-                    ...amrGlowStyle,
-                    transition: 'border 0.3s, box-shadow 0.3s'
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "6px" }}>
-                      <span style={{ fontSize: "10px", fontWeight: 700, color: "#f8fafc", letterSpacing: "0.5px" }}>AMR_OP_04</span>
-                      <span style={{
-                        width: "8px",
-                        height: "8px",
-                        borderRadius: "50%",
-                        background: !isConnected ? "#ef4444" : robotStatus === "ESTOP" ? "#ef4444" : robotStatus === "NAVIGATING" ? "#38bdf8" : robotStatus === "CHARGING" ? "#fbbf24" : "#10b981",
-                        boxShadow: isConnected ? "0 0 8px currentColor" : "none"
-                      }} />
+                {/* Static, high-density glassmorphic panel overlay for live telemetry */}
+                <div style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  width: '180px',
+                  background: 'rgba(19, 27, 46, 0.85)',
+                  backdropFilter: 'blur(8px)',
+                  borderRadius: 'var(--radius)',
+                  padding: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  border: '1px solid var(--border)',
+                  boxShadow: 'var(--shadow-lg)',
+                  zIndex: 10,
+                  ...amrGlowStyle,
+                  transition: 'border 0.3s, box-shadow 0.3s'
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)", paddingBottom: "6px" }}>
+                    <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "0.5px" }}>AMR_OP_04</span>
+                    <span style={{
+                      width: "8px",
+                      height: "8px",
+                      borderRadius: "50%",
+                      background: !isConnected ? "#ef4444" : robotStatus === "ESTOP" ? "#ef4444" : robotStatus === "NAVIGATING" ? "#38bdf8" : robotStatus === "CHARGING" ? "#fbbf24" : "#10b981",
+                      boxShadow: isConnected ? "0 0 8px currentColor" : "none"
+                    }} />
+                  </div>
+                  
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--text-secondary)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>POSITION</span>
+                      <span style={{ color: "var(--text-primary)" }}>{posX.toFixed(1)}m, {posY.toFixed(1)}m</span>
                     </div>
-                    
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontFamily: "JetBrains Mono", fontSize: "11px", color: "#94a3b8" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span>POSITION</span>
-                        <span style={{ color: "#f1f5f9" }}>{posX.toFixed(1)}m, {posY.toFixed(1)}m</span>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span>HEADING</span>
-                        <span style={{ color: "#f1f5f9" }}>{theta.toFixed(0)}°</span>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span>SPEED</span>
-                        <span style={{ color: "#f1f5f9" }}>{robotStatus === "NAVIGATING" ? "0.8 m/s" : "0.0 m/s"}</span>
-                      </div>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>HEADING</span>
+                      <span style={{ color: "var(--text-primary)" }}>{theta.toFixed(0)}°</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>SPEED</span>
+                      <span style={{ color: "var(--text-primary)" }}>{robotStatus === "NAVIGATING" ? "0.8 m/s" : "0.0 m/s"}</span>
                     </div>
                   </div>
-                </DraggableHUD>
+                </div>
 
                 {/* SVG Visualizing the warehouse floor plan */}
                 <svg

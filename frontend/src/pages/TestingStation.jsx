@@ -3,7 +3,7 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import PageHeader from "../components/PageHeader";
 import SensorDot from "../components/SensorDot";
-import DraggableHUD from "../components/DraggableHUD";
+
 import "./Assembly.css";
 import "./Triac.css";
 
@@ -308,49 +308,54 @@ export default function TestingStation() {
               <div className="asm-viz-panel" style={{ position: "relative" }}>
                 
                 {/* Embedded Draggable HUD for LVDT Gauging */}
-                <DraggableHUD id="testing_lvdt_hud" defaultPosition={{ x: 30, y: 30 }} boundsRef={containerRef}>
-                  <div style={{
-                    width: '180px',
-                    background: 'rgba(10, 15, 25, 0.7)',
-                    backdropFilter: 'blur(16px)',
-                    borderRadius: '12px',
-                    padding: '14px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px',
-                    ...lvdtGlowStyle,
-                    transition: 'border 0.3s, box-shadow 0.3s'
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "6px" }}>
-                      <span style={{ fontSize: "10px", fontWeight: 700, color: "#f8fafc", letterSpacing: "0.5px" }}>LVDT PROBE</span>
-                      <span style={{
-                        fontSize: "9px",
-                        fontWeight: 700,
-                        color: !isConnected ? "#ef4444" : isTesting ? "#38bdf8" : testResult === "NG" ? "#ef4444" : "#10b981",
-                        textTransform: "uppercase"
+                {/* Static, high-density glassmorphic panel overlay for live LVDT probe gauge telemetry */}
+                <div style={{
+                  position: 'absolute',
+                  top: '16px',
+                  left: '16px',
+                  width: '180px',
+                  background: 'rgba(19, 27, 46, 0.85)',
+                  backdropFilter: 'blur(8px)',
+                  borderRadius: 'var(--radius)',
+                  padding: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  border: '1px solid var(--border)',
+                  boxShadow: 'var(--shadow-lg)',
+                  zIndex: 10,
+                  ...lvdtGlowStyle,
+                  transition: 'border 0.3s, box-shadow 0.3s'
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)", paddingBottom: "6px" }}>
+                    <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "0.5px" }}>LVDT PROBE</span>
+                    <span style={{
+                      fontSize: "9px",
+                      fontWeight: 700,
+                      color: !isConnected ? "var(--error)" : isTesting ? "var(--primary)" : testResult === "NG" ? "var(--error)" : "var(--success)",
+                      textTransform: "uppercase"
+                    }}>
+                      {!isConnected ? "Offline" : isTesting ? "Testing" : testResult || "Ready"}
+                    </span>
+                  </div>
+                  
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--text-secondary)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>LIMITS</span>
+                      <span style={{ color: "var(--text-primary)" }}>49.80-50.20</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px dashed var(--border)", paddingTop: "6px" }}>
+                      <span>HEIGHT</span>
+                      <span style={{ 
+                        fontSize: "12px", 
+                        fontWeight: 700, 
+                        color: isTesting ? "var(--primary-light)" : testResult === "NG" ? "var(--error)" : testResult === "OK" ? "var(--success)" : "var(--text-secondary)"
                       }}>
-                        {!isConnected ? "Offline" : isTesting ? "Testing" : testResult || "Ready"}
+                        {sensorVal(measuredHeight, 2)} <span style={{ fontSize: "9px", fontWeight: 500, color: "var(--text-muted)" }}>mm</span>
                       </span>
                     </div>
-                    
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontFamily: "JetBrains Mono", fontSize: "11px", color: "#94a3b8" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span>LIMITS</span>
-                        <span style={{ color: "#f1f5f9" }}>49.80-50.20</span>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px dashed rgba(255,255,255,0.05)", paddingTop: "6px" }}>
-                        <span>HEIGHT</span>
-                        <span style={{ 
-                          fontSize: "12px", 
-                          fontWeight: 700, 
-                          color: isTesting ? "#38bdf8" : testResult === "NG" ? "#f87171" : testResult === "OK" ? "#4ade80" : "#cbd5e1"
-                        }}>
-                          {sensorVal(measuredHeight, 2)} <span style={{ fontSize: "9px", fontWeight: 500, color: "#64748b" }}>mm</span>
-                        </span>
-                      </div>
-                    </div>
                   </div>
-                </DraggableHUD>
+                </div>
 
                 {/* SVG Visualizing the Quality checking machine */}
                 <svg

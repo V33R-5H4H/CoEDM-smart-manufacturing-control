@@ -3,7 +3,7 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import PageHeader from "../components/PageHeader";
 import SensorDot from "../components/SensorDot";
-import DraggableHUD from "../components/DraggableHUD";
+
 import "./Assembly.css";
 import "./Triac.css";
 
@@ -342,42 +342,47 @@ export default function Cobot() {
               <div className="asm-viz-panel" style={{ position: "relative" }}>
                 
                 {/* Embedded Draggable HUD for Gripper Force */}
-                <DraggableHUD id="cobot_gripper_hud" defaultPosition={{ x: 30, y: 30 }} boundsRef={containerRef}>
-                  <div style={{
-                    width: '180px',
-                    background: 'rgba(10, 15, 25, 0.7)',
-                    backdropFilter: 'blur(16px)',
-                    borderRadius: '12px',
-                    padding: '14px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px',
-                    ...cobotGlowStyle,
-                    transition: 'border 0.3s, box-shadow 0.3s'
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "6px" }}>
-                      <span style={{ fontSize: "10px", fontWeight: 700, color: "#f8fafc", letterSpacing: "0.5px" }}>LOAD CELL</span>
-                      <span style={{
-                        fontSize: "9px",
-                        fontWeight: 700,
-                        color: gripperState !== "OPEN" ? "#fb923c" : "#cbd5e1"
-                      }}>
-                        {gripperState}
-                      </span>
+                {/* Static, high-density glassmorphic panel overlay for live load cell telemetry */}
+                <div style={{
+                  position: 'absolute',
+                  top: '16px',
+                  left: '16px',
+                  width: '180px',
+                  background: 'rgba(19, 27, 46, 0.85)',
+                  backdropFilter: 'blur(8px)',
+                  borderRadius: 'var(--radius)',
+                  padding: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  border: '1px solid var(--border)',
+                  boxShadow: 'var(--shadow-lg)',
+                  zIndex: 10,
+                  ...cobotGlowStyle,
+                  transition: 'border 0.3s, box-shadow 0.3s'
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)", paddingBottom: "6px" }}>
+                    <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "0.5px" }}>LOAD CELL</span>
+                    <span style={{
+                      fontSize: "9px",
+                      fontWeight: 700,
+                      color: gripperState !== "OPEN" ? "var(--accent)" : "var(--text-muted)"
+                    }}>
+                      {gripperState}
+                    </span>
+                  </div>
+                  
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--text-secondary)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>FORCE</span>
+                      <span style={{ color: "var(--text-primary)" }}>{gripperForce.toFixed(1)} N</span>
                     </div>
-                    
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontFamily: "JetBrains Mono", fontSize: "11px", color: "#94a3b8" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span>FORCE</span>
-                        <span style={{ color: "#f1f5f9" }}>{gripperForce.toFixed(1)} N</span>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span>PAYLOAD</span>
-                        <span style={{ color: "#f1f5f9" }}>{payloadKg.toFixed(2)} kg</span>
-                      </div>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>PAYLOAD</span>
+                      <span style={{ color: "var(--text-primary)" }}>{payloadKg.toFixed(2)} kg</span>
                     </div>
                   </div>
-                </DraggableHUD>
+                </div>
 
                 {/* SVG Visualizing the 6-axis articulated robot arm */}
                 <svg

@@ -20,12 +20,13 @@ export default function App() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          height: 56px;
-          background: var(--bg-secondary);
+          height: 60px;
+          background: rgba(19, 27, 46, 0.85);
+          backdrop-filter: blur(12px);
           border-top: 1px solid var(--border);
           padding: 0 24px;
           z-index: 100;
-          box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+          box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
           flex-shrink: 0;
         }
 
@@ -63,10 +64,10 @@ export default function App() {
         }
 
         .bottom-nav-item.active {
-          background: rgba(249, 115, 22, 0.08);
-          color: var(--primary);
-          border: 1px solid rgba(249, 115, 22, 0.2);
-          box-shadow: 0 0 8px rgba(249, 115, 22, 0.05);
+          background: rgba(245, 246, 247, 0.08);
+          color: var(--primary-light);
+          border: 1px solid rgba(245, 246, 247, 0.25);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
 
         .bottom-nav-status {
@@ -83,7 +84,7 @@ export default function App() {
           height: 6px;
           border-radius: 50%;
           background: var(--status-ok);
-          box-shadow: 0 0 6px var(--status-ok);
+          box-shadow: 0 0 8px var(--status-ok);
         }
       `}</style>
 

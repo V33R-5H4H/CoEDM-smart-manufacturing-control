@@ -6,7 +6,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #1b1e24 !important;
+  background: var(--bg-primary) !important;
 }
 
 .asm-header {
@@ -82,13 +82,13 @@
 .asm-sidebar {
   width: 220px;
   flex-shrink: 0;
-  border-right: 1px solid #323842;
+  border-right: 1px solid var(--border);
   overflow-y: auto;
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  background: #1b1e24 !important;
+  background: var(--bg-primary) !important;
 }
 .asm-side__section h3 {
   font-family: 'Inter', sans-serif;
@@ -138,34 +138,33 @@
   height: 6px;
   border-radius: 50%;
   background: #ef4444;
-  animation: asm-pulse 1s ease-in-out infinite;
-  box-shadow: 0 0 6px #ef4444;
-}
-@keyframes asm-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(1.15); }
 }
 
-/* Glassmorphic HUD Panel Style (Flattened) */
+/* Glassmorphic HUD Panel Style (SCADA Upgrade) */
 .asm-hud-card {
-  background: #252932 !important;
-  border: 1px solid #323842 !important;
-  border-radius: 4px !important;
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
   padding: 12px !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
+  box-shadow: var(--shadow) !important;
   display: flex;
   flex-direction: column;
   gap: 8px !important;
+  transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.asm-hud-card--clickable:hover {
+  border-color: var(--primary) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 12px rgba(14, 165, 233, 0.15) !important;
 }
 .asm-hud-header {
   font-family: 'Inter', sans-serif;
   font-size: 11px !important;
   font-weight: 600 !important;
-  color: #e1e2ea !important;
+  color: var(--text-primary) !important;
   text-transform: uppercase;
   letter-spacing: 0.05em !important;
-  border-bottom: 1px solid #323842 !important;
+  border-bottom: 1px solid var(--border) !important;
   padding-bottom: 6px !important;
 }
 
@@ -223,9 +222,9 @@
 .asm-viz {
   flex: 1;
   min-height: 400px;
-  background: #252932 !important;
-  border: 1px solid #323842 !important;
-  border-radius: 4px !important;
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
   position: relative;
   overflow: hidden;
   display: flex;
@@ -236,8 +235,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid #323842 !important;
-  background: #14161a !important;
+  border-bottom: 1px solid var(--border) !important;
+  background: var(--bg-tertiary) !important;
 }
 .asm-viz__bar span {
   font-family: 'Inter', sans-serif;
@@ -492,22 +491,12 @@
   transition: all 0.3s ease;
 }
 .asm-pipe__fluid--active-bearing {
-  background: linear-gradient(180deg, transparent, #ff6b6b, transparent);
-  background-size: 8px 40px;
-  animation: asm-fluid-flow 1.5s linear infinite;
+  background: #ff6b6b;
   opacity: 0.75;
-  filter: drop-shadow(0 0 4px #ff6b6b);
 }
 .asm-pipe__fluid--active-shaft {
-  background: linear-gradient(180deg, transparent, #38bdf8, transparent);
-  background-size: 8px 40px;
-  animation: asm-fluid-flow 1.5s linear infinite;
+  background: #38bdf8;
   opacity: 0.75;
-  filter: drop-shadow(0 0 4px #38bdf8);
-}
-@keyframes asm-fluid-flow {
-  0% { background-position: 0 0; }
-  100% { background-position: 0 80px; }
 }
 
 /* Measurement Ruler styling */
@@ -620,9 +609,9 @@
   display: flex;
   gap: 8px;
   padding: 10px 16px;
-  background: #252932 !important;
-  border: 1px solid #323842 !important;
-  border-radius: 4px !important;
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
   flex-shrink: 0;
   align-items: center;
 }
@@ -650,8 +639,7 @@
   border: 1px solid #c4424b !important;
   padding: 32px;
 }
-.asm-safety-overlay__icon { animation: asm-blink 1.2s ease-in-out infinite; }
-@keyframes asm-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.asm-safety-overlay__icon { opacity: 1; }
 .asm-safety-overlay__title {
   font-size: 2rem;
   font-weight: 800;
@@ -678,18 +666,4 @@
   font-family: var(--font-mono);
   margin-top: 8px;
   display: inline-block;
-}
-
-/* Buzzer ring */
-.asm-buzzer-ring {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 100;
-  border: 2px solid #ef4444;
-  animation: asm-ring 0.6s ease-in-out infinite;
-}
-@keyframes asm-ring {
-  0%, 100% { opacity: 0; border-width: 2px; }
-  50% { opacity: 0.5; border-width: 4px; }
 }

@@ -4,7 +4,7 @@
 
 /* Base overrides for Functional Dark Design */
 .asm-page {
-  background: #1b1e24 !important; /* Level 0 Base */
+  background: var(--bg-primary) !important; /* Level 0 Base */
 }
 
 /* 3-Column Dashboard Grid */
@@ -17,7 +17,7 @@
   min-height: 0;
   padding: 16px;
   box-sizing: border-box;
-  background: #1b1e24; /* Warm charcoal background */
+  background: var(--bg-primary); /* Space Navy base */
 }
 
 /* Columns */
@@ -48,10 +48,10 @@
   font-family: 'Inter', sans-serif;
   font-size: 11px !important;
   font-weight: 600 !important;
-  color: #e1e2ea !important;
+  color: var(--text-primary) !important;
   text-transform: uppercase;
   letter-spacing: 0.05em !important;
-  border-bottom: 1px solid #323842 !important;
+  border-bottom: 1px solid var(--border) !important;
   padding-bottom: 6px !important;
 }
 
@@ -61,44 +61,58 @@
   font-size: 11px;
   padding: 2px 6px;
   border-radius: 4px;
-  background: #191c22;
-  border: 1px solid #323842;
-  color: #8f9097;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
 .asm-hud-badge--active {
-  color: #3a9d6e; /* Green */
-  background: #191c22;
-  border-color: #3a9d6e;
+  color: var(--success); /* Green */
+  background: var(--bg-tertiary);
+  border-color: var(--success);
 }
 
 /* Card Overrides (Flat UI) */
 .asm-hud-card {
-  background: #252932 !important; /* Level 1 Surface */
-  border: 1px solid #323842 !important;
-  border-radius: 4px !important;
+  background: var(--bg-secondary) !important; /* Level 1 Surface */
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
   padding: 12px !important;
-  box-shadow: none !important;
+  box-shadow: var(--shadow) !important;
   backdrop-filter: none !important;
   display: flex;
   flex-direction: column;
   gap: 8px !important;
 }
 
-/* Clickable HUD Cards - No glow */
+/* Clickable HUD Cards - Premium Tactile Interactive Transition */
 .asm-hud-card--clickable {
   cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease !important;
+  transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative;
+  overflow: hidden;
 }
 
-.asm-hud-card--clickable:hover,
-.asm-hud-card--clickable.energy-hover:hover,
+.asm-hud-card--clickable::after {
+  display: none;
+}
+
+.asm-hud-card--clickable:hover {
+  background-color: var(--bg-hover) !important; /* Muted highlight */
+  border-color: var(--border-light) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3) !important;
+}
+
 .asm-hud-card--clickable.tool-hover:hover {
-  background-color: #2a2e38 !important; /* +5% brightness */
-  transform: none !important;
-  box-shadow: none !important;
-  border-color: #44474c !important;
+  border-color: var(--warning) !important; /* Static warning border */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3) !important;
+}
+
+.asm-hud-card--clickable.energy-hover:hover {
+  border-color: var(--success) !important; /* Static success border */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3) !important;
 }
 
 /* Typography Overrides */
@@ -153,10 +167,10 @@
   display: flex;
   justify-content: space-around;
   align-items: center;
-  background: #14161a !important; /* Inset Level 2 */
+  background: var(--bg-tertiary) !important; /* Inset Level 2 */
   padding: 8px !important;
-  border-radius: 4px !important;
-  border: 1px solid #323842 !important;
+  border-radius: var(--radius-sm) !important;
+  border: 1px solid var(--border) !important;
 }
 
 .asm-led-indicator {
@@ -211,15 +225,19 @@
 
 .asm-viz-panel {
   flex: 1;
-  background: #252932 !important;
-  border: 1px solid #323842 !important;
-  border-radius: 4px !important;
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
   padding: 12px !important;
-  box-shadow: none !important;
+  box-shadow: var(--shadow) !important;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  position: relative; /* Anchor the absolute scanline */
+  overflow: hidden;
 }
+
+/* Scanline stripped for a clean visual pane */
 
 /* Live Axis Sections */
 .asm-axis-section {
@@ -336,9 +354,9 @@
 }
 
 .asm-footer-stats-card {
-  background: #252932 !important;
-  border: 1px solid #323842 !important;
-  border-radius: 4px !important;
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
   padding: 8px 12px !important;
   display: flex;
   flex-direction: column;

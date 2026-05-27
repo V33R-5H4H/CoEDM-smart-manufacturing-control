@@ -56,3 +56,5 @@ stitch_designs/
 *.exe
 
 /backend/scratch/
+/ARCHITECTURE.md
+/CONTRIBUTING.md
