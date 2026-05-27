@@ -40,6 +40,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Suppress noisy third-party loggers that spam ERROR on expected offline conditions.
+# pymodbus logs every TCP connection failure at ERROR — these are expected when
+# Modbus devices (VibIT sensors) are offline. Our vibit_modbus.py already throttles
+# its own warnings; we just need to silence pymodbus's internal logger.
+logging.getLogger("pymodbus").setLevel(logging.CRITICAL)
+logging.getLogger("pymodbus.logging").setLevel(logging.CRITICAL)
+
+# asyncua session timeout warning is informational — the PLC sets a shorter timeout
+# than we request (30s vs 3600s). This is normal behaviour, not an error.
+logging.getLogger("asyncua.client.client").setLevel(logging.ERROR)
+
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(
     title="CoEDM Smart Manufacturing Control API",
@@ -230,4 +241,4 @@ async def health_check():
                 },
             }
         },
-    }
+    }

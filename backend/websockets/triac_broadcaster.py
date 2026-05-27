@@ -251,9 +251,11 @@ class TriacBroadcaster:
         try:
             plc_connected = triac_opcua_connection.connected
 
-            # Throttle physical Modbus reads to a rate of 0.5 Hz (every 2.0s) to relax the RS485 serial network
+            # Throttle physical Modbus reads to 1 Hz (every 1.0s).
+            # VibIT sensors update their internal RMS registers ~1s — reading
+            # faster returns stale values. 1.0s is the practical minimum.
             now = time.time()
-            if now - self._last_modbus_read_time >= 2.0:
+            if now - self._last_modbus_read_time >= 1.0:
                 self._last_modbus_read_time = now
                 vibit1_data, vibit2_data, vibit3_data = await asyncio.gather(
                     asyncio.to_thread(self.vibit_reader_1.read_snapshot),
@@ -360,7 +362,7 @@ class TriacBroadcaster:
                                 session.execute(
                                     text("""
                                         INSERT INTO vibit_readings (
-                                            time, sensor_id, modbus_unit_id,
+                                            time, machine_id, sensor_id, modbus_unit_id,
                                             x_rms_acc, y_rms_acc, z_rms_acc,
                                             x_rms_vel, y_rms_vel, z_rms_vel,
                                             x_peak_acc, y_peak_acc, z_peak_acc,
@@ -368,7 +370,7 @@ class TriacBroadcaster:
                                             temperature, rpm
                                         )
                                         VALUES (
-                                            :time, :sensor_id, 1,
+                                            :time, 'triac', :sensor_id, 1,
                                             :x_rms, :y_rms, :z_rms,
                                             :x_vel, :y_vel, :z_vel,
                                             :x_peak, :y_peak, :z_peak,
@@ -403,7 +405,7 @@ class TriacBroadcaster:
                                 session.execute(
                                     text("""
                                         INSERT INTO vibit_readings (
-                                            time, sensor_id, modbus_unit_id,
+                                            time, machine_id, sensor_id, modbus_unit_id,
                                             x_rms_acc, y_rms_acc, z_rms_acc,
                                             x_rms_vel, y_rms_vel, z_rms_vel,
                                             x_peak_acc, y_peak_acc, z_peak_acc,
@@ -411,7 +413,7 @@ class TriacBroadcaster:
                                             temperature, rpm
                                         )
                                         VALUES (
-                                            :time, :sensor_id, 2,
+                                            :time, 'triac', :sensor_id, 2,
                                             :x_rms, :y_rms, :z_rms,
                                             :x_vel, :y_vel, :z_vel,
                                             :x_peak, :y_peak, :z_peak,

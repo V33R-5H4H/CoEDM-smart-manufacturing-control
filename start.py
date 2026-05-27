@@ -19,6 +19,9 @@ import signal
 import subprocess
 import threading
 import argparse
+import time
+import urllib.request
+import urllib.error
 from pathlib import Path
 from datetime import datetime
 
@@ -123,6 +126,26 @@ def start_frontend() -> subprocess.Popen:
     return proc
 
 
+def wait_for_backend(url: str = "http://localhost:8000/api/health",
+                     timeout: int = 30,
+                     interval: float = 0.1):
+    """Poll the backend health endpoint until it responds or timeout is reached."""
+    deadline = time.time() + timeout
+    attempt = 0
+    while time.time() < deadline:
+        attempt += 1
+        try:
+            with urllib.request.urlopen(url, timeout=1) as resp:
+                if resp.status == 200:
+                    log("BOOT", GREEN, f"Backend ready (attempt {attempt})")
+                    return True
+        except Exception:
+            pass
+        time.sleep(interval)
+    log("BOOT", YELLOW, f"Backend did not respond within {timeout}s — starting frontend anyway")
+    return False
+
+
 # ── PID persistence ───────────────────────────────────────────────────────────
 
 def save_pids(**kwargs):
@@ -162,6 +185,8 @@ def main():
         threads.append(t)
 
     if run_frontend:
+        if run_backend:
+            wait_for_backend()
         fp = start_frontend()
         procs.append(fp)
         pid_map["frontend"] = fp.pid
