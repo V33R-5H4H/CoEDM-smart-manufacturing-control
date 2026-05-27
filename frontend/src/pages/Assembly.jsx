@@ -9,7 +9,6 @@ import PageHeader from '../components/PageHeader';
 import { useTheme } from '../theme/ThemeContext';
 import AssemblyStatusRibbon from './asrs/components/AssemblyStatusRibbon';
 import SafetyOverlay from '../components/SafetyOverlay';
-import { deepMerge } from '../utils/deepMerge';
 // recharts imports kept for future graph tab (currently commented out in render)
 import {
   LineChart,
@@ -58,8 +57,6 @@ export default function Assembly() {
   // WebSocket ref so reconnect logic can replace it without tearing down the effect
   const wsRef = useRef(null);
   const reconnectTimerRef = useRef(null);
-  // Tracks last known full state for delta merging
-  const lastDataRef = useRef(null);
 
   // Fetch historical telemetry on mount
   useEffect(() => {
@@ -103,21 +100,7 @@ export default function Assembly() {
     };
 
     ws.onmessage = (e) => {
-      const msg = JSON.parse(e.data);
-      let data;
-
-      if (msg.type === 'snapshot') {
-        data = msg.data;
-      } else if (msg.type === 'delta') {
-        // shallow-merge delta into last known state
-        data = deepMerge(lastDataRef.current, msg.data);
-      } else {
-        // heartbeat — nothing to update
-        return;
-      }
-
-      lastDataRef.current = data;
-
+      const data = JSON.parse(e.data);
       const now = performance.now();
 
       // Capture telemetry values instantly in refs to bypass React state update lag / throttling
@@ -131,10 +114,12 @@ export default function Assembly() {
         isBearingRef.current = data.assembly.bearing;
       }
 
-      // Update state immediately on every WebSocket message
-      setPlantData(data);
-      setIsConnected(data.connected !== false);
-      setLastCommand(data.assembly?.bearing ? 'Bearing ON' : 'Bearing OFF');
+      if (now - lastUpdateRef.current > 100) {
+        setPlantData(data);
+        setIsConnected(data.connected !== false);
+        setLastCommand(data.assembly?.bearing ? 'Bearing ON' : 'Bearing OFF');
+        lastUpdateRef.current = now;
+      }
 
       // Edge-triggered safety alerts — only toast on rising edge (false → true)
       const prev = prevSafetyRef.current;
@@ -180,7 +165,6 @@ export default function Assembly() {
 
       if (now - lastUpdateRef.current > 100) {
         setPlotData([...plotDataPointsRef.current]);
-        lastUpdateRef.current = now;
       }
     };
 
