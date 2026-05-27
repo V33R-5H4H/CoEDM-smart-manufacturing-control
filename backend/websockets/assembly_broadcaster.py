@@ -7,6 +7,7 @@ from backend.stations.assembly.hydraulic_station import opcua_connection, HYDRAU
 from backend.database.db import SessionLocal
 from sqlalchemy import text
 from backend.core.timezone import ist_now
+from backend.core.delta import compute_delta, build_snapshot_message, build_delta_message, build_heartbeat_message
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,13 +21,23 @@ class HydraulicBroadcaster:
         self._sensor_id_cached = None
         self.last_logged_state = None  # Tracks tuple: (bearing, shaft, red, orange, green, curtain, vice_close)
         self.last_connected = None  # Tracks boolean connection state
+        self._node_cache: dict = {}
+        self._last_broadcast_payload: dict = {}
+        self._heartbeat_tick: int = 0
         
     async def connect(self, websocket: WebSocket):
         """Register a new WebSocket connection"""
         await websocket.accept()
         self.active_connections.add(websocket)
         logger.info(f"Hydraulic WebSocket connected. Total connections: {len(self.active_connections)}")
-        
+
+        # Send last known snapshot to the new client so it isn't blank
+        if self._last_broadcast_payload:
+            try:
+                await websocket.send_text(build_snapshot_message(self._last_broadcast_payload))
+            except Exception:
+                pass
+
         # Start broadcasting if this is the first connection
         if not self.is_broadcasting:
             self.broadcast_task = asyncio.create_task(self._broadcast_loop())
@@ -216,19 +227,31 @@ class HydraulicBroadcaster:
             if not is_connected:
                 # Broadcast explicit offline state so the frontend can reflect
                 # the disconnected condition rather than going silent.
+                self._node_cache.clear()
                 return self._disconnected_payload()
 
             data = {}
-            for tag_name, node_id in HYDRAULIC_DATA_TAGS.items():
-                try:
-                    # get_node() wraps node_id with ns=4;s= — do NOT call
-                    # opcua_connection.client.get_node() directly here.
-                    node = opcua_connection.get_node(node_id)
-                    value = node.get_value()
-                    data[tag_name] = value
-                except Exception as e:
-                    logger.warning(f"Failed to read {tag_name}: {e}")
-                    data[tag_name] = None
+            def _read_tags(node_cache, client, tags):
+                # Build cache if empty
+                if not node_cache:
+                    for tag_name, node_id in tags.items():
+                        node_cache[tag_name] = client.get_node(f"ns=4;s={node_id}")
+                result = {}
+                for tag_name, node in list(node_cache.items()):
+                    try:
+                        result[tag_name] = node.get_value()
+                    except Exception as e:
+                        logger.warning(f"[Assembly] Failed to read {tag_name}: {e}")
+                        result[tag_name] = None
+                        node_cache.clear()  # invalidate on error
+                        break
+                return result
+
+            try:
+                data = await asyncio.to_thread(_read_tags, self._node_cache, opcua_connection.client, HYDRAULIC_DATA_TAGS)
+            except Exception as e:
+                logger.error(f"[Assembly] Error reading tags: {e}")
+                data = {tag: None for tag in HYDRAULIC_DATA_TAGS}
 
             # Map to frontend format
             payload = {
@@ -328,23 +351,35 @@ class HydraulicBroadcaster:
                 data = await self._read_hydraulic_data()
                 
                 if data:
-                    # Broadcast to all connected clients
-                    message = json.dumps(data)
-                    disconnected = set()
-                    
-                    for connection in self.active_connections:
-                        try:
-                            await connection.send_text(message)
-                        except Exception as e:
-                            logger.error(f"Error sending to client: {e}")
-                            disconnected.add(connection)
-                    
-                    # Clean up disconnected clients
-                    for conn in disconnected:
-                        self.disconnect(conn)
+                    self._heartbeat_tick += 1
+                    delta = compute_delta(self._last_broadcast_payload, data)
+
+                    if not self._last_broadcast_payload or delta:
+                        # First message or state changed — send snapshot on first, delta otherwise
+                        if not self._last_broadcast_payload:
+                            message = build_snapshot_message(data)
+                        else:
+                            message = build_delta_message(delta)
+                        self._last_broadcast_payload = data
+                    elif self._heartbeat_tick % 20 == 0:
+                        # Every 2s (20 × 100ms), send a heartbeat to keep WS alive
+                        message = build_heartbeat_message(data.get("timestamp", 0))
+                    else:
+                        message = None
+
+                    if message:
+                        disconnected = set()
+                        for connection in self.active_connections:
+                            try:
+                                await connection.send_text(message)
+                            except Exception as e:
+                                logger.error(f"Error sending to client: {e}")
+                                disconnected.add(connection)
+                        for conn in disconnected:
+                            self.disconnect(conn)
                 
-                # Wait before next update (500 ms — 2 Hz for responsive motion)
-                await asyncio.sleep(0.5)
+                # Wait before next update (100 ms — 10 Hz for responsive motion)
+                await asyncio.sleep(0.1)
         
         except asyncio.CancelledError:
             logger.info("Hydraulic broadcast loop cancelled")

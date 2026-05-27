@@ -62,6 +62,14 @@ class MiracBroadcaster:
         # Delta-send state
         self._last_broadcast_payload: dict = {}
         self._heartbeat_tick: int = 0
+        # PLC node cache (persists across cycles; cleared on reconnect)
+        self._plc_node_cache: dict = {}
+        # Register reconnect callback to clear node cache
+        opcua_connection.register_reconnect_callback(self._on_plc_reconnect)
+
+    def _on_plc_reconnect(self):
+        self._plc_node_cache.clear()
+        logger.info("[MIRAC] Node cache cleared after reconnect")
         
     async def connect(self, websocket: WebSocket):
         """Register a new WebSocket connection"""
@@ -458,30 +466,45 @@ class MiracBroadcaster:
     async def _read_plc_data(self) -> dict:
         """Read current MIRAC PLC data from OPC UA server.
         
-        Returns real sensor values only. Returns empty dict if PLC is offline.
+        Pre-caches node handles and reads all tags in a single thread call
+        to minimise per-cycle overhead. Returns empty dict if PLC is offline.
         """
         if not opcua_connection.connected:
             return {}
 
-        data = {}
-
-        def _read_all_tags():
-            """Synchronous OPC-UA reads — run in thread pool."""
-            result = {}
-            for tag_name, node_id in MIRAC_DATA_TAGS.items():
+        def _read_all_tags(node_cache):
+            """Synchronous OPC-UA reads — run in thread pool.
+            
+            Node handles are resolved once and reused across cycles to avoid
+            repeated get_node() round-trips. All values are read in a tight
+            loop inside a single thread, which is the fastest approach with
+            the synchronous asyncua client.
+            """
+            # Build node cache on first call (or after reconnect clears it)
+            if not node_cache:
                 try:
-                    node = opcua_connection.client.get_node(node_id)
-                    value = node.get_value()
-                    result[tag_name] = value
+                    for tag_name, node_id in MIRAC_DATA_TAGS.items():
+                        node_cache[tag_name] = opcua_connection.client.get_node(node_id)
                 except Exception as e:
-                    logger.warning(f"Failed to read {tag_name}: {e}")
+                    logger.warning(f"[MIRAC] Failed to build node cache: {e}")
+                    node_cache.clear()
+
+            result = {}
+            for tag_name, node in list(node_cache.items()):
+                try:
+                    result[tag_name] = node.get_value()
+                except Exception as e:
+                    logger.warning(f"[MIRAC] Failed to read {tag_name}: {e}")
                     result[tag_name] = None
+                    # Invalidate cache on read error so handles are re-resolved next cycle
+                    node_cache.clear()
+                    break
             return result
 
         try:
-            data = await asyncio.to_thread(_read_all_tags)
+            data = await asyncio.to_thread(_read_all_tags, self._plc_node_cache)
         except Exception as e:
-            logger.error(f"Error reading PLC data in thread: {e}")
+            logger.error(f"[MIRAC] Error reading PLC data in thread: {e}")
             return {}
 
         return data
@@ -534,11 +557,16 @@ class MiracBroadcaster:
             now = time.time()
             if now - self._last_modbus_read_time >= 2.0:
                 self._last_modbus_read_time = now
-                vibit1_data = await asyncio.to_thread(self.vibit_reader_1.read_snapshot)
-                await asyncio.sleep(0.1)
-                vibit2_data = await asyncio.to_thread(self.vibit_reader_2.read_snapshot)
-                await asyncio.sleep(0.1)
-                vibit3_data = await asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, False)
+                vibit1_data, vibit2_data, vibit3_data = await asyncio.gather(
+                    asyncio.to_thread(self.vibit_reader_1.read_snapshot),
+                    asyncio.to_thread(self.vibit_reader_2.read_snapshot),
+                    asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, False),
+                    return_exceptions=True
+                )
+                # Treat exceptions as None (sensor offline)
+                if isinstance(vibit1_data, Exception): vibit1_data = None
+                if isinstance(vibit2_data, Exception): vibit2_data = None
+                if isinstance(vibit3_data, Exception): vibit3_data = None
                 self._cached_modbus_data = (vibit1_data, vibit2_data, vibit3_data)
                 
                 # Write to DB inside the Modbus 2.0s read tick!
