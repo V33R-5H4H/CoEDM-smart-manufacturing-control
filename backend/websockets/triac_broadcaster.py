@@ -353,7 +353,7 @@ class TriacBroadcaster:
                                 session.execute(
                                     text("""
                                         INSERT INTO vibit_readings (
-                                            time, machine_id, sensor_id, modbus_unit_id,
+                                            time, sensor_id, modbus_unit_id,
                                             x_rms_acc, y_rms_acc, z_rms_acc,
                                             x_rms_vel, y_rms_vel, z_rms_vel,
                                             x_peak_acc, y_peak_acc, z_peak_acc,
@@ -361,7 +361,7 @@ class TriacBroadcaster:
                                             temperature, rpm
                                         )
                                         VALUES (
-                                            :time, 'triac', :sensor_id, 1,
+                                            :time, :sensor_id, 1,
                                             :x_rms, :y_rms, :z_rms,
                                             :x_vel, :y_vel, :z_vel,
                                             :x_peak, :y_peak, :z_peak,
@@ -396,7 +396,7 @@ class TriacBroadcaster:
                                 session.execute(
                                     text("""
                                         INSERT INTO vibit_readings (
-                                            time, machine_id, sensor_id, modbus_unit_id,
+                                            time, sensor_id, modbus_unit_id,
                                             x_rms_acc, y_rms_acc, z_rms_acc,
                                             x_rms_vel, y_rms_vel, z_rms_vel,
                                             x_peak_acc, y_peak_acc, z_peak_acc,
@@ -404,7 +404,7 @@ class TriacBroadcaster:
                                             temperature, rpm
                                         )
                                         VALUES (
-                                            :time, 'triac', :sensor_id, 2,
+                                            :time, :sensor_id, 2,
                                             :x_rms, :y_rms, :z_rms,
                                             :x_vel, :y_vel, :z_vel,
                                             :x_peak, :y_peak, :z_peak,

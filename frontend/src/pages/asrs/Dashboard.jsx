@@ -9,6 +9,7 @@ import { useTheme } from "../../theme/ThemeContext";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "../Assembly.css";
+import SafetyOverlay from "../../components/SafetyOverlay";
 
 const API_BASE = `${import.meta.env.VITE_API_URL || "/api"}/control/asrs`;
 
@@ -294,41 +295,12 @@ function Dashboard() {
         {tabPanels[activeTab]}
 
         {/* SAFETY INTERRUPT OVERLAY */}
-        {isSafetyInterrupted && (
-          <div className="asm-safety-overlay" style={{ background: "rgba(0,0,0,0.92)", borderRadius: 0 }}>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "1.5rem",
-              flexWrap: "wrap",
-              padding: "2rem"
-            }}>
-              <div className="asm-safety-overlay__icon" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="84" height="84" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" strokeWidth="2" />
-                  <circle cx="12" cy="17" r="0.5" fill="#ef4444" />
-                </svg>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", alignItems: "flex-start" }}>
-                <div className="asm-safety-overlay__title">
-                  SAFETY<br />INTERRUPT
-                </div>
-                <div className="asm-safety-overlay__sub" style={{ maxWidth: "420px", fontSize: "0.85rem", margin: 0 }}>
-                  Human presence detected in ASRS area (safety curtain breached).
-                </div>
-                <div className="asm-safety-overlay__badge">
-                  ASRS Operations Locked Out
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <SafetyOverlay 
+          isVisible={isSafetyInterrupted}
+          message="Human presence detected in ASRS area (safety curtain breached)."
+          badgeText="ASRS Operations Locked Out"
+        />
       </div>
-
-      {/* BUZZER ALARM VIEWPORT RING */}
-      {safetyCurtain && <div className="asm-buzzer-ring" />}
 
       <ToastContainer
         position="bottom-right"

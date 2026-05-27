@@ -253,27 +253,37 @@ class MiracBroadcaster:
                         session.execute(
                             text("""
                                 INSERT INTO vibit_readings (
-                                    time, machine_id, sensor_id, modbus_unit_id,
+                                    time, sensor_id, modbus_unit_id,
                                     x_rms_acc, y_rms_acc, z_rms_acc,
+                                    x_rms_vel, y_rms_vel, z_rms_vel,
                                     x_peak_acc, y_peak_acc, z_peak_acc,
+                                    x_peak_vel, y_peak_vel, z_peak_vel,
                                     temperature, rpm
                                 )
                                 VALUES (
-                                    :time, 'mirac', :sensor_id, 1,
-                                    :x_rms, :y_rms, :z_rms,
-                                    :x_peak, :y_peak, :z_peak,
+                                    :time, :sensor_id, 1,
+                                    :x_rms_acc, :y_rms_acc, :z_rms_acc,
+                                    :x_rms_vel, :y_rms_vel, :z_rms_vel,
+                                    :x_peak_acc, :y_peak_acc, :z_peak_acc,
+                                    :x_peak_vel, :y_peak_vel, :z_peak_vel,
                                     :temp, :rpm
                                 )
                             """),
                             {
                                 "time": now_dt,
                                 "sensor_id": vibit1_sensor_id,
-                                "x_rms": float(vibit1_data.get("x_rms_acc") or 0.0),
-                                "y_rms": float(vibit1_data.get("y_rms_acc") or 0.0),
-                                "z_rms": float(vibit1_data.get("z_rms_acc") or 0.0),
-                                "x_peak": float(vibit1_data.get("x_peak_acc") or 0.0),
-                                "y_peak": float(vibit1_data.get("y_peak_acc") or 0.0),
-                                "z_peak": float(vibit1_data.get("z_peak_acc") or 0.0),
+                                "x_rms_acc": float(vibit1_data.get("x_rms_acc") or 0.0),
+                                "y_rms_acc": float(vibit1_data.get("y_rms_acc") or 0.0),
+                                "z_rms_acc": float(vibit1_data.get("z_rms_acc") or 0.0),
+                                "x_rms_vel": float(vibit1_data.get("x_rms_vel") or 0.0),
+                                "y_rms_vel": float(vibit1_data.get("y_rms_vel") or 0.0),
+                                "z_rms_vel": float(vibit1_data.get("z_rms_vel") or 0.0),
+                                "x_peak_acc": float(vibit1_data.get("x_peak_acc") or 0.0),
+                                "y_peak_acc": float(vibit1_data.get("y_peak_acc") or 0.0),
+                                "z_peak_acc": float(vibit1_data.get("z_peak_acc") or 0.0),
+                                "x_peak_vel": float(vibit1_data.get("x_peak_vel") or 0.0),
+                                "y_peak_vel": float(vibit1_data.get("y_peak_vel") or 0.0),
+                                "z_peak_vel": float(vibit1_data.get("z_peak_vel") or 0.0),
                                 "temp": float(vibit1_data.get("temperature") or 0.0),
                                 "rpm": float(vibit1_data.get("rpm") or 0.0)
                             }
@@ -286,27 +296,37 @@ class MiracBroadcaster:
                         session.execute(
                             text("""
                                 INSERT INTO vibit_readings (
-                                    time, machine_id, sensor_id, modbus_unit_id,
+                                    time, sensor_id, modbus_unit_id,
                                     x_rms_acc, y_rms_acc, z_rms_acc,
+                                    x_rms_vel, y_rms_vel, z_rms_vel,
                                     x_peak_acc, y_peak_acc, z_peak_acc,
+                                    x_peak_vel, y_peak_vel, z_peak_vel,
                                     temperature, rpm
                                 )
                                 VALUES (
-                                    :time, 'mirac', :sensor_id, 2,
-                                    :x_rms, :y_rms, :z_rms,
-                                    :x_peak, :y_peak, :z_peak,
+                                    :time, :sensor_id, 2,
+                                    :x_rms_acc, :y_rms_acc, :z_rms_acc,
+                                    :x_rms_vel, :y_rms_vel, :z_rms_vel,
+                                    :x_peak_acc, :y_peak_acc, :z_peak_acc,
+                                    :x_peak_vel, :y_peak_vel, :z_peak_vel,
                                     :temp, 0.0
                                 )
                             """),
                             {
                                 "time": now_dt,
                                 "sensor_id": vibit2_sensor_id,
-                                "x_rms": float(vibit2_data.get("x_rms_acc") or 0.0),
-                                "y_rms": float(vibit2_data.get("y_rms_acc") or 0.0),
-                                "z_rms": float(vibit2_data.get("z_rms_acc") or 0.0),
-                                "x_peak": float(vibit2_data.get("x_peak_acc") or 0.0),
-                                "y_peak": float(vibit2_data.get("y_peak_acc") or 0.0),
-                                "z_peak": float(vibit2_data.get("z_peak_acc") or 0.0),
+                                "x_rms_acc": float(vibit2_data.get("x_rms_acc") or 0.0),
+                                "y_rms_acc": float(vibit2_data.get("y_rms_acc") or 0.0),
+                                "z_rms_acc": float(vibit2_data.get("z_rms_acc") or 0.0),
+                                "x_rms_vel": float(vibit2_data.get("x_rms_vel") or 0.0),
+                                "y_rms_vel": float(vibit2_data.get("y_rms_vel") or 0.0),
+                                "z_rms_vel": float(vibit2_data.get("z_rms_vel") or 0.0),
+                                "x_peak_acc": float(vibit2_data.get("x_peak_acc") or 0.0),
+                                "y_peak_acc": float(vibit2_data.get("y_peak_acc") or 0.0),
+                                "z_peak_acc": float(vibit2_data.get("z_peak_acc") or 0.0),
+                                "x_peak_vel": float(vibit2_data.get("x_peak_vel") or 0.0),
+                                "y_peak_vel": float(vibit2_data.get("y_peak_vel") or 0.0),
+                                "z_peak_vel": float(vibit2_data.get("z_peak_vel") or 0.0),
                                 "temp": float(vibit2_data.get("temperature") or 0.0)
                             }
                         )

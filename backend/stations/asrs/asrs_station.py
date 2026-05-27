@@ -282,10 +282,11 @@ class ASRSController:
                     led_nodes.append(safety_node)
                     node_to_tag[safety_node.nodeid.to_string()] = safety_tag
 
-                    # Seed the LED service with initial safety state
-                    self.led_service.safety_curtain = bool(safety_value)
-                    self.led_service.prev_safety_curtain = bool(safety_value)
-                    logging.info(f"[ASRS] Subscribed to safety node with initial value: {safety_value}")
+                    # Seed the LED service with initial safety state (invert: True=Safe, False=Broken)
+                    is_interrupted = not bool(safety_value)
+                    self.led_service.safety_curtain = is_interrupted
+                    self.led_service.prev_safety_curtain = is_interrupted
+                    logging.info(f"[ASRS] Subscribed to safety node with initial value: {safety_value} (Interrupted={is_interrupted})")
                 except Exception as e:
                     logging.warning(f"[ASRS] Safety tag '{safety_tag}' unavailable: {e}")
 
