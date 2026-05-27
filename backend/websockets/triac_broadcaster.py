@@ -255,11 +255,16 @@ class TriacBroadcaster:
             now = time.time()
             if now - self._last_modbus_read_time >= 2.0:
                 self._last_modbus_read_time = now
-                vibit1_data = await asyncio.to_thread(self.vibit_reader_1.read_snapshot)
-                await asyncio.sleep(0.1)
-                vibit2_data = await asyncio.to_thread(self.vibit_reader_2.read_snapshot)
-                await asyncio.sleep(0.1)
-                vibit3_data = await asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, True)
+                vibit1_data, vibit2_data, vibit3_data = await asyncio.gather(
+                    asyncio.to_thread(self.vibit_reader_1.read_snapshot),
+                    asyncio.to_thread(self.vibit_reader_2.read_snapshot),
+                    asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, True),
+                    return_exceptions=True
+                )
+                # Treat exceptions as None (sensor offline)
+                if isinstance(vibit1_data, Exception): vibit1_data = None
+                if isinstance(vibit2_data, Exception): vibit2_data = None
+                if isinstance(vibit3_data, Exception): vibit3_data = None
                 self._cached_modbus_data = (vibit1_data, vibit2_data, vibit3_data)
 
                 # Log to DB when we get new snapshots

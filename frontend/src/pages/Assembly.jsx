@@ -9,6 +9,7 @@ import PageHeader from '../components/PageHeader';
 import { useTheme } from '../theme/ThemeContext';
 import AssemblyStatusRibbon from './asrs/components/AssemblyStatusRibbon';
 import SafetyOverlay from '../components/SafetyOverlay';
+import { deepMerge } from '../utils/deepMerge';
 // recharts imports kept for future graph tab (currently commented out in render)
 import {
   LineChart,
@@ -57,6 +58,8 @@ export default function Assembly() {
   // WebSocket ref so reconnect logic can replace it without tearing down the effect
   const wsRef = useRef(null);
   const reconnectTimerRef = useRef(null);
+  // Tracks last known full state for delta merging
+  const lastDataRef = useRef(null);
 
   // Fetch historical telemetry on mount
   useEffect(() => {
@@ -100,7 +103,21 @@ export default function Assembly() {
     };
 
     ws.onmessage = (e) => {
-      const data = JSON.parse(e.data);
+      const msg = JSON.parse(e.data);
+      let data;
+
+      if (msg.type === 'snapshot') {
+        data = msg.data;
+      } else if (msg.type === 'delta') {
+        // shallow-merge delta into last known state
+        data = deepMerge(lastDataRef.current, msg.data);
+      } else {
+        // heartbeat — nothing to update
+        return;
+      }
+
+      lastDataRef.current = data;
+
       const now = performance.now();
       
       // Capture telemetry values instantly in refs to bypass React state update lag / throttling
@@ -114,13 +131,10 @@ export default function Assembly() {
         isBearingRef.current = data.assembly.bearing;
       }
 
-      // Update data references for continuous data streams (throttled to 100ms for UI re-renders)
-      if (now - lastUpdateRef.current > 100) {
-        setPlantData(data);
-        setIsConnected(data.connected !== false);
-        setLastCommand(data.assembly?.bearing ? 'Bearing ON' : 'Bearing OFF');
-        lastUpdateRef.current = now;
-      }
+      // Update state immediately on every WebSocket message
+      setPlantData(data);
+      setIsConnected(data.connected !== false);
+      setLastCommand(data.assembly?.bearing ? 'Bearing ON' : 'Bearing OFF');
 
       // Edge-triggered safety alerts — only toast on rising edge (false → true)
       const prev = prevSafetyRef.current;
@@ -166,6 +180,7 @@ export default function Assembly() {
 
       if (now - lastUpdateRef.current > 100) {
          setPlotData([...plotDataPointsRef.current]);
+         lastUpdateRef.current = now;
       }
     };
 
@@ -801,7 +816,7 @@ export default function Assembly() {
 
           {/* Action controls panel */}
           <div className="asm-cmd" style={{ marginTop: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
-            <span className="asm-cmd__label">Hydraulic Control Commands:</span>
+            <span className="asm-cmd__label">Press Commands:</span>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 type="button"
@@ -819,6 +834,10 @@ export default function Assembly() {
               >
                 {isLoading ? 'Processing…' : 'Shaft ON'}
               </button>
+            </div>
+            <div style={{ width: '1px', height: '20px', background: 'var(--border)', margin: '0 4px', flexShrink: 0 }} />
+            <span className="asm-cmd__label" style={{ marginRight: 0 }}>Vice:</span>
+            <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 type="button"
                 className="asm-btn asm-btn--vice-open"
