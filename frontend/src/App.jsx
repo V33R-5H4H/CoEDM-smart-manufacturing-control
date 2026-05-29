@@ -1,5 +1,7 @@
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useState, useEffect } from "react";
 import { Routes, Route, NavLink } from "react-router-dom";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Lazy load page components to improve initial load performance (LCP)
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -13,6 +15,32 @@ const Cobot = lazy(() => import("./pages/Cobot"));
 const Inspection = lazy(() => import("./pages/Inspection"));
 
 export default function App() {
+  const [sysStatus, setSysStatus] = useState("SYS_OP_NORMAL");
+  const [pingMs, setPingMs] = useState(null);
+
+  useEffect(() => {
+    const poll = async () => {
+      const t0 = performance.now();
+      try {
+        const res = await fetch('/api/health');
+        const ms = Math.round(performance.now() - t0);
+        setPingMs(ms);
+        if (res.ok) {
+          const data = await res.json();
+          setSysStatus(data.status === 'ok' ? 'SYS_OP_NORMAL' : 'SYS_DEGRADED');
+        } else {
+          setSysStatus('SYS_DEGRADED');
+        }
+      } catch {
+        setSysStatus('SYS_OFFLINE');
+        setPingMs(null);
+      }
+    };
+    poll();
+    const interval = setInterval(poll, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="app-container" style={{ flexDirection: 'column' }}>
       {/* Inject custom bottom-nav styling */}
@@ -110,6 +138,9 @@ export default function App() {
         </Suspense>
       </main>
 
+      {/* Global Toast Notifications — single instance for all lazy-loaded pages */}
+      <ToastContainer position="bottom-right" autoClose={4000} closeOnClick pauseOnHover draggable theme="dark" />
+
       {/* Bottom Navigation Bar */}
       <nav className="bottom-nav">
         {/* Left Side: Brand Logo */}
@@ -147,10 +178,15 @@ export default function App() {
         {/* Right Side: Status Cluster */}
         <div className="bottom-nav-status">
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div className="bottom-nav-dot" />
-            <span style={{ fontWeight: 700, letterSpacing: '0.05em' }}>SYS_OP_NORMAL</span>
+            <div className="bottom-nav-dot" style={{
+              background: sysStatus === 'SYS_OP_NORMAL' ? 'var(--status-ok)' : sysStatus === 'SYS_DEGRADED' ? '#f59e0b' : '#ef4444',
+              boxShadow: `0 0 6px ${sysStatus === 'SYS_OP_NORMAL' ? 'var(--status-ok)' : sysStatus === 'SYS_DEGRADED' ? '#f59e0b' : '#ef4444'}`
+            }} />
+            <span style={{ fontWeight: 700, letterSpacing: '0.05em' }}>{sysStatus}</span>
           </div>
-          <span style={{ borderLeft: '1px solid var(--border)', paddingLeft: '12px' }}>PING: 12ms</span>
+          <span style={{ borderLeft: '1px solid var(--border)', paddingLeft: '12px' }}>
+            {pingMs !== null ? `PING: ${pingMs}ms` : 'PING: ---'}
+          </span>
         </div>
       </nav>
     </div>

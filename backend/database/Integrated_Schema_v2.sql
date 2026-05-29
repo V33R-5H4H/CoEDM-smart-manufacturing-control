@@ -594,6 +594,8 @@ CREATE TABLE IF NOT EXISTS assembly_station_data (
     sensor_id                UUID         NOT NULL REFERENCES machine_sensors(sensor_id) ON DELETE CASCADE,
     bearing_operation_status BOOLEAN      NOT NULL,
     shaft_operation_status   BOOLEAN      NOT NULL,
+    vice_status              TEXT         NOT NULL DEFAULT 'unknown'
+                                 CHECK (vice_status IN ('open','closed','unknown')),
     led_red                  BOOLEAN      NOT NULL,
     led_yellow               BOOLEAN      NOT NULL,
     led_green                BOOLEAN      NOT NULL,
@@ -896,3 +898,10 @@ COMMENT ON MATERIALIZED VIEW events_daily_summary IS
 -- with: SELECT create_hypertable('<table>', 'time', if_not_exists => TRUE);
 -- and replace materialized views with continuous aggregates.
 -- ============================================================
+
+-- ============================================================
+-- MIGRATIONS — safe to re-run (idempotent)
+-- ============================================================
+ALTER TABLE assembly_station_data
+    ADD COLUMN IF NOT EXISTS vice_status TEXT NOT NULL DEFAULT 'unknown'
+        CHECK (vice_status IN ('open','closed','unknown'));

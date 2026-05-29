@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
 import PageHeader from "../components/PageHeader";
 import SensorDot from "../components/SensorDot";
 import DraggableHUD from "../components/DraggableHUD";
+import { useModal } from "../hooks/useModal";
 import "./Assembly.css";
 import "./Triac.css";
 
@@ -15,7 +15,7 @@ const sensorVal = (value, decimals = 2, fallback = "---") => {
 export default function TestingStation() {
   const [isConnected, setIsConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
-  const [activeModal, setActiveModal] = useState(null);
+  const { activeModal, openModal, closeModal } = useModal();
 
   // Live simulation states
   const [isTesting, setIsTesting] = useState(false);
@@ -32,6 +32,10 @@ export default function TestingStation() {
 
   // Force failure on next test (Simulate NG)
   const [forceFail, setForceFail] = useState(false);
+
+  // Reset confirmation state
+  const [resetConfirmPending, setResetConfirmPending] = useState(false);
+  const resetConfirmTimerRef = useRef(null);
 
   // Test logs
   const [logs, setLogs] = useState([
@@ -131,12 +135,28 @@ export default function TestingStation() {
     }, 500);
   };
 
-  const resetStats = () => {
-    setTotalTested(0);
-    setPassedCount(0);
-    setFailedCount(0);
-    toast.info("Inspection statistics reset.");
+  const handleResetStats = () => {
+    if (resetConfirmPending) {
+      // Second click — execute reset
+      clearTimeout(resetConfirmTimerRef.current);
+      setResetConfirmPending(false);
+      setTotalTested(0);
+      setPassedCount(0);
+      setFailedCount(0);
+      toast.info("Inspection statistics reset.");
+    } else {
+      // First click — arm confirmation
+      setResetConfirmPending(true);
+      toast.warning("Click Reset again to confirm clearing all statistics.", { autoClose: 3000 });
+      resetConfirmTimerRef.current = setTimeout(() => {
+        setResetConfirmPending(false);
+      }, 3000);
+    }
   };
+
+  useEffect(() => {
+    return () => { if (resetConfirmTimerRef.current) clearTimeout(resetConfirmTimerRef.current); };
+  }, []);
 
   const passRate = totalTested > 0 ? (passedCount / totalTested) * 100 : 100;
 
@@ -215,10 +235,16 @@ export default function TestingStation() {
               <div className="asm-hud-header">
                 <span>Verification Statistics</span>
                 <button 
-                  onClick={resetStats} 
-                  style={{ background: "none", border: "none", color: "#fb923c", fontSize: "9px", fontFamily: "var(--font-mono)", cursor: "pointer", fontWeight: 700, textTransform: "uppercase" }}
+                  onClick={handleResetStats} 
+                  style={{
+                    background: "none", border: "none",
+                    color: resetConfirmPending ? "#ef4444" : "#fb923c",
+                    fontSize: "9px", fontFamily: "var(--font-mono)",
+                    cursor: "pointer", fontWeight: 700, textTransform: "uppercase",
+                    transition: "color 0.2s"
+                  }}
                 >
-                  Reset
+                  {resetConfirmPending ? "CONFIRM?" : "Reset"}
                 </button>
               </div>
               
@@ -550,7 +576,6 @@ export default function TestingStation() {
 
         </div>
       </div>
-      <ToastContainer position="bottom-right" autoClose={3000} closeOnClick pauseOnHover />
     </div>
   );
 }

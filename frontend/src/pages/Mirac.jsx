@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { flushSync } from "react-dom";
+import { toast } from "react-toastify";
 import MiracControlService from "../services/MiracControl";
 import MiracMachineView from "../components/MiracMachineView";
 import PageHeader from "../components/PageHeader";
 import MiracStatusRibbon from "./asrs/components/MiracStatusRibbon";
 import { deepMerge } from "../utils/deepMerge";
+import { useModal } from "../hooks/useModal";
 import "./Assembly.css";
 import "./Mirac.css";
 
@@ -16,6 +17,21 @@ import "./Mirac.css";
 const sensorVal = (value, decimals = 2, fallback = "---") => {
   if (value === null || value === undefined) return fallback;
   return Number(value).toFixed(decimals);
+};
+
+/**
+ * ISO 10816 vibration severity colour coding (velocity RMS in mm/s):
+ * < 2.8  → green  (Zone A — new machinery)
+ * 2.8–7.1 → amber  (Zone B — acceptable for long-term)
+ * 7.1–18  → orange (Zone C — alarm, short-term only)
+ * > 18    → red    (Zone D — danger)
+ */
+const vibColor = (value) => {
+  if (value === null || value === undefined) return '#8f9097';
+  if (value < 2.8) return '#3a9d6e';
+  if (value < 7.1) return '#c9922e';
+  if (value < 18)  return '#f97316';
+  return '#c4424b';
 };
 
 /**
@@ -65,7 +81,8 @@ const Mirac = () => {
   const [isConnected, setIsConnected] = useState(false); // OPC-UA connectivity
   const [statusLoading, setStatusLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("monitoring");
-  const [activeModal, setActiveModal] = useState(null); // 'spindle' | 'tool' | 'energy' | null
+  const { activeModal, openModal, closeModal } = useModal();
+  const [energyHistory, setEnergyHistory] = useState([]);
 
   // machineViewRef exposes setPosition() for imperative 60fps SVG updates (no React setState)
   const machineViewRef = useRef(null);
@@ -80,6 +97,14 @@ const Mirac = () => {
   const velocityXRef = useRef(0);
   const velocityZRef = useRef(0);
   const lastFrameTimeRef = useRef(performance.now());
+
+  // VibIT last-seen timestamps (shown when sensor is offline but cached data exists)
+  const vibit1LastSeenRef = useRef(null);
+  const vibit2LastSeenRef = useRef(null);
+  const vibit3LastSeenRef = useRef(null);
+  const [vibit1LastSeen, setVibit1LastSeen] = useState(null);
+  const [vibit2LastSeen, setVibit2LastSeen] = useState(null);
+  const [vibit3LastSeen, setVibit3LastSeen] = useState(null);
 
   // WebSocket references
   const wsRef = useRef(null);
@@ -173,6 +198,19 @@ const Mirac = () => {
 
         }
         // heartbeat: connection is alive, nothing to update in the UI
+
+        // Update last-seen timestamps for VibIT sensors (Change 1 & 6)
+        const latestData = dataRef.current;
+        if (latestData) {
+          const now = new Date();
+          const timeStr = now.toTimeString().slice(0, 8);
+          if (latestData?.data_sources?.vibit1) { vibit1LastSeenRef.current = timeStr; setVibit1LastSeen(timeStr); }
+          if (latestData?.data_sources?.vibit2) { vibit2LastSeenRef.current = timeStr; setVibit2LastSeen(timeStr); }
+          if (latestData?.data_sources?.vibit3) { vibit3LastSeenRef.current = timeStr; setVibit3LastSeen(timeStr); }
+          if (latestData?.energy_meter?.power != null) {
+            setEnergyHistory(prev => [...prev.slice(-9), latestData.energy_meter.power]);
+          }
+        }
 
       } catch (err) {
         console.error("[Mirac] Error parsing WebSocket message:", err);
@@ -302,6 +340,8 @@ const Mirac = () => {
       }
     };
   }, []);
+
+  // Close modal on Escape key — handled by useModal hook
 
   const handleConnect = async () => {
     setStatusLoading(true);
@@ -545,19 +585,26 @@ const Mirac = () => {
             {/* Vibit Sensor 1: Spindle */}
             <div
               className="asm-hud-card asm-hud-card--clickable"
-              onClick={() => setActiveModal("spindle")}
+              onClick={() => flushSync(() => openModal("spindle"))}
               title="Click to open detailed diagnostics panel"
             >
               <div className="asm-hud-header">
                 <span><SensorDot connected={vibit1Online} />Vibit Spindle Sensor (U1)</span>
-                <span className={`asm-hud-badge ${vibit1Online && data?.spindle?.speed > 0 ? "asm-hud-badge--active" : ""}`}>
-                  {!vibit1Online ? "OFFLINE" : data?.spindle?.speed > 0 ? "SPINNING" : "IDLE"}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className={`asm-hud-badge ${vibit1Online && data?.spindle?.speed > 0 ? "asm-hud-badge--active" : ""}`}>
+                    {!vibit1Online ? "OFFLINE" : data?.spindle?.speed > 0 ? "SPINNING" : "IDLE"}
+                  </span>
+                  {!vibit1Online && vibit1LastSeen && (
+                    <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#475569', fontWeight: 600 }}>
+                      LAST: {vibit1LastSeen}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="asm-val-grid">
                 <div className="asm-val">
                   <div className="asm-val__label">Vibration</div>
-                  <div className="asm-val__num asm-val__num--glowing-blue">
+                  <div className="asm-val__num" style={{ color: vibColor(data?.spindle?.vibration) }}>
                     {sensorVal(data?.spindle?.vibration)}
                     <span className="asm-val__unit">mm/s</span>
                   </div>
@@ -575,19 +622,26 @@ const Mirac = () => {
             {/* Vibit Sensor 2: Tool */}
             <div
               className="asm-hud-card asm-hud-card--clickable tool-hover"
-              onClick={() => setActiveModal("tool")}
+              onClick={() => flushSync(() => openModal("tool"))}
               title="Click to open detailed diagnostics panel"
             >
               <div className="asm-hud-header">
                 <span><SensorDot connected={vibit2Online} />Vibit Tool Sensor (U2)</span>
-                <span className={`asm-hud-badge ${vibit2Online ? "asm-hud-badge--active" : ""}`}>
-                  {vibit2Online ? "ACTIVE" : "OFFLINE"}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className={`asm-hud-badge ${vibit2Online ? "asm-hud-badge--active" : ""}`}>
+                    {vibit2Online ? "ACTIVE" : "OFFLINE"}
+                  </span>
+                  {!vibit2Online && vibit2LastSeen && (
+                    <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#475569', fontWeight: 600 }}>
+                      LAST: {vibit2LastSeen}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="asm-val-grid">
                 <div className="asm-val">
                   <div className="asm-val__label">Vibration</div>
-                  <div className="asm-val__num asm-val__num--glowing-orange">
+                  <div className="asm-val__num" style={{ color: vibColor(data?.tool?.vibration) }}>
                     {sensorVal(data?.tool?.vibration)}
                     <span className="asm-val__unit">mm/s</span>
                   </div>
@@ -611,32 +665,66 @@ const Mirac = () => {
             {/* Energy Meter — Repurposed from Unit ID 3 */}
             <div
               className="asm-hud-card asm-hud-card--clickable energy-hover"
-              onClick={() => setActiveModal("energy")}
+              onClick={() => flushSync(() => openModal("energy"))}
               title="Click to open detailed diagnostics panel"
             >
               <div className="asm-hud-header">
                 <span><SensorDot connected={vibit3Online} />Energy Meter (U3)</span>
-                <span className={`asm-hud-badge ${vibit3Online ? "asm-hud-badge--active" : ""}`}>
-                  {vibit3Online ? "LIVE" : "OFFLINE"}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className={`asm-hud-badge ${vibit3Online ? "asm-hud-badge--active" : ""}`}>
+                    {vibit3Online ? "LIVE" : "OFFLINE"}
+                  </span>
+                  {!vibit3Online && vibit3LastSeen && (
+                    <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#475569', fontWeight: 600 }}>
+                      LAST: {vibit3LastSeen}
+                    </span>
+                  )}
+                </div>
               </div>
               {data?.energy_meter ? (
-                <div className="asm-val-grid">
-                  <div className="asm-val">
-                    <div className="asm-val__label">Active Power</div>
-                    <div className="asm-val__num asm-val__num--glowing-green">
-                      {sensorVal(data.energy_meter.power, 3)}
-                      <span className="asm-val__unit">kW</span>
+                <>
+                  <div className="asm-val-grid">
+                    <div className="asm-val">
+                      <div className="asm-val__label">Active Power</div>
+                      <div className="asm-val__num asm-val__num--glowing-green">
+                        {sensorVal(data.energy_meter.power, 3)}
+                        <span className="asm-val__unit">kW</span>
+                      </div>
+                    </div>
+                    <div className="asm-val">
+                      <div className="asm-val__label">Total consumption</div>
+                      <div className="asm-val__num">
+                        {sensorVal(data.energy_meter.kwh, 4)}
+                        <span className="asm-val__unit">kWh</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="asm-val">
-                    <div className="asm-val__label">Total consumption</div>
-                    <div className="asm-val__num">
-                      {sensorVal(data.energy_meter.kwh, 4)}
-                      <span className="asm-val__unit">kWh</span>
-                    </div>
+                  {energyHistory.length > 1 && (
+                  <div style={{ marginTop: '6px' }}>
+                    <div className="asm-val__label">Power Trend</div>
+                    <svg width="100%" height="28" viewBox="0 0 100 28" preserveAspectRatio="none" style={{ display: 'block', marginTop: '4px' }}>
+                      {(() => {
+                        const max = Math.max(...energyHistory, 0.001);
+                        const min = Math.min(...energyHistory);
+                        const range = max - min || 1;
+                        const pts = energyHistory.map((v, i) => {
+                          const x = (i / (energyHistory.length - 1)) * 100;
+                          const y = 24 - ((v - min) / range) * 20;
+                          return x + ',' + y;
+                        }).join(' ');
+                        const lastX = 100;
+                        const lastY = 24 - ((energyHistory[energyHistory.length - 1] - min) / range) * 20;
+                        return (
+                          <>
+                            <polyline points={pts} fill="none" stroke="#3a9d6e" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+                            <circle cx={lastX} cy={lastY} r="2.5" fill="#3a9d6e" />
+                          </>
+                        );
+                      })()}
+                    </svg>
                   </div>
-                </div>
+                )}
+                </>
               ) : (
                 <div style={{
                   display: "flex",
@@ -717,7 +805,7 @@ const Mirac = () => {
             {/* Live Axis Telemetry */}
             <div
               className="asm-hud-card asm-hud-card--clickable"
-              onClick={() => setActiveModal("axis")}
+              onClick={() => flushSync(() => openModal("axis"))}
             >
               <div className="asm-hud-header">
                 <span><SensorDot connected={plcOnline} />Axis Positions</span>
@@ -756,6 +844,21 @@ const Mirac = () => {
                     <span className="asm-val__unit">mm/min</span>
                   </div>
                 </div>
+                {/* Position bar — X axis */}
+                <div style={{ marginTop: '4px' }}>
+                  <div style={{ width: '100%', height: '3px', background: '#1f2937', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${Math.min(100, Math.max(0, ((data?.axes?.x?.value ?? 0) / 300) * 100))}%`,
+                      background: '#38bdf8',
+                      borderRadius: '2px',
+                      transition: 'width 0.2s ease'
+                    }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8px', color: '#475569', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+                    <span>0</span><span>300mm</span>
+                  </div>
+                </div>
               </div>
 
               {/* Z Axis */}
@@ -788,6 +891,21 @@ const Mirac = () => {
                     <span className="asm-val__unit">mm/min</span>
                   </div>
                 </div>
+                {/* Position bar — Z axis */}
+                <div style={{ marginTop: '4px' }}>
+                  <div style={{ width: '100%', height: '3px', background: '#1f2937', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${Math.min(100, Math.max(0, ((data?.axes?.z?.value ?? 0) / 200) * 100))}%`,
+                      background: '#fb923c',
+                      borderRadius: '2px',
+                      transition: 'width 0.2s ease'
+                    }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8px', color: '#475569', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+                    <span>0</span><span>200mm</span>
+                  </div>
+                </div>
               </div>
 
               {/* Axis Vibration summary */}
@@ -808,7 +926,7 @@ const Mirac = () => {
             alignItems: "center",
             justifyContent: "center",
           }}
-          onClick={() => setActiveModal(null)}
+          onClick={() => closeModal()}
         >
           <div
             style={{
@@ -828,7 +946,7 @@ const Mirac = () => {
           >
             {/* Close Button */}
             <button
-              onClick={() => setActiveModal(null)}
+              onClick={() => closeModal()}
               style={{
                 position: "absolute",
                 top: "16px",

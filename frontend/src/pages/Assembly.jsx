@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { flushSync } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import AssemblyControlService from '../services/Assemblycontrol';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { toast } from 'react-toastify';
 import '../components/industrial-ui.css';
 import './Assembly.css';
 import PageHeader from '../components/PageHeader';
 import { useTheme } from '../theme/ThemeContext';
 import AssemblyStatusRibbon from './asrs/components/AssemblyStatusRibbon';
 import SafetyOverlay from '../components/SafetyOverlay';
+import { deepMerge } from '../utils/deepMerge';
+import { useModal } from '../hooks/useModal';
 // recharts imports kept for future graph tab (currently commented out in render)
 import {
   LineChart,
@@ -25,12 +27,13 @@ export default function Assembly() {
   const { resolved: theme } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [lastCommand, setLastCommand] = useState(null);
+  const [lastCommandTime, setLastCommandTime] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isWsConnected, setIsWsConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
   const [plantData, setPlantData] = useState(null);
   const [activeTab, setActiveTab] = useState('monitoring');
-  const [activeModal, setActiveModal] = useState(null); // 'piston' | 'clamp' | null
+  const { activeModal, openModal, closeModal } = useModal();
 
   // Smoothed position state for animation
   const [smoothedPosition, setSmoothedPosition] = useState(43);
@@ -156,15 +159,16 @@ export default function Assembly() {
         bearing: data.assembly?.bearing ? 1 : 0,
         shaft: data.assembly?.shaft ? 1 : 0,
       };
-      plotDataPointsRef.current.push(newPoint);
-      plotTimestampRef.current += 1;
-
-      // Keep last 500 points for performance
-      if (plotDataPointsRef.current.length > 500) {
+      // Keep only the last 60 seconds of data
+      const now60 = Date.now();
+      plotDataPointsRef.current.push({ ...newPoint, ts: now60 });
+      // Trim points older than 60s
+      while (plotDataPointsRef.current.length > 0 && now60 - plotDataPointsRef.current[0].ts > 60000) {
         plotDataPointsRef.current.shift();
-        plotDataPointsRef.current.forEach((point, index) => { point.time = index; });
-        plotTimestampRef.current = plotDataPointsRef.current.length;
       }
+      // Re-index time for Recharts
+      plotDataPointsRef.current.forEach((point, index) => { point.time = index; });
+      plotTimestampRef.current = plotDataPointsRef.current.length;
 
       if (now - lastUpdateRef.current > 100) {
         setPlotData([...plotDataPointsRef.current]);
@@ -256,550 +260,572 @@ export default function Assembly() {
           value: Math.max(0, newVal - 43),
           workpiece,
         }]);
-  lastRenderUpdateRef.current = now;
-}
+        lastRenderUpdateRef.current = now;
+      }
 
-animationFrameId = requestAnimationFrame(updatePositionLoop);
+      animationFrameId = requestAnimationFrame(updatePositionLoop);
     };
 
-// Initialize frame timer before starting loop
-lastFrameTimeRef.current = performance.now();
-animationFrameId = requestAnimationFrame(updatePositionLoop);
-return () => {
-  if (animationFrameId) {
-    cancelAnimationFrame(animationFrameId);
-  }
-};
+    // Initialize frame timer before starting loop
+    lastFrameTimeRef.current = performance.now();
+    animationFrameId = requestAnimationFrame(updatePositionLoop);
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
   }, []);
 
-// Track raw data points for debugging
-useEffect(() => {
-  if (!plantData?.position?.displacement_mm) return;
-  const workpiece = plantData?.assembly?.bearing ? 'bearing' : 'shaft';
-  setRawDataPoints(points => [...points.slice(-99), {
-    value: Math.max(0, plantData.position.displacement_mm - 43),
-    workpiece,
-    timestamp: Date.now()
-  }]);
-}, [plantData?.position?.displacement_mm, plantData?.assembly?.bearing]);
+  // Track raw data points for debugging
+  useEffect(() => {
+    if (!plantData?.position?.displacement_mm) return;
+    const workpiece = plantData?.assembly?.bearing ? 'bearing' : 'shaft';
+    setRawDataPoints(points => [...points.slice(-99), {
+      value: Math.max(0, plantData.position.displacement_mm - 43),
+      workpiece,
+      timestamp: Date.now()
+    }]);
+  }, [plantData?.position?.displacement_mm, plantData?.assembly?.bearing]);
 
-// Real-time canvas plotting for raw data
-useEffect(() => {
-  const canvas = rawCanvasRef.current;
-  if (!canvas || rawDataPoints.length < 2) return;
+  // Real-time canvas plotting for raw data
+  useEffect(() => {
+    const canvas = rawCanvasRef.current;
+    if (!canvas || rawDataPoints.length < 2) return;
 
-  const ctx = canvas.getContext('2d');
-  const width = canvas.width;
-  const height = canvas.height;
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
 
-  // Clear canvas
-  ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(0, 0, width, height);
+    // Clear canvas
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, width, height);
 
-  // Draw grid
-  ctx.strokeStyle = '#333';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([4, 4]);
-  for (let i = 0; i <= 4; i++) {
-    const y = (height / 4) * i;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(width, y);
-    ctx.stroke();
-  }
-  for (let i = 0; i <= 4; i++) {
-    const x = (width / 4) * i;
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, height);
-    ctx.stroke();
-  }
-  ctx.setLineDash([]);
-
-  // Determine time range
-  const timeRange = rawDataPoints[rawDataPoints.length - 1].timestamp - rawDataPoints[0].timestamp;
-  const startTime = rawDataPoints[0].timestamp;
-  const maxVal = rawDataPoints[rawDataPoints.length - 1].workpiece === 'bearing' ? 185 : 135;
-
-  // Draw data line
-  ctx.strokeStyle = rawDataPoints[rawDataPoints.length - 1].workpiece === 'bearing' ? '#ff6b6b' : '#4dabf7';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  rawDataPoints.forEach((point, idx) => {
-    const x = timeRange > 0 ? ((point.timestamp - startTime) / timeRange) * width : 0;
-    const y = height - (point.value / maxVal) * height;
-    if (idx === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  });
-  ctx.stroke();
-
-}, [rawDataPoints]);
-
-// Real-time canvas plotting for smoothed data
-useEffect(() => {
-  const canvas = smoothedCanvasRef.current;
-  if (!canvas || smoothedDataPoints.length < 2) return;
-
-  const ctx = canvas.getContext('2d');
-  const width = canvas.width;
-  const height = canvas.height;
-
-  // Clear canvas
-  ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(0, 0, width, height);
-
-  // Draw grid
-  ctx.strokeStyle = '#333';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([4, 4]);
-  for (let i = 0; i <= 4; i++) {
-    const y = (height / 4) * i;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(width, y);
-    ctx.stroke();
-  }
-  for (let i = 0; i <= 4; i++) {
-    const x = (width / 4) * i;
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, height);
-    ctx.stroke();
-  }
-  ctx.setLineDash([]);
-
-  // Determine time range
-  const timeRange = smoothedDataPoints[smoothedDataPoints.length - 1].timestamp - smoothedDataPoints[0].timestamp;
-  const startTime = smoothedDataPoints[0].timestamp;
-  const maxVal = smoothedDataPoints[smoothedDataPoints.length - 1].workpiece === 'bearing' ? 185 : 135;
-
-  // Draw data line
-  ctx.strokeStyle = smoothedDataPoints[smoothedDataPoints.length - 1].workpiece === 'bearing' ? '#ff6b6b' : '#4dabf7';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  smoothedDataPoints.forEach((point, idx) => {
-    const x = timeRange > 0 ? ((point.timestamp - startTime) / timeRange) * width : 0;
-    const y = height - (point.value / maxVal) * height;
-    if (idx === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  });
-  ctx.stroke();
-
-}, [smoothedDataPoints]);
-
-const handleConnect = async () => {
-  setStatusLoading(true);
-  try {
-    const res = await AssemblyControlService.connect();
-    if (res.success) {
-      setIsConnected(true);
-      toast.success(res.message);
-    } else {
-      toast.error(res.message);
+    // Draw grid
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    for (let i = 0; i <= 4; i++) {
+      const y = (height / 4) * i;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
     }
-  } catch (e) {
-    toast.error('Failed to connect');
-  } finally {
-    setStatusLoading(false);
-  }
-};
-
-const handleDisconnect = async () => {
-  setStatusLoading(true);
-  try {
-    const res = await AssemblyControlService.disconnect();
-    if (res.success) {
-      setIsConnected(false);
-      toast.success(res.message);
-    } else {
-      toast.error(res.message);
+    for (let i = 0; i <= 4; i++) {
+      const x = (width / 4) * i;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
     }
-  } catch (e) {
-    toast.error('Failed to disconnect');
-  } finally {
-    setStatusLoading(false);
-  }
-};
+    ctx.setLineDash([]);
 
-const handleClearPlot = () => {
-  setPlotData([]);
-  plotDataPointsRef.current = [];
-  plotTimestampRef.current = 0;
-};
+    // Determine time range
+    const timeRange = rawDataPoints[rawDataPoints.length - 1].timestamp - rawDataPoints[0].timestamp;
+    const startTime = rawDataPoints[0].timestamp;
+    const maxVal = rawDataPoints[rawDataPoints.length - 1].workpiece === 'bearing' ? 185 : 135;
 
-const handleBearingToggle = async () => {
-  setIsLoading(true);
-  try {
-    const response = await AssemblyControlService.runCommand('BEARING_ON');
-    setLastCommand('Bearing ON');
-    toast.success(response.message || 'Bearing command executed');
-  } catch (e) {
-    toast.error(`Failed to execute Bearing command: ${e.message}`);
-  } finally {
-    setIsLoading(false);
-  }
-};
+    // Draw data line
+    ctx.strokeStyle = rawDataPoints[rawDataPoints.length - 1].workpiece === 'bearing' ? '#ff6b6b' : '#4dabf7';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    rawDataPoints.forEach((point, idx) => {
+      const x = timeRange > 0 ? ((point.timestamp - startTime) / timeRange) * width : 0;
+      const y = height - (point.value / maxVal) * height;
+      if (idx === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
 
-const handleShaftToggle = async () => {
-  setIsLoading(true);
-  try {
-    const response = await AssemblyControlService.runCommand('SHAFT_ON');
-    setLastCommand('Shaft ON');
-    toast.success(response.message || 'Shaft command executed');
-  } catch (e) {
-    toast.error(`Failed to execute Shaft command: ${e.message}`);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  }, [rawDataPoints]);
 
-const handleViceOpen = async () => {
-  setIsLoading(true);
-  try {
-    const response = await AssemblyControlService.runCommand('VICE_OPEN');
-    setLastCommand('Vice OPEN');
-    toast.success(response.message || 'Vice open command executed');
-  } catch (e) {
-    toast.error(`Failed to execute Vice Open command: ${e.message}`);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  // Real-time canvas plotting for smoothed data
+  useEffect(() => {
+    const canvas = smoothedCanvasRef.current;
+    if (!canvas || smoothedDataPoints.length < 2) return;
 
-const handleViceClose = async () => {
-  setIsLoading(true);
-  try {
-    const response = await AssemblyControlService.runCommand('VICE_CLOSE');
-    setLastCommand('Vice CLOSE');
-    toast.success(response.message || 'Vice close command executed');
-  } catch (e) {
-    toast.error(`Failed to execute Vice Close command: ${e.message}`);
-  } finally {
-    setIsLoading(false);
-  }
-};
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
 
-const isSafetyFault = !!(plantData?.safety?.curtain || plantData?.safety?.buzzer);
-const displacementFloat = smoothedPosition != null ? Math.max(0, smoothedPosition - 43) : 0;
-const displacement = smoothedPosition != null ? Math.round(displacementFloat) : null;
-const isPressActive = displacement !== null && displacement > 7;
+    // Clear canvas
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, width, height);
 
-// Dynamic clamping positions based on active workpiece (Bearing: 38px, Shaft: 20px, None: 0px)
-const getJawX = (isLeft) => {
-  const isOpen = !plantData?.vice?.close;
-  if (isOpen) {
-    return isLeft ? -25 : 25;
-  }
-  // Closed state: clamp workpiece
-  if (plantData?.assembly?.bearing) {
-    return isLeft ? 13 : -13;
-  } else if (plantData?.assembly?.shaft) {
-    return isLeft ? 22 : -22;
-  } else {
-    // Closes completely
-    return isLeft ? 32 : -32;
-  }
-};
+    // Draw grid
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    for (let i = 0; i <= 4; i++) {
+      const y = (height / 4) * i;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+    }
+    for (let i = 0; i <= 4; i++) {
+      const x = (width / 4) * i;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
 
-// Derive status tower light conditions
-const greenActive = isConnected && isWsConnected && !isSafetyFault && !isPressActive;
-const orangeActive = isConnected && isWsConnected && !isSafetyFault && isPressActive;
-const redActive = isSafetyFault || !isConnected || !isWsConnected;
+    // Determine time range
+    const timeRange = smoothedDataPoints[smoothedDataPoints.length - 1].timestamp - smoothedDataPoints[0].timestamp;
+    const startTime = smoothedDataPoints[0].timestamp;
+    const maxVal = smoothedDataPoints[smoothedDataPoints.length - 1].workpiece === 'bearing' ? 185 : 135;
 
-const tabPanels = {
-  monitoring: (
-    <div className="asm-body" style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-      {/* Left Sidebar: System Status Panel */}
-      <aside className="asm-sidebar" style={{ background: 'var(--bg-secondary)', borderRight: '1px solid var(--border)' }}>
-        {/* Safety Diagnostics Section */}
-        <div className="asm-side__section">
-          <h3>Safety Diagnostics</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div className={`asm-safety-item ${plantData?.safety?.buzzer ? 'asm-safety-item--danger' : ''}`}>
-              <span>Emergency Buzzer</span>
-              {plantData?.safety?.buzzer ? (
-                <div className="asm-pulse-dot" />
-              ) : (
-                <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>OFF</span>
-              )}
-            </div>
-            <div className={`asm-safety-item ${plantData?.safety?.curtain ? 'asm-safety-item--danger' : ''}`}>
-              <span>Safety Curtain</span>
-              {plantData?.safety?.curtain ? (
-                <div className="asm-pulse-dot" />
-              ) : (
-                <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>CLEAR</span>
-              )}
+    // Draw data line
+    ctx.strokeStyle = smoothedDataPoints[smoothedDataPoints.length - 1].workpiece === 'bearing' ? '#ff6b6b' : '#4dabf7';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    smoothedDataPoints.forEach((point, idx) => {
+      const x = timeRange > 0 ? ((point.timestamp - startTime) / timeRange) * width : 0;
+      const y = height - (point.value / maxVal) * height;
+      if (idx === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+  }, [smoothedDataPoints]);
+
+  // Close modal on Escape key — handled by useModal hook
+
+  const handleConnect = async () => {
+    setStatusLoading(true);
+    try {
+      const res = await AssemblyControlService.connect();
+      if (res.success) {
+        setIsConnected(true);
+        toast.success(res.message);
+      } else {
+        toast.error(res.message);
+      }
+    } catch (e) {
+      toast.error('Failed to connect');
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    setStatusLoading(true);
+    try {
+      const res = await AssemblyControlService.disconnect();
+      if (res.success) {
+        setIsConnected(false);
+        toast.success(res.message);
+      } else {
+        toast.error(res.message);
+      }
+    } catch (e) {
+      toast.error('Failed to disconnect');
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  const handleClearPlot = () => {
+    setPlotData([]);
+    plotDataPointsRef.current = [];
+    plotTimestampRef.current = 0;
+  };
+
+  const handleBearingToggle = async () => {
+    setIsLoading(true);
+    try {
+      const response = await AssemblyControlService.runCommand('BEARING_ON');
+      setLastCommand('Bearing ON');
+      setLastCommandTime(new Date().toTimeString().slice(0, 8));
+      toast.success(response.message || 'Bearing command executed');
+    } catch (e) {
+      toast.error(`Failed to execute Bearing command: ${e.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleShaftToggle = async () => {
+    setIsLoading(true);
+    try {
+      const response = await AssemblyControlService.runCommand('SHAFT_ON');
+      setLastCommand('Shaft ON');
+      setLastCommandTime(new Date().toTimeString().slice(0, 8));
+      toast.success(response.message || 'Shaft command executed');
+    } catch (e) {
+      toast.error(`Failed to execute Shaft command: ${e.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleViceOpen = async () => {
+    setIsLoading(true);
+    try {
+      const response = await AssemblyControlService.runCommand('VICE_OPEN');
+      setLastCommand('Vice OPEN');
+      setLastCommandTime(new Date().toTimeString().slice(0, 8));
+      toast.success(response.message || 'Vice open command executed');
+    } catch (e) {
+      toast.error(`Failed to execute Vice Open command: ${e.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleViceClose = async () => {
+    setIsLoading(true);
+    try {
+      const response = await AssemblyControlService.runCommand('VICE_CLOSE');
+      setLastCommand('Vice CLOSE');
+      setLastCommandTime(new Date().toTimeString().slice(0, 8));
+      toast.success(response.message || 'Vice close command executed');
+    } catch (e) {
+      toast.error(`Failed to execute Vice Close command: ${e.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleViceToggle = async () => {
+    const command = plantData?.vice?.close ? 'VICE_OPEN' : 'VICE_CLOSE';
+    const label = command === 'VICE_OPEN' ? 'Vice OPEN' : 'Vice CLOSE';
+    setIsLoading(true);
+    try {
+      const response = await AssemblyControlService.runCommand(command);
+      setLastCommand(label);
+      setLastCommandTime(new Date().toTimeString().slice(0, 8));
+      toast.success(response.message || `Vice ${command === 'VICE_OPEN' ? 'open' : 'close'} command executed`);
+    } catch (e) {
+      toast.error(`Failed to execute Vice command: ${e.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const isSafetyFault = !!(plantData?.safety?.curtain || plantData?.safety?.buzzer);
+  const displacementFloat = smoothedPosition != null ? Math.max(0, smoothedPosition - 43) : 0;
+  const displacement = smoothedPosition != null ? Math.round(displacementFloat) : null;
+  const isPressActive = displacement !== null && displacement > 7;
+
+  // Dynamic clamping positions based on active workpiece (Bearing: 38px, Shaft: 20px, None: 0px)
+  const getJawX = (isLeft) => {
+    const isOpen = !plantData?.vice?.close;
+    if (isOpen) {
+      return isLeft ? -25 : 25;
+    }
+    // Closed state: clamp workpiece
+    if (plantData?.assembly?.bearing) {
+      return isLeft ? 13 : -13;
+    } else if (plantData?.assembly?.shaft) {
+      return isLeft ? 22 : -22;
+    } else {
+      // Closes completely
+      return isLeft ? 32 : -32;
+    }
+  };
+
+  // Derive status tower light conditions
+  const greenActive = isConnected && isWsConnected && !isSafetyFault && !isPressActive;
+  const orangeActive = isConnected && isWsConnected && !isSafetyFault && isPressActive;
+  const redActive = isSafetyFault || !isConnected || !isWsConnected;
+
+  const tabPanels = {
+    monitoring: (
+      <div className="asm-body" style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+        {/* Left Sidebar: System Status Panel */}
+        <aside className="asm-sidebar" style={{ background: 'var(--bg-secondary)', borderRight: '1px solid var(--border)' }}>
+          {/* Safety Diagnostics Section */}
+          <div className="asm-side__section">
+            <h3>Safety Diagnostics</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div className={`asm-safety-item ${plantData?.safety?.buzzer ? 'asm-safety-item--danger' : ''}`}>
+                <span>Emergency Buzzer</span>
+                {plantData?.safety?.buzzer ? (
+                  <div className="asm-pulse-dot" />
+                ) : (
+                  <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>OFF</span>
+                )}
+              </div>
+              <div className={`asm-safety-item ${plantData?.safety?.curtain ? 'asm-safety-item--danger' : ''}`}>
+                <span>Safety Curtain</span>
+                {plantData?.safety?.curtain ? (
+                  <div className="asm-pulse-dot" />
+                ) : (
+                  <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>CLEAR</span>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* PLC Signal States */}
-        <div className="asm-side__section" style={{ marginTop: '12px' }}>
-          <h3>Signal Tower Lights</h3>
-          <div className="asm-leds" style={{ marginTop: '8px' }}>
-            <div className="asm-led">
-              <div className={`asm-led__dot ${plantData?.safety?.lights?.green ? 'asm-led__dot--green' : ''}`} />
-              <span className="asm-led__label">Green</span>
-            </div>
-            <div className="asm-led">
-              <div className={`asm-led__dot ${plantData?.safety?.lights?.orange ? 'asm-led__dot--orange' : ''}`} />
-              <span className="asm-led__label">Orange</span>
-            </div>
-            <div className="asm-led">
-              <div className={`asm-led__dot ${plantData?.safety?.lights?.red ? 'asm-led__dot--red' : ''}`} />
-              <span className="asm-led__label">Red</span>
+          {/* PLC Signal States */}
+          <div className="asm-side__section" style={{ marginTop: '12px' }}>
+            <h3>Signal Tower Lights</h3>
+            <div className="asm-leds" style={{ marginTop: '8px' }}>
+              <div className="asm-led">
+                <div className={`asm-led__dot ${plantData?.safety?.lights?.green ? 'asm-led__dot--green' : ''}`} />
+                <span className="asm-led__label">Green</span>
+              </div>
+              <div className="asm-led">
+                <div className={`asm-led__dot ${plantData?.safety?.lights?.orange ? 'asm-led__dot--orange' : ''}`} />
+                <span className="asm-led__label">Orange</span>
+              </div>
+              <div className="asm-led">
+                <div className={`asm-led__dot ${plantData?.safety?.lights?.red ? 'asm-led__dot--red' : ''}`} />
+                <span className="asm-led__label">Red</span>
+              </div>
             </div>
           </div>
-        </div>
-      </aside>
+        </aside>
 
-      {/* Right Main Panel: Hydraulic Press Assembly */}
-      <main className="asm-main" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-        {/* Unified Press Assembly Schematic card */}
-        <div className="asm-viz" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)' }}>
-          <div className="asm-viz__bar" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-elevated)' }}>
-            <span>Hydraulic Press Schematic</span>
-            <span className={`asm-workpiece-badge ${plantData?.assembly?.bearing ? 'asm-workpiece-badge--bearing' : plantData?.assembly?.shaft ? 'asm-workpiece-badge--shaft' : ''}`}>
-              Active Workpiece: {plantData?.assembly?.bearing ? 'BEARING' : plantData?.assembly?.shaft ? 'SHAFT' : 'NONE'}
-            </span>
-          </div>
-
-          <div className="asm-press-area" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-            <div className="asm-grid-container">
-              {/* Left Column: Piston Diagnostics HUD */}
-              <div
-                className="asm-hud-card asm-hud-card--clickable"
-                onClick={() => setActiveModal("piston")}
-                style={{ cursor: "pointer" }}
-                title="Click to open detailed diagnostics panel"
-              >
-                <div className="asm-hud-header">Piston Diagnostics</div>
-                <div className="asm-val">
-                  <div className="asm-val__label">Piston Extension</div>
-                  <div
-                    className="asm-val__num"
-                    style={{
-                      color: isPressActive
-                        ? (plantData?.assembly?.bearing ? '#ff6b6b' : plantData?.assembly?.shaft ? '#38bdf8' : 'var(--text-primary)')
-                        : 'var(--text-primary)'
-                    }}
-                  >
-                    {displacement != null ? displacement : '--'}
-                    <span className="asm-val__unit">mm</span>
-                  </div>
-                </div>
-                <div className="asm-val">
-                  <div className="asm-val__label">Operating State</div>
-                  <div className="asm-val__num asm-val__num--sm" style={{
-                    color: isSafetyFault
-                      ? '#ef4444'
-                      : isPressActive
-                        ? '#fbbf24'
-                        : 'var(--text-secondary)'
-                  }}>
-                  {isSafetyFault ? 'FAULTED' : isPressActive ? 'PRESS ACTIVE' : 'SYSTEM IDLE'}
-                </div>
-              </div>
-              <div className="asm-val">
-                <div className="asm-val__label">Travel Limit</div>
-                <div className="asm-val__num asm-val__num--sm" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
-                  Max: {plantData?.assembly?.bearing ? '185' : plantData?.assembly?.shaft ? '135' : '--'} mm
-                </div>
-              </div>
+        {/* Right Main Panel: Hydraulic Press Assembly */}
+        <main className="asm-main" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+          {/* Unified Press Assembly Schematic card */}
+          <div className="asm-viz" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)' }}>
+            <div className="asm-viz__bar" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-elevated)' }}>
+              <span>Hydraulic Press Schematic</span>
+              <span className={`asm-workpiece-badge ${plantData?.assembly?.bearing ? 'asm-workpiece-badge--bearing' : plantData?.assembly?.shaft ? 'asm-workpiece-badge--shaft' : ''}`}>
+                Active Workpiece: {plantData?.assembly?.bearing ? 'BEARING' : plantData?.assembly?.shaft ? 'SHAFT' : 'NONE'}
+              </span>
             </div>
 
-            {/* Center Column: Cylindrical machine schematic */}
-            <div className="asm-cylinder-wrapper">
-              {/* Left Hydraulic Pipe */}
-              <div className="asm-pipe asm-pipe--left">
-                <div className={`asm-pipe__fluid ${isPressActive
-                    ? (plantData?.assembly?.bearing ? 'asm-pipe__fluid--active-bearing' : plantData?.assembly?.shaft ? 'asm-pipe__fluid--active-shaft' : '')
-                    : ''
-                  }`} />
-              </div>
-
-              {/* Right Hydraulic Pipe */}
-              <div className="asm-pipe asm-pipe--right">
-                <div className={`asm-pipe__fluid ${isPressActive
-                    ? (plantData?.assembly?.bearing ? 'asm-pipe__fluid--active-bearing' : plantData?.assembly?.shaft ? 'asm-pipe__fluid--active-shaft' : '')
-                    : ''
-                  }`} />
-              </div>
-
-              {/* Ruler Scale */}
-              <div className="asm-ruler">
-                {[0, 50, 100, 150, 185].map((mark) => (
-                  <div key={mark} className="asm-ruler__tick" style={{ top: `${mark}px` }}>
-                    <span className="asm-ruler__label">{mark}</span>
-                    <div className={`asm-ruler__tick-line ${mark % 50 === 0 ? 'asm-ruler__tick-line--major' : ''}`} />
-                  </div>
-                ))}
-                {/* Glowing Ruler Indicator */}
+            <div className="asm-press-area" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+              <div className="asm-grid-container">
+                {/* Left Column: Piston Diagnostics HUD */}
                 <div
-                  className="asm-ruler__pointer"
-                  style={{
-                    top: `${Math.max(0, Math.min(185, displacementFloat))}px`,
-                    borderLeftColor: plantData?.assembly?.bearing ? '#ff6b6b' : plantData?.assembly?.shaft ? '#38bdf8' : 'var(--primary)'
-                  }}
-                />
-              </div>
-
-              {/* Top Flange */}
-              <div className="asm-flange">
-                <div className="asm-flange__bolt" />
-                <div className="asm-flange__bolt" />
-              </div>
-
-              {/* Cylinder walls and piston track */}
-              <div className="asm-cylinder">
-                <div className="asm-cylinder__wall asm-cylinder__wall--left" />
-                <div className="asm-piston-track">
-                  <motion.div
-                    animate={{
-                      height: `${Math.max(0, Math.min(185, displacementFloat))}px`
-                    }}
-                    transition={{ duration: 0 }}
-                    className="asm-piston-rod"
-                  />
-                </div>
-                <div className="asm-cylinder__wall asm-cylinder__wall--right" />
-
-                {/* Press Head */}
-                <motion.div
-                  animate={{
-                    y: Math.max(0, Math.min(185, displacementFloat))
-                  }}
-                  transition={{ duration: 0 }}
-                  className="asm-press-head"
+                  className="asm-hud-card asm-hud-card--clickable"
+                  onClick={() => flushSync(() => openModal("piston"))}
+                  style={{ cursor: "pointer" }}
+                  title="Click to open detailed diagnostics panel"
                 >
-                  <div className="asm-press-head__hazard" />
-                  <div className="asm-press-head__groove" />
-                  {/* Active glow contact strip */}
-                  <div
-                    className="asm-press-head__glow"
-                    style={{
-                      backgroundColor: isPressActive
-                        ? (plantData?.assembly?.bearing ? '#ff6b6b' : plantData?.assembly?.shaft ? '#38bdf8' : '#dc2626')
-                        : 'rgba(255, 255, 255, 0.08)',
-                      boxShadow: isPressActive
-                        ? `0 0 10px ${plantData?.assembly?.bearing ? '#ff6b6b' : '#38bdf8'}, 0 0 4px ${plantData?.assembly?.bearing ? '#ff6b6b' : '#38bdf8'}`
-                        : 'none'
-                    }}
-                  />
-                </motion.div>
-              </div>
-
-              {/* Vice assembly */}
-              <div className="asm-vice">
-                {/* Left jaw */}
-                <motion.div
-                  animate={{
-                    x: getJawX(true)
-                  }}
-                  transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 0.9] }}
-                  className="asm-jaw asm-jaw--left"
-                >
-                  <div className="asm-jaw__groove" />
-                  <div className="asm-jaw__groove" />
-                  <div className="asm-jaw__groove" />
-                </motion.div>
-
-                {/* Right jaw */}
-                <motion.div
-                  animate={{
-                    x: getJawX(false)
-                  }}
-                  transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 0.9] }}
-                  className="asm-jaw asm-jaw--right"
-                >
-                  <div className="asm-jaw__groove" />
-                  <div className="asm-jaw__groove" />
-                  <div className="asm-jaw__groove" />
-                </motion.div>
-
-                {/* Active Workpiece */}
-                <AnimatePresence>
-                  {plantData?.assembly?.bearing && (
-                    <motion.div
-                      key="bearing"
-                      initial={{ scale: 0, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0, opacity: 0 }}
-                      transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                      className="asm-workpiece--bearing-item"
+                  <div className="asm-hud-header">Piston Diagnostics</div>
+                  <div className="asm-val">
+                    <div className="asm-val__label">Piston Extension</div>
+                    <div
+                      className="asm-val__num"
                       style={{
-                        width: '38px',
-                        height: '38px',
-                        position: 'absolute',
-                        zIndex: 1,
+                        color: isPressActive
+                          ? (plantData?.assembly?.bearing ? '#ff6b6b' : plantData?.assembly?.shaft ? '#38bdf8' : 'var(--text-primary)')
+                          : 'var(--text-primary)'
+                      }}
+                    >
+                      {displacement != null ? displacement : '--'}
+                      <span className="asm-val__unit">mm</span>
+                    </div>
+                  </div>
+                  <div className="asm-val">
+                    <div className="asm-val__label">Operating State</div>
+                    <div className="asm-val__num asm-val__num--sm" style={{
+                      color: isSafetyFault
+                        ? '#ef4444'
+                        : isPressActive
+                          ? '#fbbf24'
+                          : 'var(--text-secondary)'
+                    }}>
+                      {isSafetyFault ? 'FAULTED' : isPressActive ? 'PRESS ACTIVE' : 'SYSTEM IDLE'}
+                    </div>
+                  </div>
+                  <div className="asm-val">
+                    <div className="asm-val__label">Travel Limit</div>
+                    <div className="asm-val__num asm-val__num--sm" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
+                      Max: {plantData?.assembly?.bearing ? '185' : plantData?.assembly?.shaft ? '135' : '--'} mm
+                    </div>
+                  </div>
+                </div>
+
+                {/* Center Column: Cylindrical machine schematic */}
+                <div className="asm-cylinder-wrapper">
+                  {/* Left Hydraulic Pipe */}
+                  <div className="asm-pipe asm-pipe--left">
+                    <div className={`asm-pipe__fluid ${isPressActive
+                      ? (plantData?.assembly?.bearing ? 'asm-pipe__fluid--active-bearing' : plantData?.assembly?.shaft ? 'asm-pipe__fluid--active-shaft' : '')
+                      : ''
+                      }`} />
+                  </div>
+
+                  {/* Right Hydraulic Pipe */}
+                  <div className="asm-pipe asm-pipe--right">
+                    <div className={`asm-pipe__fluid ${isPressActive
+                      ? (plantData?.assembly?.bearing ? 'asm-pipe__fluid--active-bearing' : plantData?.assembly?.shaft ? 'asm-pipe__fluid--active-shaft' : '')
+                      : ''
+                      }`} />
+                  </div>
+
+                  {/* Ruler Scale */}
+                  <div className="asm-ruler">
+                    {[0, 50, 100, 150, 185].map((mark) => (
+                      <div key={mark} className="asm-ruler__tick" style={{ top: `${mark}px` }}>
+                        <span className="asm-ruler__label">{mark}</span>
+                        <div className={`asm-ruler__tick-line ${mark % 50 === 0 ? 'asm-ruler__tick-line--major' : ''}`} />
+                      </div>
+                    ))}
+                    {/* Glowing Ruler Indicator */}
+                    <div
+                      className="asm-ruler__pointer"
+                      style={{
+                        top: `${Math.max(0, Math.min(185, displacementFloat))}px`,
+                        borderLeftColor: plantData?.assembly?.bearing ? '#ff6b6b' : plantData?.assembly?.shaft ? '#38bdf8' : 'var(--primary)'
                       }}
                     />
-                  )}
-                  {plantData?.assembly?.shaft && (
+                  </div>
+
+                  {/* Top Flange */}
+                  <div className="asm-flange">
+                    <div className="asm-flange__bolt" />
+                    <div className="asm-flange__bolt" />
+                  </div>
+
+                  {/* Cylinder walls and piston track */}
+                  <div className="asm-cylinder">
+                    <div className="asm-cylinder__wall asm-cylinder__wall--left" />
+                    <div className="asm-piston-track">
+                      <motion.div
+                        animate={{
+                          height: `${Math.max(0, Math.min(185, displacementFloat))}px`
+                        }}
+                        transition={{ duration: 0 }}
+                        className="asm-piston-rod"
+                      />
+                    </div>
+                    <div className="asm-cylinder__wall asm-cylinder__wall--right" />
+
+                    {/* Press Head */}
                     <motion.div
-                      key="shaft"
-                      initial={{ scaleY: 0, opacity: 0 }}
-                      animate={{ scaleY: 1, opacity: 1 }}
-                      exit={{ scaleY: 0, opacity: 0 }}
-                      transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                      className="asm-workpiece--shaft-item"
-                      style={{
-                        width: '20px',
-                        height: '52px',
-                        position: 'absolute',
-                        zIndex: 1,
-                        transformOrigin: 'bottom center',
+                      animate={{
+                        y: Math.max(0, Math.min(185, displacementFloat))
                       }}
-                    />
-                  )}
-                </AnimatePresence>
+                      transition={{ duration: 0 }}
+                      className="asm-press-head"
+                    >
+                      <div className="asm-press-head__hazard" />
+                      <div className="asm-press-head__groove" />
+                      {/* Active glow contact strip */}
+                      <div
+                        className="asm-press-head__glow"
+                        style={{
+                          backgroundColor: isPressActive
+                            ? (plantData?.assembly?.bearing ? '#ff6b6b' : plantData?.assembly?.shaft ? '#38bdf8' : '#dc2626')
+                            : 'rgba(255, 255, 255, 0.08)',
+                          boxShadow: isPressActive
+                            ? `0 0 10px ${plantData?.assembly?.bearing ? '#ff6b6b' : '#38bdf8'}, 0 0 4px ${plantData?.assembly?.bearing ? '#ff6b6b' : '#38bdf8'}`
+                            : 'none'
+                        }}
+                      />
+                    </motion.div>
+                  </div>
 
-                {/* Center guide line */}
-                <div style={{ width: '1px', height: '70px', background: 'rgba(255,255,255,0.04)', position: 'absolute' }} />
-              </div>
-            </div>
+                  {/* Vice assembly */}
+                  <div className="asm-vice">
+                    {/* Left jaw */}
+                    <motion.div
+                      animate={{
+                        x: getJawX(true)
+                      }}
+                      transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 0.9] }}
+                      className="asm-jaw asm-jaw--left"
+                    >
+                      <div className="asm-jaw__groove" />
+                      <div className="asm-jaw__groove" />
+                      <div className="asm-jaw__groove" />
+                    </motion.div>
 
-            {/* Right Column: Clamp & Workpiece HUD */}
-            <div
-              className="asm-hud-card asm-hud-card--clickable"
-              onClick={() => setActiveModal("clamp")}
-              style={{ cursor: "pointer" }}
-              title="Click to open detailed diagnostics panel"
-            >
-              <div className="asm-hud-header">Clamp & Workpiece</div>
-              <div className="asm-val">
-                <div className="asm-val__label">Vice Jaws Status</div>
-                <div className={`asm-val__num asm-val__num--sm ${plantData?.vice?.close ? 'asm-val__num--glowing-blue' : 'asm-val__num--glowing-green'
-                  }`}>
-                  {plantData?.vice?.close ? 'CLOSED' : plantData?.vice?.open ? 'OPEN' : 'UNKNOWN'}
+                    {/* Right jaw */}
+                    <motion.div
+                      animate={{
+                        x: getJawX(false)
+                      }}
+                      transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 0.9] }}
+                      className="asm-jaw asm-jaw--right"
+                    >
+                      <div className="asm-jaw__groove" />
+                      <div className="asm-jaw__groove" />
+                      <div className="asm-jaw__groove" />
+                    </motion.div>
+
+                    {/* Active Workpiece */}
+                    <AnimatePresence>
+                      {plantData?.assembly?.bearing && (
+                        <motion.div
+                          key="bearing"
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0, opacity: 0 }}
+                          transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                          className="asm-workpiece--bearing-item"
+                          style={{
+                            width: '38px',
+                            height: '38px',
+                            position: 'absolute',
+                            zIndex: 1,
+                          }}
+                        />
+                      )}
+                      {plantData?.assembly?.shaft && (
+                        <motion.div
+                          key="shaft"
+                          initial={{ scaleY: 0, opacity: 0 }}
+                          animate={{ scaleY: 1, opacity: 1 }}
+                          exit={{ scaleY: 0, opacity: 0 }}
+                          transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                          className="asm-workpiece--shaft-item"
+                          style={{
+                            width: '20px',
+                            height: '52px',
+                            position: 'absolute',
+                            zIndex: 1,
+                            transformOrigin: 'bottom center',
+                          }}
+                        />
+                      )}
+                    </AnimatePresence>
+
+                    {/* Center guide line */}
+                    <div style={{ width: '1px', height: '70px', background: 'rgba(255,255,255,0.04)', position: 'absolute' }} />
+                  </div>
                 </div>
-              </div>
-              <div className="asm-val">
-                <div className="asm-val__label">Active Workpiece</div>
-                <div className="asm-val__num asm-val__num--sm" style={{
-                  color: plantData?.assembly?.bearing
-                    ? '#ff6b6b'
-                    : plantData?.assembly?.shaft
-                      ? '#38bdf8'
-                      : 'var(--text-muted)'
-                }}>
-                  {plantData?.assembly?.bearing ? 'BEARING' : plantData?.assembly?.shaft ? 'SHAFT' : 'NONE'}
-                </div>
-              </div>
-              <div className="asm-val">
-                <div className="asm-val__label">Telemetry Feed</div>
-                <div className="asm-val__num asm-val__num--sm" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
-                  WS: {isWsConnected ? 'LIVE' : 'DISCONNECTED'}
+
+                {/* Right Column: Clamp & Workpiece HUD */}
+                <div
+                  className="asm-hud-card asm-hud-card--clickable"
+                  onClick={() => flushSync(() => openModal("clamp"))}
+                  style={{ cursor: "pointer" }}
+                  title="Click to open detailed diagnostics panel"
+                >
+                  <div className="asm-hud-header">Clamp & Workpiece</div>
+                  <div className="asm-val">
+                    <div className="asm-val__label">Vice Jaws Status</div>
+                    <div className={`asm-val__num asm-val__num--sm ${plantData?.vice?.close ? 'asm-val__num--glowing-blue' : 'asm-val__num--glowing-green'
+                      }`}>
+                      {plantData?.vice?.close ? 'CLOSED' : plantData?.vice?.open ? 'OPEN' : 'UNKNOWN'}
+                    </div>
+                  </div>
+                  <div className="asm-val">
+                    <div className="asm-val__label">Active Workpiece</div>
+                    <div className="asm-val__num asm-val__num--sm" style={{
+                      color: plantData?.assembly?.bearing
+                        ? '#ff6b6b'
+                        : plantData?.assembly?.shaft
+                          ? '#38bdf8'
+                          : 'var(--text-muted)'
+                    }}>
+                      {plantData?.assembly?.bearing ? 'BEARING' : plantData?.assembly?.shaft ? 'SHAFT' : 'NONE'}
+                    </div>
+                  </div>
+                  <div className="asm-val">
+                    <div className="asm-val__label">Telemetry Feed</div>
+                    <div className="asm-val__num asm-val__num--sm" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
+                      WS: {isWsConnected ? 'LIVE' : 'DISCONNECTED'}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Action controls panel */}
-      <div className="asm-cmd" style={{ marginTop: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+          {/* Action controls panel */}
+          <div className="asm-cmd" style={{ marginTop: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
             <span className="asm-cmd__label">Press Commands:</span>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
@@ -821,420 +847,421 @@ const tabPanels = {
             </div>
             <div style={{ width: '1px', height: '20px', background: 'var(--border)', margin: '0 4px', flexShrink: 0 }} />
             <span className="asm-cmd__label" style={{ marginRight: 0 }}>Vice:</span>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                type="button"
-                className="asm-btn asm-btn--vice-open"
-                onClick={handleViceOpen}
-                disabled={isLoading || isSafetyFault || !isConnected || plantData?.vice?.open === true}
-              >
-                {isLoading && lastCommand === 'Vice OPEN' ? 'Opening…' : 'Open Vice'}
-              </button>
-              <button
-                type="button"
-                className="asm-btn asm-btn--vice-close"
-                onClick={handleViceClose}
-                disabled={isLoading || isSafetyFault || !isConnected || plantData?.vice?.close === true}
-              >
-                {isLoading && lastCommand === 'Vice CLOSE' ? 'Closing…' : 'Close Vice'}
-              </button>
-            </div>
-          </div >
-        </main >
-      </div >
+            <button
+              type="button"
+              className={`asm-btn asm-btn--vice-toggle ${plantData?.vice?.close ? 'asm-btn--vice-toggle--closed' : 'asm-btn--vice-toggle--open'}`}
+              onClick={handleViceToggle}
+              disabled={isLoading || isSafetyFault || !isConnected}
+              title={plantData?.vice?.close ? 'Vice is CLOSED — click to open' : 'Vice is OPEN — click to close'}
+            >
+              {isLoading && (lastCommand === 'Vice OPEN' || lastCommand === 'Vice CLOSE')
+                ? (lastCommand === 'Vice OPEN' ? 'Opening…' : 'Closing…')
+                : plantData?.vice?.close ? 'Close Vice ●' : 'Open Vice ○'}
+            </button>
+            {lastCommandTime && (
+              <span style={{
+                fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#475569',
+                marginLeft: 'auto', fontWeight: 600
+              }}>
+                LAST: {lastCommandTime}
+              </span>
+            )}
+          </div>
+        </main>
+      </div>
     ),
-plots: (
-  <div className="asm-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto' }}>
-    {/* Canvas Debug plots */}
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: '1fr 1fr',
-      gap: '12px',
-      flex: 1,
-      minHeight: 0
-    }}>
-      {/* Raw plot card */}
-      <div className="asm-viz" style={{ minHeight: '190px', background: 'var(--bg-secondary)' }}>
-        <div className="asm-viz__bar" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-elevated)' }}>
-          <span>Real-Time Diagnostic: Raw Signal</span>
-          <span className="asm-graph__live" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ff6b6b', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '2px 6px', borderRadius: '2px' }}>
-            RAW DISPLACEMENT
-          </span>
-        </div>
-        <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-          <div style={{ position: 'relative', width: '100%', flex: 1, display: 'flex' }}>
-            <canvas
-              ref={rawCanvasRef}
-              width={1200}
-              height={250}
-              style={{
-                border: '1px solid var(--border)',
-                borderRadius: '3px',
-                display: 'block',
-                width: '100%',
-                height: '100%',
-                background: '#1a1a1a'
-              }}
-            />
-            <div style={{ position: 'absolute', top: '4px', left: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-              {rawDataPoints[rawDataPoints.length - 1]?.workpiece === 'bearing' ? '185' : '135'}mm
+    plots: (
+      <div className="asm-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto' }}>
+        {/* Canvas Debug plots */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '12px',
+          flex: 1,
+          minHeight: 0
+        }}>
+          {/* Raw plot card */}
+          <div className="asm-viz" style={{ minHeight: '190px', background: 'var(--bg-secondary)' }}>
+            <div className="asm-viz__bar" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-elevated)' }}>
+              <span>Real-Time Diagnostic: Raw Signal</span>
+              <span className="asm-graph__live" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ff6b6b', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '2px 6px', borderRadius: '2px' }}>
+                RAW DISPLACEMENT
+              </span>
             </div>
-            <div style={{ position: 'absolute', bottom: '4px', left: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>0mm</div>
-
-
-            {rawDataPoints.length > 1 && (() => {
-              const totalTime = (rawDataPoints[rawDataPoints.length - 1].timestamp - rawDataPoints[0].timestamp) / 1000;
-              return (
-                <div style={{ position: 'absolute', bottom: '4px', right: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>
-                  {totalTime.toFixed(1)}s span
+            <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <div style={{ position: 'relative', width: '100%', flex: 1, display: 'flex' }}>
+                <canvas
+                  ref={rawCanvasRef}
+                  width={1200}
+                  height={250}
+                  style={{
+                    border: '1px solid var(--border)',
+                    borderRadius: '3px',
+                    display: 'block',
+                    width: '100%',
+                    height: '100%',
+                    background: '#1a1a1a'
+                  }}
+                />
+                <div style={{ position: 'absolute', top: '4px', left: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                  {rawDataPoints[rawDataPoints.length - 1]?.workpiece === 'bearing' ? '185' : '135'}mm
                 </div>
-              );
-            })()}
+                <div style={{ position: 'absolute', bottom: '4px', left: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>0mm</div>
 
 
-            <div style={{ position: 'absolute', top: '4px', right: '6px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--primary-light)', background: 'rgba(0,0,0,0.75)', padding: '2px 6px', borderRadius: '2px', border: '1px solid var(--border)' }}>
-              {rawDataPoints[rawDataPoints.length - 1]?.value != null ? `${rawDataPoints[rawDataPoints.length - 1].value.toFixed(1)} mm` : '--'}
-            </div>
-          </div>
-          <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginTop: '8px', display: 'flex', gap: '12px' }}>
-            <span><span style={{ color: '#ff6b6b' }}>●</span> Bearing (0-185mm)</span>
-            <span><span style={{ color: '#4dabf7' }}>●</span> Shaft (0-135mm)</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Smoothed plot card */}
-      <div className="asm-viz" style={{ minHeight: '190px', background: 'var(--bg-secondary)' }}>
-        <div className="asm-viz__bar" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-elevated)' }}>
-          <span>Real-Time Diagnostic: Filtered Signal</span>
-          <span className="asm-graph__live" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#4ade80', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '2px 6px', borderRadius: '2px' }}>
-            EXPONENTIAL FILTER
-          </span>
-        </div>
-        <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-          <div style={{ position: 'relative', width: '100%', flex: 1, display: 'flex' }}>
-            <canvas
-              ref={smoothedCanvasRef}
-              width={1200}
-              height={250}
-              style={{
-                border: '1px solid var(--border)',
-                borderRadius: '3px',
-                display: 'block',
-                width: '100%',
-                height: '100%',
-                background: '#1a1a1a'
-              }}
-            />
-            <div style={{ position: 'absolute', top: '4px', left: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-              {smoothedDataPoints[smoothedDataPoints.length - 1]?.workpiece === 'bearing' ? '185' : '135'}mm
-            </div>
-            <div style={{ position: 'absolute', bottom: '4px', left: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>0mm</div>
+                {rawDataPoints.length > 1 && (() => {
+                  const totalTime = (rawDataPoints[rawDataPoints.length - 1].timestamp - rawDataPoints[0].timestamp) / 1000;
+                  return (
+                    <div style={{ position: 'absolute', bottom: '4px', right: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>
+                      {totalTime.toFixed(1)}s span
+                    </div>
+                  );
+                })()}
 
 
-            {smoothedDataPoints.length > 1 && (() => {
-              const totalTime = (smoothedDataPoints[smoothedDataPoints.length - 1].timestamp - smoothedDataPoints[0].timestamp) / 1000;
-              return (
-                <div style={{ position: 'absolute', bottom: '4px', right: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>
-                  {totalTime.toFixed(1)}s span
+                <div style={{ position: 'absolute', top: '4px', right: '6px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--primary-light)', background: 'rgba(0,0,0,0.75)', padding: '2px 6px', borderRadius: '2px', border: '1px solid var(--border)' }}>
+                  {rawDataPoints[rawDataPoints.length - 1]?.value != null ? `${rawDataPoints[rawDataPoints.length - 1].value.toFixed(1)} mm` : '--'}
                 </div>
-              );
-            })()}
-
-
-            <div style={{ position: 'absolute', top: '4px', right: '6px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#4ade80', background: 'rgba(0,0,0,0.75)', padding: '2px 6px', borderRadius: '2px', border: '1px solid var(--border)' }}>
-              {smoothedDataPoints[smoothedDataPoints.length - 1]?.value != null ? `${smoothedDataPoints[smoothedDataPoints.length - 1].value.toFixed(1)} mm` : '--'}
+              </div>
+              <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginTop: '8px', display: 'flex', gap: '12px' }}>
+                <span><span style={{ color: '#ff6b6b' }}>●</span> Bearing (0-185mm)</span>
+                <span><span style={{ color: '#4dabf7' }}>●</span> Shaft (0-135mm)</span>
+              </div>
             </div>
           </div>
-          <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginTop: '8px', display: 'flex', gap: '12px' }}>
-            <span><span style={{ color: '#ff6b6b' }}>●</span> Bearing (0-185mm)</span>
-            <span><span style={{ color: '#4dabf7' }}>●</span> Shaft (0-135mm)</span>
+
+          {/* Smoothed plot card */}
+          <div className="asm-viz" style={{ minHeight: '190px', background: 'var(--bg-secondary)' }}>
+            <div className="asm-viz__bar" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-elevated)' }}>
+              <span>Real-Time Diagnostic: Filtered Signal</span>
+              <span className="asm-graph__live" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#4ade80', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '2px 6px', borderRadius: '2px' }}>
+                EXPONENTIAL FILTER
+              </span>
+            </div>
+            <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <div style={{ position: 'relative', width: '100%', flex: 1, display: 'flex' }}>
+                <canvas
+                  ref={smoothedCanvasRef}
+                  width={1200}
+                  height={250}
+                  style={{
+                    border: '1px solid var(--border)',
+                    borderRadius: '3px',
+                    display: 'block',
+                    width: '100%',
+                    height: '100%',
+                    background: '#1a1a1a'
+                  }}
+                />
+                <div style={{ position: 'absolute', top: '4px', left: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                  {smoothedDataPoints[smoothedDataPoints.length - 1]?.workpiece === 'bearing' ? '185' : '135'}mm
+                </div>
+                <div style={{ position: 'absolute', bottom: '4px', left: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>0mm</div>
+
+
+                {smoothedDataPoints.length > 1 && (() => {
+                  const totalTime = (smoothedDataPoints[smoothedDataPoints.length - 1].timestamp - smoothedDataPoints[0].timestamp) / 1000;
+                  return (
+                    <div style={{ position: 'absolute', bottom: '4px', right: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>
+                      {totalTime.toFixed(1)}s span
+                    </div>
+                  );
+                })()}
+
+
+                <div style={{ position: 'absolute', top: '4px', right: '6px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#4ade80', background: 'rgba(0,0,0,0.75)', padding: '2px 6px', borderRadius: '2px', border: '1px solid var(--border)' }}>
+                  {smoothedDataPoints[smoothedDataPoints.length - 1]?.value != null ? `${smoothedDataPoints[smoothedDataPoints.length - 1].value.toFixed(1)} mm` : '--'}
+                </div>
+              </div>
+              <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginTop: '8px', display: 'flex', gap: '12px' }}>
+                <span><span style={{ color: '#ff6b6b' }}>●</span> Bearing (0-185mm)</span>
+                <span><span style={{ color: '#4dabf7' }}>●</span> Shaft (0-135mm)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Longer-term Telemetry Recharts Graph */}
+        <div className="asm-viz" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)' }}>
+          <div className="asm-viz__bar" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-elevated)' }}>
+            <span>Displacement History Analytics</span>
+            <button
+              onClick={handleClearPlot}
+              disabled={plotData.length === 0}
+              className="asm-btn asm-btn--clear"
+              style={{
+                background: plotData.length === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(239, 68, 68, 0.1)',
+                borderColor: plotData.length === 0 ? 'var(--border)' : 'rgba(239, 68, 68, 0.3)',
+                color: plotData.length === 0 ? 'var(--text-disabled)' : '#ef4444'
+              }}
+            >
+              Clear Buffer
+            </button>
+          </div>
+
+          <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            {plotData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={plotData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis
+                    dataKey="time"
+                    stroke="var(--text-muted)"
+                    tick={{ fontSize: 9, fontFamily: 'var(--font-mono)' }}
+                  />
+                  <YAxis
+                    stroke="var(--text-muted)"
+                    tick={{ fontSize: 9, fontFamily: 'var(--font-mono)' }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'var(--bg-primary)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '4px',
+                      color: 'var(--text-primary)',
+                      fontSize: '11px',
+                      fontFamily: 'var(--font-sans)'
+                    }}
+                    cursor={{ stroke: 'var(--border)' }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 10, fontFamily: 'var(--font-sans)' }} />
+                  <Line
+                    type="monotone"
+                    dataKey="displacement"
+                    stroke="var(--primary)"
+                    strokeWidth={2}
+                    dot={false}
+                    isAnimationActive={false}
+                    name="Extension (mm)"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-muted)',
+                fontSize: '11px',
+                fontFamily: 'var(--font-mono)'
+              }}>
+                NO TELEMETRY DATA IN BUFFER. AWAITING OPERATION START...
+              </div>
+            )}
           </div>
         </div>
       </div>
-    </div>
-
-    {/* Longer-term Telemetry Recharts Graph */}
-    <div className="asm-viz" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)' }}>
-      <div className="asm-viz__bar" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-elevated)' }}>
-        <span>Displacement History Analytics</span>
-        <button
-          onClick={handleClearPlot}
-          disabled={plotData.length === 0}
-          className="asm-btn asm-btn--clear"
-          style={{
-            background: plotData.length === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(239, 68, 68, 0.1)',
-            borderColor: plotData.length === 0 ? 'var(--border)' : 'rgba(239, 68, 68, 0.3)',
-            color: plotData.length === 0 ? 'var(--text-disabled)' : '#ef4444'
-          }}
-        >
-          Clear Buffer
-        </button>
-      </div>
-
-      <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        {plotData.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={plotData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis
-                dataKey="time"
-                stroke="var(--text-muted)"
-                tick={{ fontSize: 9, fontFamily: 'var(--font-mono)' }}
-              />
-              <YAxis
-                stroke="var(--text-muted)"
-                tick={{ fontSize: 9, fontFamily: 'var(--font-mono)' }}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'var(--bg-primary)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '4px',
-                  color: 'var(--text-primary)',
-                  fontSize: '11px',
-                  fontFamily: 'var(--font-sans)'
-                }}
-                cursor={{ stroke: 'var(--border)' }}
-              />
-              <Legend wrapperStyle={{ fontSize: 10, fontFamily: 'var(--font-sans)' }} />
-              <Line
-                type="monotone"
-                dataKey="displacement"
-                stroke="var(--primary)"
-                strokeWidth={2}
-                dot={false}
-                isAnimationActive={false}
-                name="Extension (mm)"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        ) : (
-          <div style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--text-muted)',
-            fontSize: '11px',
-            fontFamily: 'var(--font-mono)'
-          }}>
-            NO TELEMETRY DATA IN BUFFER. AWAITING OPERATION START...
-          </div>
-        )}
-      </div>
-    </div>
-  </div>
-)
+    )
   };
 
-return (
-  <div style={{
-    height: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
-    background: 'var(--bg-primary)',
-  }}>
-    <PageHeader
-      title="Assembly"
-      subtitle="Hydraulic station"
-      actions={
-        <>
-          <AssemblyStatusRibbon
-            plcConnected={isConnected}
-            wsConnected={isWsConnected}
-            plantData={plantData}
-            smoothedPosition={smoothedPosition}
-          />
-          {isConnected ? (
-            <button
-              type="button"
-              onClick={handleDisconnect}
-              style={{
-                fontSize: '11px',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                color: 'var(--text-primary)',
-                background: 'var(--primary-dark)',
-                border: 'none',
-                padding: '4px 12px',
-                borderRadius: '2px',
-                cursor: 'pointer',
-                opacity: statusLoading ? 0.7 : 1,
-              }}
-              disabled={statusLoading}
-            >
-              {statusLoading ? "Disconnecting…" : "Disconnect"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleConnect}
-              style={{
-                fontSize: '11px',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                color: 'var(--bg-primary)',
-                background: 'var(--primary)',
-                border: 'none',
-                padding: '4px 12px',
-                borderRadius: '2px',
-                cursor: 'pointer',
-                opacity: statusLoading ? 0.7 : 1,
-              }}
-              disabled={statusLoading}
-            >
-              {statusLoading ? "Connecting…" : "Connect"}
-            </button>
-          )}
-        </>
-      }
-    />
-
-    {/* Sub-nav: Tabs — Stitch pattern */}
+  return (
     <div style={{
+      height: '100%',
       display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      borderBottom: '1px solid var(--border)',
-      padding: '0 16px',
-      flexShrink: 0,
+      flexDirection: 'column',
+      overflow: 'hidden',
       background: 'var(--bg-primary)',
     }}>
-      {/* Flat tabs */}
-      <div style={{ display: 'flex', gap: '24px' }}>
-        {["monitoring", "plots"].map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
-            style={{
-              fontSize: '11px',
-              fontWeight: activeTab === tab ? 700 : 600,
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: activeTab === tab ? 'var(--primary)' : 'var(--text-muted)',
-              background: 'none',
-              border: 'none',
-              borderBottom: activeTab === tab ? '2px solid var(--primary)' : '2px solid transparent',
-              padding: '10px 0',
-              cursor: 'pointer',
-              transition: 'color 150ms ease-out',
-            }}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
-      </div>
+      <PageHeader
+        title="Assembly"
+        subtitle="Hydraulic station"
+        actions={
+          <>
+            <AssemblyStatusRibbon
+              plcConnected={isConnected}
+              wsConnected={isWsConnected}
+              plantData={plantData}
+              smoothedPosition={smoothedPosition}
+            />
+            {isConnected ? (
+              <button
+                type="button"
+                onClick={handleDisconnect}
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: 'var(--text-primary)',
+                  background: 'var(--primary-dark)',
+                  border: 'none',
+                  padding: '4px 12px',
+                  borderRadius: '2px',
+                  cursor: 'pointer',
+                  opacity: statusLoading ? 0.7 : 1,
+                }}
+                disabled={statusLoading}
+              >
+                {statusLoading ? "Disconnecting…" : "Disconnect"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleConnect}
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: 'var(--bg-primary)',
+                  background: 'var(--primary)',
+                  border: 'none',
+                  padding: '4px 12px',
+                  borderRadius: '2px',
+                  cursor: 'pointer',
+                  opacity: statusLoading ? 0.7 : 1,
+                }}
+                disabled={statusLoading}
+              >
+                {statusLoading ? "Connecting…" : "Connect"}
+              </button>
+            )}
+          </>
+        }
+      />
 
-      {/* 3-LED Status Tower Indicator */}
+      {/* Sub-nav: Tabs — Stitch pattern */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
-        padding: '0 8px',
-        background: 'rgba(255,255,255,0.01)',
-        borderLeft: '1px solid var(--border)',
-        height: '28px'
+        justifyContent: 'space-between',
+        borderBottom: '1px solid var(--border)',
+        padding: '0 16px',
+        flexShrink: 0,
+        background: 'var(--bg-primary)',
       }}>
-        <span style={{
-          fontSize: '9px',
-          fontFamily: 'var(--font-mono)',
-          fontWeight: 700,
-          color: 'var(--text-muted)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-          marginRight: '2px'
-        }}>STATUS TOWER:</span>
-
-
-        {/* RUN LED */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }} title="System Connected and Ready">
-          <div style={{
-            width: '12px',
-            height: '12px',
-            borderRadius: '50%',
-            border: '1.5px solid #333',
-            background: greenActive
-              ? 'radial-gradient(circle, #4ade80, #22c55e)'
-              : 'radial-gradient(circle, #1a1a1a, #0a0a0a)',
-            boxShadow: greenActive
-              ? '0 0 8px rgba(74, 222, 128, 0.75), inset 0 1px 1px rgba(255,255,255,0.3)'
-              : 'inset 0 1px 2px rgba(0,0,0,0.5)',
-            transition: 'all 0.3s ease'
-          }} />
-          <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: greenActive ? '#4ade80' : 'var(--text-disabled)' }}>RUN</span>
+        {/* Flat tabs */}
+        <div style={{ display: 'flex', gap: '24px' }}>
+          {["monitoring", "plots"].map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              style={{
+                fontSize: '11px',
+                fontWeight: activeTab === tab ? 700 : 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                color: activeTab === tab ? 'var(--primary)' : 'var(--text-muted)',
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === tab ? '2px solid var(--primary)' : '2px solid transparent',
+                padding: '10px 0',
+                cursor: 'pointer',
+                transition: 'color 150ms ease-out',
+              }}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
         </div>
 
-        {/* BUSY LED */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }} title="Press Cycle Active">
-          <div style={{
-            width: '12px',
-            height: '12px',
-            borderRadius: '50%',
-            border: '1.5px solid #333',
-            background: orangeActive
-              ? 'radial-gradient(circle, #fbbf24, #f59e0b)'
-              : 'radial-gradient(circle, #1a1a1a, #0a0a0a)',
-            boxShadow: orangeActive
-              ? '0 0 8px rgba(251, 191, 36, 0.75), inset 0 1px 1px rgba(255,255,255,0.3)'
-              : 'inset 0 1px 2px rgba(0,0,0,0.5)',
-            transition: 'all 0.3s ease'
-          }} />
-          <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: orangeActive ? '#fbbf24' : 'var(--text-disabled)' }}>BUSY</span>
-        </div>
+        {/* 3-LED Status Tower Indicator */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '0 8px',
+          background: 'rgba(255,255,255,0.01)',
+          borderLeft: '1px solid var(--border)',
+          height: '28px'
+        }}>
+          <span style={{
+            fontSize: '9px',
+            fontFamily: 'var(--font-mono)',
+            fontWeight: 700,
+            color: 'var(--text-muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            marginRight: '2px'
+          }}>STATUS TOWER:</span>
 
-        {/* FLT LED */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }} title="Safety Curtain Triggered or Buzzer Active">
-          <div style={{
-            width: '12px',
-            height: '12px',
-            borderRadius: '50%',
-            border: '1.5px solid #333',
-            background: redActive
-              ? 'radial-gradient(circle, #ef4444, #dc2626)'
-              : 'radial-gradient(circle, #1a1a1a, #0a0a0a)',
-            boxShadow: redActive
-              ? '0 0 8px rgba(239, 68, 68, 0.75), inset 0 1px 1px rgba(255,255,255,0.3)'
-              : 'inset 0 1px 2px rgba(0,0,0,0.5)',
-            transition: 'all 0.3s ease'
-          }} />
-          <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: redActive ? '#ef4444' : 'var(--text-disabled)' }}>FLT</span>
+
+          {/* RUN LED */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }} title="System Connected and Ready">
+            <div style={{
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              border: '1.5px solid #333',
+              background: greenActive
+                ? 'radial-gradient(circle, #4ade80, #22c55e)'
+                : 'radial-gradient(circle, #1a1a1a, #0a0a0a)',
+              boxShadow: greenActive
+                ? '0 0 8px rgba(74, 222, 128, 0.75), inset 0 1px 1px rgba(255,255,255,0.3)'
+                : 'inset 0 1px 2px rgba(0,0,0,0.5)',
+              transition: 'all 0.3s ease'
+            }} />
+            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: greenActive ? '#4ade80' : 'var(--text-disabled)' }}>RUN</span>
+          </div>
+
+          {/* BUSY LED */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }} title="Press Cycle Active">
+            <div style={{
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              border: '1.5px solid #333',
+              background: orangeActive
+                ? 'radial-gradient(circle, #fbbf24, #f59e0b)'
+                : 'radial-gradient(circle, #1a1a1a, #0a0a0a)',
+              boxShadow: orangeActive
+                ? '0 0 8px rgba(251, 191, 36, 0.75), inset 0 1px 1px rgba(255,255,255,0.3)'
+                : 'inset 0 1px 2px rgba(0,0,0,0.5)',
+              transition: 'all 0.3s ease'
+            }} />
+            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: orangeActive ? '#fbbf24' : 'var(--text-disabled)' }}>BUSY</span>
+          </div>
+
+          {/* FLT LED */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }} title="Safety Curtain Triggered or Buzzer Active">
+            <div style={{
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              border: '1.5px solid #333',
+              background: redActive
+                ? 'radial-gradient(circle, #ef4444, #dc2626)'
+                : 'radial-gradient(circle, #1a1a1a, #0a0a0a)',
+              boxShadow: redActive
+                ? '0 0 8px rgba(239, 68, 68, 0.75), inset 0 1px 1px rgba(255,255,255,0.3)'
+                : 'inset 0 1px 2px rgba(0,0,0,0.5)',
+              transition: 'all 0.3s ease'
+            }} />
+            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: redActive ? '#ef4444' : 'var(--text-disabled)' }}>FLT</span>
+          </div>
         </div>
       </div>
-    </div>
 
-    {/* Workspace — fills remaining space */}
-    <div style={{
-      flex: 1,
-      overflow: 'hidden',
-      display: 'flex',
-      flexDirection: 'column',
-      position: 'relative'
-    }}>
-      {tabPanels[activeTab]}
+      {/* Workspace — fills remaining space */}
+      <div style={{
+        flex: 1,
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative'
+      }}>
+        {tabPanels[activeTab]}
 
-      {/* SAFETY INTERRUPT OVERLAY */}
-      <SafetyOverlay
-        isVisible={isSafetyFault}
-        message={
-          plantData?.safety?.curtain && plantData?.safety?.buzzer
-            ? "Human presence detected (safety curtain breached) & emergency buzzer active."
-            : plantData?.safety?.curtain
-              ? "Human presence detected in hydraulic station area (safety curtain breached)."
-              : "Emergency buzzer active."
-        }
-        badgeText="Hydraulic Press Operations Locked Out"
-      />
-    </div>
+        {/* SAFETY INTERRUPT OVERLAY */}
+        <SafetyOverlay
+          isVisible={isSafetyFault}
+          message={
+            plantData?.safety?.curtain && plantData?.safety?.buzzer
+              ? "Human presence detected (safety curtain breached) & emergency buzzer active."
+              : plantData?.safety?.curtain
+                ? "Human presence detected in hydraulic station area (safety curtain breached)."
+                : "Emergency buzzer active."
+          }
+          badgeText="Hydraulic Press Operations Locked Out"
+        />
+      </div>
 
-    {/* BUZZER ALARM VIEWPORT RING IS HANDLED BY SafetyOverlay */}
+      {/* BUZZER ALARM VIEWPORT RING IS HANDLED BY SafetyOverlay */}
 
-    {/* Interactive Sensor Pop-Up Overlay */}
-    {activeModal && (
+      {/* Interactive Sensor Pop-Up Overlay */}
+      {activeModal && (
         <div
           style={{
             position: "fixed",
@@ -1245,7 +1272,7 @@ return (
             alignItems: "center",
             justifyContent: "center"
           }}
-          onClick={() => setActiveModal(null)}
+          onClick={() => closeModal()}
         >
           <div
             style={{
@@ -1264,7 +1291,7 @@ return (
           >
             {/* Close Button */}
             <button
-              onClick={() => setActiveModal(null)}
+              onClick={() => closeModal()}
               style={{
                 position: "absolute",
                 top: "16px",
@@ -1435,19 +1462,10 @@ return (
             </div>
           </div>
         </div>
-    )}
+      )}
 
-    <ToastContainer
-      position="bottom-right"
-      autoClose={4000}
-      closeOnClick
-      pauseOnHover
-      draggable
-      theme={theme}
-    />
-
-    {/* DEBUG: Temporary Data Visualization */}
-    {/* <div style={{
+      {/* DEBUG: Temporary Data Visualization */}
+      {/* <div style={{
         position: 'fixed',
         bottom: '20px',
         right: '20px',
@@ -1534,6 +1552,6 @@ return (
           </div>
         </div>
       </div> */}
-  </div>
-);
+    </div>
+  );
 }

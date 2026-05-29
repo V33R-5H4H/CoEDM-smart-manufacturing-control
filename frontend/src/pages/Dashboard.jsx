@@ -22,6 +22,7 @@ export default function Dashboard() {
   const [triacFeed, setTriacFeed] = useState(null);
 
   const [transactions, setTransactions] = useState([]);
+  const [lastUpdated, setLastUpdated] = useState({});
 
   // Fetch initial ASRS inventory count
   useEffect(() => {
@@ -72,6 +73,7 @@ export default function Dashboard() {
               row: data.payload.row,
               state: data.payload.state,
             });
+            setLastUpdated(prev => ({ ...prev, asrs: new Date().toTimeString().slice(0, 8) }));
           } else if (data.type === "led") {
             setTimeout(async () => {
               try {
@@ -87,10 +89,11 @@ export default function Dashboard() {
                   });
                   setInventoryCount(count);
                 }
-              } catch {}
+              } catch { }
             }, 1000);
           }
-        } catch {}
+          window.dispatchEvent(new Event('asrs-ws-activity'));
+        } catch { }
       };
       asrsWs.onclose = () => {
         setAsrsConnected(false);
@@ -102,9 +105,25 @@ export default function Dashboard() {
       const assemblyWs = new WebSocket(assemblyUrl);
       sockets.push(assemblyWs);
       assemblyWs.onopen = () => setAssemblyConnected(true);
+      let assemblyLastData = null;
       assemblyWs.onmessage = (e) => {
         try {
-          const data = JSON.parse(e.data);
+          const msg = JSON.parse(e.data);
+          let data;
+          if (msg.type === 'snapshot') {
+            data = msg.data;
+            assemblyLastData = data;
+          } else if (msg.type === 'delta') {
+            // Simple shallow merge for dashboard (only needs top-level fields)
+            assemblyLastData = assemblyLastData ? {
+              ...assemblyLastData, ...msg.data,
+              position: { ...(assemblyLastData.position || {}), ...(msg.data.position || {}) },
+              safety: { ...(assemblyLastData.safety || {}), ...(msg.data.safety || {}) },
+            } : msg.data;
+            data = assemblyLastData;
+          } else {
+            return; // heartbeat
+          }
           setAssemblyConnected(data.connected !== false);
           if (data.position?.displacement_mm !== undefined) {
             const disp = Math.max(0, data.position.displacement_mm - 43);
@@ -115,7 +134,8 @@ export default function Dashboard() {
           } else {
             setAssemblySafety("OK");
           }
-        } catch {}
+          setLastUpdated(prev => ({ ...prev, assembly: new Date().toTimeString().slice(0, 8) }));
+        } catch { }
       };
       assemblyWs.onclose = () => {
         setAssemblyConnected(false);
@@ -127,9 +147,24 @@ export default function Dashboard() {
       const miracWs = new WebSocket(miracUrl);
       sockets.push(miracWs);
       miracWs.onopen = () => setMiracConnected(true);
+      let miracLastData = null;
       miracWs.onmessage = (e) => {
         try {
-          const data = JSON.parse(e.data);
+          const msg = JSON.parse(e.data);
+          let data;
+          if (msg.type === 'snapshot') {
+            data = msg.data;
+            miracLastData = data;
+          } else if (msg.type === 'delta') {
+            miracLastData = miracLastData ? {
+              ...miracLastData, ...msg.data,
+              spindle: { ...(miracLastData.spindle || {}), ...(msg.data.spindle || {}) },
+              data_sources: { ...(miracLastData.data_sources || {}), ...(msg.data.data_sources || {}) },
+            } : msg.data;
+            data = miracLastData;
+          } else {
+            return; // heartbeat
+          }
           const plcOn = data.data_sources?.plc ?? false;
           setMiracConnected(plcOn);
           if (data.spindle?.speed !== undefined && data.spindle?.speed !== null) {
@@ -138,7 +173,8 @@ export default function Dashboard() {
           if (data.spindle?.temperature !== undefined && data.spindle?.temperature !== null) {
             setMiracTemp(data.spindle.temperature);
           }
-        } catch {}
+          setLastUpdated(prev => ({ ...prev, mirac: new Date().toTimeString().slice(0, 8) }));
+        } catch { }
       };
       miracWs.onclose = () => {
         setMiracConnected(false);
@@ -150,9 +186,28 @@ export default function Dashboard() {
       const triacWs = new WebSocket(triacUrl);
       sockets.push(triacWs);
       triacWs.onopen = () => setTriacConnected(true);
+      let triacLastData = null;
       triacWs.onmessage = (e) => {
         try {
-          const data = JSON.parse(e.data);
+          const msg = JSON.parse(e.data);
+          let data;
+          if (msg.type === 'snapshot') {
+            data = msg.data;
+            triacLastData = data;
+          } else if (msg.type === 'delta') {
+            triacLastData = triacLastData ? {
+              ...triacLastData, ...msg.data,
+              spindle: { ...(triacLastData.spindle || {}), ...(msg.data.spindle || {}) },
+              axes: {
+                ...(triacLastData.axes || {}), ...(msg.data.axes || {}),
+                x: { ...((triacLastData.axes || {}).x || {}), ...((msg.data.axes || {}).x || {}) },
+              },
+              data_sources: { ...(triacLastData.data_sources || {}), ...(msg.data.data_sources || {}) },
+            } : msg.data;
+            data = triacLastData;
+          } else {
+            return; // heartbeat
+          }
           const plcOn = data.data_sources?.plc ?? false;
           setTriacConnected(plcOn);
           if (data.spindle?.speed !== undefined && data.spindle?.speed !== null) {
@@ -161,7 +216,8 @@ export default function Dashboard() {
           if (data.axes?.x?.feed !== undefined && data.axes?.x?.feed !== null) {
             setTriacFeed(data.axes.x.feed);
           }
-        } catch {}
+          setLastUpdated(prev => ({ ...prev, triac: new Date().toTimeString().slice(0, 8) }));
+        } catch { }
       };
       triacWs.onclose = () => {
         setTriacConnected(false);
@@ -177,17 +233,18 @@ export default function Dashboard() {
       sockets.forEach((s) => {
         try {
           s.close();
-        } catch {}
+        } catch { }
       });
     };
   }, []);
 
-  // Fetch transaction log
+  // Fetch transaction log — initial load + refresh on WS activity (debounced)
   useEffect(() => {
     const apiBase = import.meta.env.VITE_API_URL || '/api';
     const httpBase = apiBase.startsWith('http') ? apiBase : `${window.location.origin}${apiBase}`;
     let isMounted = true;
-    
+    let refreshTimer = null;
+
     const fetchEvents = async () => {
       try {
         const res = await fetch(`${httpBase}/data/events?limit=25`);
@@ -199,18 +256,34 @@ export default function Dashboard() {
         console.error("Failed to fetch events:", e);
       }
     };
-    
+
+    // Initial load
     fetchEvents();
-    const interval = setInterval(fetchEvents, 3000);
+
+    // Refresh at most once every 5s when triggered by WS activity
+    const scheduleRefresh = () => {
+      if (refreshTimer) return;
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null;
+        if (isMounted) fetchEvents();
+      }, 5000);
+    };
+
+    // Listen for any WS message on the page to trigger a refresh
+    const handleWsActivity = () => scheduleRefresh();
+    window.addEventListener('asrs-ws-activity', handleWsActivity);
+
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      if (refreshTimer) clearTimeout(refreshTimer);
+      window.removeEventListener('asrs-ws-activity', handleWsActivity);
     };
   }, []);
 
   const stations = [
     {
       name: "AS/RS",
+      key: "asrs",
       to: "/asrs",
       icon: "inventory_2",
       description: "Automated Storage & Retrieval System",
@@ -222,7 +295,21 @@ export default function Dashboard() {
       statusText: asrsConnected ? "CONNECTED" : "OFFLINE",
     },
     {
+      name: "Assembly Station",
+      key: "assembly",
+      to: "/assembly",
+      icon: "factory",
+      description: "Hydraulic Press Control",
+      metrics: [
+        { label: "PISTON POS", value: assemblyConnected && assemblyPosition !== null ? assemblyPosition : "---", unit: assemblyConnected && assemblyPosition !== null ? "mm" : "" },
+        { label: "SAFETY SYS", value: assemblyConnected ? assemblySafety : "---", sub: "" },
+      ],
+      statusColor: assemblyConnected ? "var(--status-ok)" : "var(--status-idle)",
+      statusText: assemblyConnected ? "CONNECTED" : "OFFLINE",
+    },
+    {
       name: "Smart MIRAC",
+      key: "mirac",
       to: "/mirac",
       icon: "settings_input_component",
       description: "CNC Lathe Monitoring",
@@ -235,6 +322,7 @@ export default function Dashboard() {
     },
     {
       name: "Smart TRIAC",
+      key: "triac",
       to: "/triac",
       icon: "precision_manufacturing",
       description: "Process Control",
@@ -259,6 +347,7 @@ export default function Dashboard() {
     },
     {
       name: "Testing Station",
+      key: null,
       to: "/testing-station",
       icon: "fact_check",
       description: "Quality Assurance",
@@ -283,6 +372,7 @@ export default function Dashboard() {
     },
     {
       name: "AMR",
+      key: null,
       to: "/amr",
       icon: "local_shipping",
       description: "Autonomous Mobile Robots",
@@ -295,12 +385,26 @@ export default function Dashboard() {
     },
     {
       name: "Cobot",
+      key: null,
       to: "/cobot",
       icon: "smart_toy",
       description: "Collaborative Robot Arm",
       metrics: [
         { label: "STATE", value: "---", unit: "" },
         { label: "PAYLOAD", value: "---", unit: "kg" },
+      ],
+      statusColor: "var(--status-idle)",
+      statusText: "OFFLINE",
+    },
+    {
+      name: "Inspection",
+      key: null,
+      to: "/inspection",
+      icon: "policy",
+      description: "Visual Defect Inspection",
+      metrics: [
+        { label: "PASS RATE", value: "---", unit: "%" },
+        { label: "REJECTS", value: "---", unit: "" },
       ],
       statusColor: "var(--status-idle)",
       statusText: "OFFLINE",
@@ -422,11 +526,19 @@ export default function Dashboard() {
               {/* Details link footer */}
               <div style={{
                 display: 'flex',
-                justifyContent: 'flex-end',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 borderTop: '1px solid var(--border-light)',
                 paddingTop: '8px',
                 marginTop: '8px'
               }}>
+                {lastUpdated[s.key] ? (
+                  <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#475569' }}>
+                    UPD: {lastUpdated[s.key]}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '9px', color: 'transparent' }}>—</span>
+                )}
                 <span style={{
                   fontSize: '9px',
                   fontWeight: 800,
@@ -465,39 +577,39 @@ export default function Dashboard() {
                 {transactions.map((row, i) => {
                   const eventTime = new Date(row.time);
                   let timeStr = row.time;
-                  try { timeStr = eventTime.toISOString().substring(11, 23); } catch (e) {}
+                  try { timeStr = eventTime.toISOString().substring(11, 23); } catch (e) { }
                   let code = "OP_OK";
                   if (row.severity === "warning") code = "WARN";
                   if (row.severity === "critical") code = "ERR";
                   return (
-                  <tr key={i} style={{
-                    borderBottom: '1px solid var(--border-light)',
-                    transition: 'background 150ms ease-out',
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <td style={{
-                      padding: '10px 16px',
-                      color: code.startsWith('ERR') ? 'var(--status-error)' : code.startsWith('WARN') ? 'var(--status-warn)' : 'var(--text-secondary)',
-                    }}>{timeStr}</td>
-                    <td style={{
-                      padding: '10px 16px',
-                      fontWeight: 800,
-                      color: 'var(--text-primary)',
-                      textTransform: 'uppercase'
-                    }}>{row.machine_id}</td>
-                    <td style={{
-                      padding: '10px 16px',
-                      color: 'var(--text-secondary)',
-                      fontFamily: 'var(--font-sans)'
-                    }}>{row.title}</td>
-                    <td style={{
-                      padding: '10px 16px',
-                      fontWeight: 700,
-                      color: code.startsWith('ERR') ? 'var(--status-error)' : code.startsWith('WARN') ? 'var(--status-warn)' : 'var(--status-ok)',
-                    }}>{code}</td>
-                  </tr>
+                    <tr key={i} style={{
+                      borderBottom: '1px solid var(--border-light)',
+                      transition: 'background 150ms ease-out',
+                    }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{
+                        padding: '10px 16px',
+                        color: code.startsWith('ERR') ? 'var(--status-error)' : code.startsWith('WARN') ? 'var(--status-warn)' : 'var(--text-secondary)',
+                      }}>{timeStr}</td>
+                      <td style={{
+                        padding: '10px 16px',
+                        fontWeight: 800,
+                        color: 'var(--text-primary)',
+                        textTransform: 'uppercase'
+                      }}>{row.machine_id}</td>
+                      <td style={{
+                        padding: '10px 16px',
+                        color: 'var(--text-secondary)',
+                        fontFamily: 'var(--font-sans)'
+                      }}>{row.title}</td>
+                      <td style={{
+                        padding: '10px 16px',
+                        fontWeight: 700,
+                        color: code.startsWith('ERR') ? 'var(--status-error)' : code.startsWith('WARN') ? 'var(--status-warn)' : 'var(--status-ok)',
+                      }}>{code}</td>
+                    </tr>
                   );
                 })}
               </tbody>

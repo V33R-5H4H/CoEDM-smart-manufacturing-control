@@ -152,6 +152,10 @@ class VibitModbusReader:
                 str(e),
                 level=logging.WARNING
             )
+            try:
+                self.client.close()
+            except Exception:
+                pass
             return None
 
         if res_p.isError():
@@ -179,6 +183,10 @@ class VibitModbusReader:
                 str(e),
                 level=logging.WARNING
             )
+            try:
+                self.client.close()
+            except Exception:
+                pass
             return None
 
         if res_e.isError():
@@ -365,6 +373,11 @@ class VibitModbusReader:
                     level=logging.WARNING
                 )
                 if _is_comm_error(err_str):
+                    # Force close and reconnect on next call
+                    try:
+                        self.client.close()
+                    except Exception:
+                        pass
                     break
                 continue
 

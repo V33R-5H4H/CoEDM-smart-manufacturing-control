@@ -30,15 +30,13 @@ class MiracBroadcaster:
             host=settings.VIBIT_HOST,
             port=settings.VIBIT_PORT,
             device_id=settings.VIBIT_UNIT_ID,
-            base_address=4001,
-            register_type="holding"
+            # No base_address/register_type — let auto-detection find the correct profile
         )
         self.vibit_reader_2 = VibitModbusReader(
             host=settings.VIBIT_HOST,
             port=settings.VIBIT_PORT,
             device_id=settings.VIBIT_UNIT_ID_2,
-            base_address=4001,
-            register_type="holding"
+            # No base_address/register_type — let auto-detection find the correct profile
         )
         self.vibit_reader_3 = VibitModbusReader(
             host=settings.VIBIT_HOST,
@@ -553,11 +551,12 @@ class MiracBroadcaster:
                     if red_active:
                         asyncio.create_task(self._log_machine_event_db("mirac", "alarm", "warning", "Status Tower: Red Indicator Active", {"light_red": True}))
 
-            # Throttle physical Modbus reads to 1 Hz (every 1.0s).
-            # VibIT sensors update their internal RMS registers ~1s — reading
-            # faster returns stale values. 1.0s is the practical minimum.
+            # Throttle physical Modbus reads to match sensor update rate.
+            # VibIT sensors update their internal RMS registers every ~7-8s.
+            # Reading at 30s reduces unnecessary RS485 bus traffic while still
+            # capturing every meaningful update cycle.
             now = time.time()
-            if now - self._last_modbus_read_time >= 1.0:
+            if now - self._last_modbus_read_time >= 30.0:
                 self._last_modbus_read_time = now
                 vibit1_data, vibit2_data, vibit3_data = await asyncio.gather(
                     asyncio.to_thread(self.vibit_reader_1.read_snapshot),
@@ -649,9 +648,12 @@ class MiracBroadcaster:
                 ]
                 for key in all_keys:
                     if key not in data_dict or data_dict[key] is None:
-                        # Use None when disconnected so frontend shows "---"
-                        # Use 0.0 when connected but key is missing (partial read)
-                        data_dict[key] = 0.0 if connected else None
+                        # If connected but key missing: use 0.0 (partial read)
+                        # If disconnected and no cached value: use None (show "---")
+                        # If disconnected but key already has a cached value: keep it (show last-good)
+                        if connected:
+                            data_dict[key] = 0.0
+                        # else: leave as None if not present, keep existing value if present
                 return data_dict
 
             vibit1_effective = fill_defaults(vibit1_effective, vibit1_connected or bool(self._last_good_vibit1))
