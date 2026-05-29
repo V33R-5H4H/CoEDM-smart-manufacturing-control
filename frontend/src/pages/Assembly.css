@@ -65,29 +65,32 @@
   border-color: #0ea5e9;
   box-shadow: 0 0 8px rgba(14, 165, 233, 0.3);
 }
-.asm-btn--vice-open {
+/* Vice toggle button — single button that reflects current state */
+.asm-btn--vice-toggle {
   height: 32px;
   font-size: 0.72rem;
-  color: #f59e0b;
-  border-color: rgba(245, 158, 11, 0.4);
-  background: rgba(245, 158, 11, 0.05);
-}
-.asm-btn--vice-open:hover:not(:disabled) {
-  background: rgba(245, 158, 11, 0.15);
-  border-color: #f59e0b;
-  box-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
-}
-.asm-btn--vice-close {
-  height: 32px;
-  font-size: 0.72rem;
-  color: #a78bfa;
+  min-width: 110px;
   border-color: rgba(167, 139, 250, 0.4);
   background: rgba(167, 139, 250, 0.05);
+  color: #a78bfa;
+  transition: all var(--transition-fast), background 0.2s ease;
 }
-.asm-btn--vice-close:hover:not(:disabled) {
-  background: rgba(167, 139, 250, 0.15);
-  border-color: #a78bfa;
+.asm-btn--vice-toggle--closed {
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.08);
+}
+.asm-btn--vice-toggle--open {
+  color: #a78bfa;
+  border-color: rgba(167, 139, 250, 0.4);
+  background: rgba(167, 139, 250, 0.08);
+}
+.asm-btn--vice-toggle:hover:not(:disabled) {
+  filter: brightness(1.2);
   box-shadow: 0 0 8px rgba(167, 139, 250, 0.3);
+}
+.asm-btn--vice-toggle--closed:hover:not(:disabled) {
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
 }
 .asm-btn--clear {
   color: var(--text-muted);
@@ -183,6 +186,20 @@
   display: flex;
   flex-direction: column;
   gap: 8px !important;
+}
+
+/* Clickable HUD Cards */
+.asm-hud-card--clickable {
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background-color 0.2s ease, border-color 0.2s ease !important;
+}
+
+.asm-hud-card--clickable:hover {
+  background-color: #2a2e38 !important;
+  transform: none !important;
+  box-shadow: none !important;
+  border-color: #44474c !important;
 }
 .asm-hud-header {
   font-family: 'Inter', sans-serif;

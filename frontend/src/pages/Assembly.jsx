@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { flushSync } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import AssemblyControlService from '../services/Assemblycontrol';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { toast } from 'react-toastify';
 import '../components/industrial-ui.css';
 import './Assembly.css';
 import PageHeader from '../components/PageHeader';
@@ -492,6 +492,21 @@ export default function Assembly() {
     }
   };
 
+  const handleViceToggle = async () => {
+    const command = plantData?.vice?.close ? 'VICE_OPEN' : 'VICE_CLOSE';
+    const label = command === 'VICE_OPEN' ? 'Vice OPEN' : 'Vice CLOSE';
+    setIsLoading(true);
+    try {
+      const response = await AssemblyControlService.runCommand(command);
+      setLastCommand(label);
+      toast.success(response.message || `Vice ${command === 'VICE_OPEN' ? 'open' : 'close'} command executed`);
+    } catch (e) {
+      toast.error(`Failed to execute Vice command: ${e.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const isSafetyFault = !!(plantData?.safety?.curtain || plantData?.safety?.buzzer);
   const displacementFloat = smoothedPosition != null ? Math.max(0, smoothedPosition - 43) : 0;
   const displacement = smoothedPosition != null ? Math.round(displacementFloat) : null;
@@ -583,7 +598,7 @@ export default function Assembly() {
                 {/* Left Column: Piston Diagnostics HUD */}
                 <div
                   className="asm-hud-card asm-hud-card--clickable"
-                  onClick={() => setActiveModal("piston")}
+                  onClick={() => flushSync(() => setActiveModal("piston"))}
                   style={{ cursor: "pointer" }}
                   title="Click to open detailed diagnostics panel"
                 >
@@ -776,7 +791,7 @@ export default function Assembly() {
                 {/* Right Column: Clamp & Workpiece HUD */}
                 <div
                   className="asm-hud-card asm-hud-card--clickable"
-                  onClick={() => setActiveModal("clamp")}
+                  onClick={() => flushSync(() => setActiveModal("clamp"))}
                   style={{ cursor: "pointer" }}
                   title="Click to open detailed diagnostics panel"
                 >
@@ -834,24 +849,17 @@ export default function Assembly() {
             </div>
             <div style={{ width: '1px', height: '20px', background: 'var(--border)', margin: '0 4px', flexShrink: 0 }} />
             <span className="asm-cmd__label" style={{ marginRight: 0 }}>Vice:</span>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                type="button"
-                className="asm-btn asm-btn--vice-open"
-                onClick={handleViceOpen}
-                disabled={isLoading || isSafetyFault || !isConnected || plantData?.vice?.open === true}
-              >
-                {isLoading && lastCommand === 'Vice OPEN' ? 'Opening…' : 'Open Vice'}
-              </button>
-              <button
-                type="button"
-                className="asm-btn asm-btn--vice-close"
-                onClick={handleViceClose}
-                disabled={isLoading || isSafetyFault || !isConnected || plantData?.vice?.close === true}
-              >
-                {isLoading && lastCommand === 'Vice CLOSE' ? 'Closing…' : 'Close Vice'}
-              </button>
-            </div>
+            <button
+              type="button"
+              className={`asm-btn asm-btn--vice-toggle ${plantData?.vice?.close ? 'asm-btn--vice-toggle--closed' : 'asm-btn--vice-toggle--open'}`}
+              onClick={handleViceToggle}
+              disabled={isLoading || isSafetyFault || !isConnected}
+              title={plantData?.vice?.close ? 'Vice is CLOSED — click to open' : 'Vice is OPEN — click to close'}
+            >
+              {isLoading && (lastCommand === 'Vice OPEN' || lastCommand === 'Vice CLOSE')
+                ? (lastCommand === 'Vice OPEN' ? 'Opening…' : 'Closing…')
+                : plantData?.vice?.close ? 'Close Vice ●' : 'Open Vice ○'}
+            </button>
           </div>
         </main>
       </div>
@@ -1443,15 +1451,6 @@ export default function Assembly() {
           </div>
         </div>
       )}
-
-      <ToastContainer
-        position="bottom-right"
-        autoClose={4000}
-        closeOnClick
-        pauseOnHover
-        draggable
-        theme={theme}
-      />
 
       {/* DEBUG: Temporary Data Visualization */}
       {/* <div style={{

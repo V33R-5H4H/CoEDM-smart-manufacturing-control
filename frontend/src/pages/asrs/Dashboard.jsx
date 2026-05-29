@@ -6,8 +6,7 @@ import TopStatusRibbon from "./components/TopStatusRibbon";
 import PageHeader from "../../components/PageHeader";
 import { useLEDMonitoring } from "./hooks/useLEDMonitoring";
 import { useTheme } from "../../theme/ThemeContext";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
 import "../Assembly.css";
 import SafetyOverlay from "../../components/SafetyOverlay";
 
@@ -302,14 +301,6 @@ function Dashboard() {
         />
       </div>
 
-      <ToastContainer
-        position="bottom-right"
-        autoClose={4000}
-        closeOnClick
-        pauseOnHover
-        draggable
-        theme={theme}
-      />
     </div>
   );
 }

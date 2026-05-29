@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
 import PageHeader from "../components/PageHeader";
 import SensorDot from "../components/SensorDot";
 import DraggableHUD from "../components/DraggableHUD";
@@ -565,7 +564,6 @@ export default function Cobot() {
 
         </div>
       </div>
-      <ToastContainer position="bottom-right" autoClose={3000} closeOnClick pauseOnHover />
     </div>
   );
 }

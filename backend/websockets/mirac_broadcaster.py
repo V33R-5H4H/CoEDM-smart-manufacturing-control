@@ -649,9 +649,12 @@ class MiracBroadcaster:
                 ]
                 for key in all_keys:
                     if key not in data_dict or data_dict[key] is None:
-                        # Use None when disconnected so frontend shows "---"
-                        # Use 0.0 when connected but key is missing (partial read)
-                        data_dict[key] = 0.0 if connected else None
+                        # If connected but key missing: use 0.0 (partial read)
+                        # If disconnected and no cached value: use None (show "---")
+                        # If disconnected but key already has a cached value: keep it (show last-good)
+                        if connected:
+                            data_dict[key] = 0.0
+                        # else: leave as None if not present, keep existing value if present
                 return data_dict
 
             vibit1_effective = fill_defaults(vibit1_effective, vibit1_connected or bool(self._last_good_vibit1))

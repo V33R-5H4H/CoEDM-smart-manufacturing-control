@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { flushSync } from "react-dom";
+import { toast } from "react-toastify";
 import PageHeader from "../components/PageHeader";
 import TriacStatusRibbon from "./asrs/components/TriacStatusRibbon";
 import TriacControlService from "../services/TriacControl";
@@ -797,7 +797,7 @@ export default function Triac() {
             {/* Vibit Sensor 1: Spindle */}
             <div
               className="asm-hud-card asm-hud-card--clickable"
-              onClick={() => setActiveModal("spindle")}
+              onClick={() => flushSync(() => setActiveModal("spindle"))}
               title="Click to open detailed diagnostics panel"
             >
               <div className="asm-hud-header">
@@ -827,7 +827,7 @@ export default function Triac() {
             {/* Vibit Sensor 2: Tool */}
             <div
               className="asm-hud-card asm-hud-card--clickable tool-hover"
-              onClick={() => setActiveModal("tool")}
+              onClick={() => flushSync(() => setActiveModal("tool"))}
               title="Click to open detailed diagnostics panel"
             >
               <div className="asm-hud-header">
@@ -863,7 +863,7 @@ export default function Triac() {
             {/* Energy Meter — Repurposed from Unit ID 3 */}
             <div
               className="asm-hud-card asm-hud-card--clickable energy-hover"
-              onClick={() => setActiveModal("energy")}
+              onClick={() => flushSync(() => setActiveModal("energy"))}
               title="Click to open detailed diagnostics panel"
             >
               <div className="asm-hud-header">
@@ -999,7 +999,7 @@ export default function Triac() {
             {/* Live Axis Telemetry */}
             <div
               className="asm-hud-card asm-hud-card--clickable"
-              onClick={() => setActiveModal("axis")}
+              onClick={() => flushSync(() => setActiveModal("axis"))}
             >
               <div className="asm-hud-header">
                 <span><SensorDot connected={plcOnline} />Axis Positions</span>
@@ -1417,7 +1417,6 @@ export default function Triac() {
         </div>
       )}
 
-      <ToastContainer position="bottom-right" autoClose={4000} closeOnClick pauseOnHover />
     </div>
   );
 }

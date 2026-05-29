@@ -81,17 +81,29 @@ class HydraulicBroadcaster:
                 
             session = SessionLocal()
             try:
+                # Derive vice_status from open/close flags
+                vice_open = payload["vice"]["open"]
+                vice_close = payload["vice"]["close"]
+                if vice_close:
+                    vice_status = "closed"
+                elif vice_open:
+                    vice_status = "open"
+                else:
+                    vice_status = "unknown"
+
                 session.execute(
                     text("""
                         INSERT INTO assembly_station_data (
                             time, machine_id, sensor_id,
                             bearing_operation_status, shaft_operation_status,
+                            vice_status,
                             led_red, led_yellow, led_green, safety_curtain_status,
                             displacement_mm
                         )
                         VALUES (
                             :time, 'assembly', :sensor_id,
                             :bearing, :shaft,
+                            :vice_status,
                             :red, :yellow, :green, :curtain,
                             :displacement
                         )
@@ -101,6 +113,7 @@ class HydraulicBroadcaster:
                         "sensor_id": sensor_id,
                         "bearing": payload["assembly"]["bearing"],
                         "shaft": payload["assembly"]["shaft"],
+                        "vice_status": vice_status,
                         "red": payload["safety"]["lights"]["red"],
                         "yellow": payload["safety"]["lights"]["orange"],
                         "green": payload["safety"]["lights"]["green"],

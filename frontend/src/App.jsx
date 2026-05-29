@@ -1,5 +1,7 @@
 import React, { Suspense, lazy } from "react";
 import { Routes, Route, NavLink } from "react-router-dom";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Lazy load page components to improve initial load performance (LCP)
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -107,6 +109,9 @@ export default function App() {
           </Routes>
         </Suspense>
       </main>
+
+      {/* Global Toast Notifications — single instance for all lazy-loaded pages */}
+      <ToastContainer position="bottom-right" autoClose={4000} closeOnClick pauseOnHover draggable theme="dark" />
 
       {/* Bottom Navigation Bar */}
       <nav className="bottom-nav">
