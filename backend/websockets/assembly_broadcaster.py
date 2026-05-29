@@ -1,5 +1,5 @@
 import asyncio
-import json
+import orjson
 from datetime import timedelta
 from fastapi import WebSocket
 from typing import Set
@@ -190,7 +190,7 @@ class HydraulicBroadcaster:
                         "event_type": event_type,
                         "severity": severity,
                         "title": title,
-                        "payload": json.dumps(payload_data) if payload_data else None
+                        "payload": orjson.dumps(payload_data).decode("utf-8") if payload_data else None
                     }
                 )
                 session.commit()

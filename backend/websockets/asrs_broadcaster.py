@@ -1,6 +1,6 @@
 from fastapi import WebSocket, WebSocketDisconnect
 from typing import Set
-import json
+import orjson
 import logging
 import asyncio
 
@@ -58,13 +58,13 @@ class LEDWebSocketManager:
             return
         
         # Prepare message with typed envelope
-        message = json.dumps({
+        message = orjson.dumps({
             "type": "led",
             "payload": {
                 "box_id": box_id,
                 "active": active
             }
-        })
+        }).decode("utf-8")
         
         await self._send_to_all(message)
     
@@ -84,7 +84,7 @@ class LEDWebSocketManager:
             return
         
         # Prepare message with typed envelope
-        message = json.dumps({
+        message = orjson.dumps({
             "type": "shuttle",
             "payload": {
                 "row": row,
@@ -92,7 +92,7 @@ class LEDWebSocketManager:
                 "state": state,
                 "command": command
             }
-        })
+        }).decode("utf-8")
         
         await self._send_to_all(message)
     
@@ -125,13 +125,13 @@ class LEDWebSocketManager:
             led_states: Dictionary of all LED states
             safety_curtain: Current safety curtain status
         """
-        message = json.dumps({
+        message = orjson.dumps({
             "type": "snapshot",
             "states": led_states,
             "safety": {
                 "curtain": safety_curtain
             }
-        })
+        }).decode("utf-8")
         await websocket.send_text(message)
         logging.info(f"[ASRS WebSocket] Sent snapshot (with safety={safety_curtain}) to client")
 
@@ -148,12 +148,12 @@ class LEDWebSocketManager:
             return
         
         # Prepare message with typed envelope
-        message = json.dumps({
+        message = orjson.dumps({
             "type": "safety",
             "payload": {
                 "curtain": active
             }
-        })
+        }).decode("utf-8")
         
         await self._send_to_all(message)
 

@@ -10,6 +10,7 @@ import logging.config
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import ORJSONResponse
 from sqlalchemy import text
 
 from backend.config import settings
@@ -57,6 +58,7 @@ app = FastAPI(
     description="Real-time control and monitoring for ASRS, Hydraulic, and MIRAC CNC stations.",
     version="1.0.0",
     debug=settings.DEBUG,
+    default_response_class=ORJSONResponse,
 )
 
 app.add_middleware(
