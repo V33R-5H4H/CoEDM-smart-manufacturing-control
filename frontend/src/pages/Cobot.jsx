@@ -3,6 +3,7 @@ import { toast } from "react-toastify";
 import PageHeader from "../components/PageHeader";
 import SensorDot from "../components/SensorDot";
 import DraggableHUD from "../components/DraggableHUD";
+import { useModal } from "../hooks/useModal";
 import "./Assembly.css";
 import "./Triac.css";
 
@@ -14,7 +15,7 @@ const sensorVal = (value, decimals = 2, fallback = "---") => {
 export default function Cobot() {
   const [isConnected, setIsConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
-  const [activeModal, setActiveModal] = useState(null);
+  const { activeModal, openModal, closeModal } = useModal();
 
   // Cobot simulation states
   const [cobotStatus, setCobotStatus] = useState("STANDBY"); // 'STANDBY' | 'PICKING' | 'PLACING' | 'HOMING' | 'ESTOP'

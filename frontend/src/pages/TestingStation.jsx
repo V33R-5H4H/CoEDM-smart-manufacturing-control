@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
 import PageHeader from "../components/PageHeader";
 import SensorDot from "../components/SensorDot";
 import DraggableHUD from "../components/DraggableHUD";
+import { useModal } from "../hooks/useModal";
 import "./Assembly.css";
 import "./Triac.css";
 
@@ -15,7 +15,7 @@ const sensorVal = (value, decimals = 2, fallback = "---") => {
 export default function TestingStation() {
   const [isConnected, setIsConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
-  const [activeModal, setActiveModal] = useState(null);
+  const { activeModal, openModal, closeModal } = useModal();
 
   // Live simulation states
   const [isTesting, setIsTesting] = useState(false);
@@ -550,7 +550,6 @@ export default function TestingStation() {
 
         </div>
       </div>
-      <ToastContainer position="bottom-right" autoClose={3000} closeOnClick pauseOnHover />
     </div>
   );
 }

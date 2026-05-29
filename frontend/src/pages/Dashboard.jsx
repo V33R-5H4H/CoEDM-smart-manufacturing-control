@@ -102,9 +102,24 @@ export default function Dashboard() {
       const assemblyWs = new WebSocket(assemblyUrl);
       sockets.push(assemblyWs);
       assemblyWs.onopen = () => setAssemblyConnected(true);
+      let assemblyLastData = null;
       assemblyWs.onmessage = (e) => {
         try {
-          const data = JSON.parse(e.data);
+          const msg = JSON.parse(e.data);
+          let data;
+          if (msg.type === 'snapshot') {
+            data = msg.data;
+            assemblyLastData = data;
+          } else if (msg.type === 'delta') {
+            // Simple shallow merge for dashboard (only needs top-level fields)
+            assemblyLastData = assemblyLastData ? { ...assemblyLastData, ...msg.data,
+              position: { ...(assemblyLastData.position || {}), ...(msg.data.position || {}) },
+              safety: { ...(assemblyLastData.safety || {}), ...(msg.data.safety || {}) },
+            } : msg.data;
+            data = assemblyLastData;
+          } else {
+            return; // heartbeat
+          }
           setAssemblyConnected(data.connected !== false);
           if (data.position?.displacement_mm !== undefined) {
             const disp = Math.max(0, data.position.displacement_mm - 43);
@@ -127,9 +142,23 @@ export default function Dashboard() {
       const miracWs = new WebSocket(miracUrl);
       sockets.push(miracWs);
       miracWs.onopen = () => setMiracConnected(true);
+      let miracLastData = null;
       miracWs.onmessage = (e) => {
         try {
-          const data = JSON.parse(e.data);
+          const msg = JSON.parse(e.data);
+          let data;
+          if (msg.type === 'snapshot') {
+            data = msg.data;
+            miracLastData = data;
+          } else if (msg.type === 'delta') {
+            miracLastData = miracLastData ? { ...miracLastData, ...msg.data,
+              spindle: { ...(miracLastData.spindle || {}), ...(msg.data.spindle || {}) },
+              data_sources: { ...(miracLastData.data_sources || {}), ...(msg.data.data_sources || {}) },
+            } : msg.data;
+            data = miracLastData;
+          } else {
+            return; // heartbeat
+          }
           const plcOn = data.data_sources?.plc ?? false;
           setMiracConnected(plcOn);
           if (data.spindle?.speed !== undefined && data.spindle?.speed !== null) {
@@ -150,9 +179,26 @@ export default function Dashboard() {
       const triacWs = new WebSocket(triacUrl);
       sockets.push(triacWs);
       triacWs.onopen = () => setTriacConnected(true);
+      let triacLastData = null;
       triacWs.onmessage = (e) => {
         try {
-          const data = JSON.parse(e.data);
+          const msg = JSON.parse(e.data);
+          let data;
+          if (msg.type === 'snapshot') {
+            data = msg.data;
+            triacLastData = data;
+          } else if (msg.type === 'delta') {
+            triacLastData = triacLastData ? { ...triacLastData, ...msg.data,
+              spindle: { ...(triacLastData.spindle || {}), ...(msg.data.spindle || {}) },
+              axes: { ...(triacLastData.axes || {}), ...(msg.data.axes || {}),
+                x: { ...((triacLastData.axes || {}).x || {}), ...((msg.data.axes || {}).x || {}) },
+              },
+              data_sources: { ...(triacLastData.data_sources || {}), ...(msg.data.data_sources || {}) },
+            } : msg.data;
+            data = triacLastData;
+          } else {
+            return; // heartbeat
+          }
           const plcOn = data.data_sources?.plc ?? false;
           setTriacConnected(plcOn);
           if (data.spindle?.speed !== undefined && data.spindle?.speed !== null) {

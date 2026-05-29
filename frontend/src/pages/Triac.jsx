@@ -6,6 +6,7 @@ import TriacStatusRibbon from "./asrs/components/TriacStatusRibbon";
 import TriacControlService from "../services/TriacControl";
 import SensorDot from "../components/SensorDot";
 import { deepMerge } from "../utils/deepMerge";
+import { useModal } from "../hooks/useModal";
 import "./Assembly.css";
 import "./Triac.css";
 
@@ -16,6 +17,21 @@ import "./Triac.css";
 const sensorVal = (value, decimals = 2, fallback = "---") => {
   if (value === null || value === undefined) return fallback;
   return Number(value).toFixed(decimals);
+};
+
+/**
+ * ISO 10816 vibration severity colour coding (velocity RMS in mm/s):
+ * < 2.8  → green  (Zone A — new machinery)
+ * 2.8–7.1 → amber  (Zone B — acceptable for long-term)
+ * 7.1–18  → orange (Zone C — alarm, short-term only)
+ * > 18    → red    (Zone D — danger)
+ */
+const vibColor = (value) => {
+  if (value === null || value === undefined) return '#8f9097';
+  if (value < 2.8) return '#3a9d6e';
+  if (value < 7.1) return '#c9922e';
+  if (value < 18)  return '#f97316';
+  return '#c4424b';
 };
 
 /**
@@ -338,7 +354,7 @@ export default function Triac() {
   const [isConnected, setIsConnected] = useState(false); // OPC-UA connectivity
   const [statusLoading, setStatusLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("monitoring");
-  const [activeModal, setActiveModal] = useState(null); // 'spindle' | 'tool' | 'energy' | null
+  const { activeModal, openModal, closeModal } = useModal();
 
   // Smooth position state for axis coordinate interpolation
   const [smoothedX, setSmoothedX] = useState(0);
@@ -362,6 +378,14 @@ export default function Triac() {
   const reconnectTimerRef = useRef(null);
   // Ref that always holds the latest merged data (avoids stale closure in onmessage)
   const dataRef = useRef(null);
+
+  // VibIT last-seen timestamps (shown when sensor is offline but cached data exists)
+  const vibit1LastSeenRef = useRef(null);
+  const vibit2LastSeenRef = useRef(null);
+  const vibit3LastSeenRef = useRef(null);
+  const [vibit1LastSeen, setVibit1LastSeen] = useState(null);
+  const [vibit2LastSeen, setVibit2LastSeen] = useState(null);
+  const [vibit3LastSeen, setVibit3LastSeen] = useState(null);
 
   // Data source connectivity flags from backend
   const dataSources = data?.data_sources || {};
@@ -415,6 +439,16 @@ export default function Triac() {
 
         }
         // heartbeat: connection is alive, nothing to update in the UI
+
+        // Update last-seen timestamps for VibIT sensors (Change 1 & 6)
+        const latestData = dataRef.current;
+        if (latestData) {
+          const now = new Date();
+          const timeStr = now.toTimeString().slice(0, 8);
+          if (latestData?.data_sources?.vibit1) { vibit1LastSeenRef.current = timeStr; setVibit1LastSeen(timeStr); }
+          if (latestData?.data_sources?.vibit2) { vibit2LastSeenRef.current = timeStr; setVibit2LastSeen(timeStr); }
+          if (latestData?.data_sources?.vibit3) { vibit3LastSeenRef.current = timeStr; setVibit3LastSeen(timeStr); }
+        }
 
       } catch (err) {
         console.error("[Triac] Error parsing WebSocket message:", err);
@@ -554,6 +588,8 @@ export default function Triac() {
       }
     };
   }, []);
+
+  // Close modal on Escape key — handled by useModal hook
 
   const handleConnect = async () => {
     setStatusLoading(true);
@@ -797,19 +833,26 @@ export default function Triac() {
             {/* Vibit Sensor 1: Spindle */}
             <div
               className="asm-hud-card asm-hud-card--clickable"
-              onClick={() => flushSync(() => setActiveModal("spindle"))}
+              onClick={() => flushSync(() => openModal("spindle"))}
               title="Click to open detailed diagnostics panel"
             >
               <div className="asm-hud-header">
                 <span><SensorDot connected={vibit1Online} />Vibit Spindle Sensor (U1)</span>
-                <span className={`asm-hud-badge ${vibit1Online && data?.spindle?.speed > 0 ? "asm-hud-badge--active" : ""}`}>
-                  {!vibit1Online ? "OFFLINE" : data?.spindle?.speed > 0 ? "MILLING" : "IDLE"}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className={`asm-hud-badge ${vibit1Online && data?.spindle?.speed > 0 ? "asm-hud-badge--active" : ""}`}>
+                    {!vibit1Online ? "OFFLINE" : data?.spindle?.speed > 0 ? "MILLING" : "IDLE"}
+                  </span>
+                  {!vibit1Online && vibit1LastSeen && (
+                    <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#475569', fontWeight: 600 }}>
+                      LAST: {vibit1LastSeen}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="asm-val-grid">
                 <div className="asm-val">
                   <div className="asm-val__label">Vibration</div>
-                  <div className="asm-val__num asm-val__num--glowing-blue">
+                  <div className="asm-val__num" style={{ color: vibColor(data?.spindle?.vibration) }}>
                     {sensorVal(data?.spindle?.vibration)}
                     <span className="asm-val__unit">mm/s</span>
                   </div>
@@ -827,19 +870,26 @@ export default function Triac() {
             {/* Vibit Sensor 2: Tool */}
             <div
               className="asm-hud-card asm-hud-card--clickable tool-hover"
-              onClick={() => flushSync(() => setActiveModal("tool"))}
+              onClick={() => flushSync(() => openModal("tool"))}
               title="Click to open detailed diagnostics panel"
             >
               <div className="asm-hud-header">
                 <span><SensorDot connected={vibit2Online} />Vibit Tool Sensor (U2)</span>
-                <span className={`asm-hud-badge ${vibit2Online ? "asm-hud-badge--active" : ""}`}>
-                  {vibit2Online ? "ACTIVE" : "OFFLINE"}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className={`asm-hud-badge ${vibit2Online ? "asm-hud-badge--active" : ""}`}>
+                    {vibit2Online ? "ACTIVE" : "OFFLINE"}
+                  </span>
+                  {!vibit2Online && vibit2LastSeen && (
+                    <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#475569', fontWeight: 600 }}>
+                      LAST: {vibit2LastSeen}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="asm-val-grid">
                 <div className="asm-val">
                   <div className="asm-val__label">Vibration</div>
-                  <div className="asm-val__num asm-val__num--glowing-orange">
+                  <div className="asm-val__num" style={{ color: vibColor(data?.tool?.vibration) }}>
                     {sensorVal(data?.tool?.vibration)}
                     <span className="asm-val__unit">mm/s</span>
                   </div>
@@ -863,14 +913,21 @@ export default function Triac() {
             {/* Energy Meter — Repurposed from Unit ID 3 */}
             <div
               className="asm-hud-card asm-hud-card--clickable energy-hover"
-              onClick={() => flushSync(() => setActiveModal("energy"))}
+              onClick={() => flushSync(() => openModal("energy"))}
               title="Click to open detailed diagnostics panel"
             >
               <div className="asm-hud-header">
                 <span><SensorDot connected={vibit3Online} />Energy Meter (U3)</span>
-                <span className={`asm-hud-badge ${vibit3Online ? "asm-hud-badge--active" : ""}`}>
-                  {vibit3Online ? "LIVE" : "OFFLINE"}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className={`asm-hud-badge ${vibit3Online ? "asm-hud-badge--active" : ""}`}>
+                    {vibit3Online ? "LIVE" : "OFFLINE"}
+                  </span>
+                  {!vibit3Online && vibit3LastSeen && (
+                    <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#475569', fontWeight: 600 }}>
+                      LAST: {vibit3LastSeen}
+                    </span>
+                  )}
+                </div>
               </div>
               {data?.energy_meter ? (
                 <div className="asm-val-grid">
@@ -999,7 +1056,7 @@ export default function Triac() {
             {/* Live Axis Telemetry */}
             <div
               className="asm-hud-card asm-hud-card--clickable"
-              onClick={() => flushSync(() => setActiveModal("axis"))}
+              onClick={() => flushSync(() => openModal("axis"))}
             >
               <div className="asm-hud-header">
                 <span><SensorDot connected={plcOnline} />Axis Positions</span>
@@ -1099,7 +1156,7 @@ export default function Triac() {
             alignItems: "center",
             justifyContent: "center",
           }}
-          onClick={() => setActiveModal(null)}
+          onClick={() => closeModal()}
         >
           <div
             style={{
@@ -1119,7 +1176,7 @@ export default function Triac() {
           >
             {/* Close Button */}
             <button
-              onClick={() => setActiveModal(null)}
+              onClick={() => closeModal()}
               style={{
                 position: "absolute",
                 top: "16px",

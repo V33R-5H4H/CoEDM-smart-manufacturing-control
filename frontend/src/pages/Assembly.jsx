@@ -10,6 +10,7 @@ import { useTheme } from '../theme/ThemeContext';
 import AssemblyStatusRibbon from './asrs/components/AssemblyStatusRibbon';
 import SafetyOverlay from '../components/SafetyOverlay';
 import { deepMerge } from '../utils/deepMerge';
+import { useModal } from '../hooks/useModal';
 // recharts imports kept for future graph tab (currently commented out in render)
 import {
   LineChart,
@@ -31,7 +32,7 @@ export default function Assembly() {
   const [statusLoading, setStatusLoading] = useState(false);
   const [plantData, setPlantData] = useState(null);
   const [activeTab, setActiveTab] = useState('monitoring');
-  const [activeModal, setActiveModal] = useState(null); // 'piston' | 'clamp' | null
+  const { activeModal, openModal, closeModal } = useModal();
 
   // Smoothed position state for animation
   const [smoothedPosition, setSmoothedPosition] = useState(43);
@@ -400,6 +401,8 @@ export default function Assembly() {
 
   }, [smoothedDataPoints]);
 
+  // Close modal on Escape key — handled by useModal hook
+
   const handleConnect = async () => {
     setStatusLoading(true);
     try {
@@ -598,7 +601,7 @@ export default function Assembly() {
                 {/* Left Column: Piston Diagnostics HUD */}
                 <div
                   className="asm-hud-card asm-hud-card--clickable"
-                  onClick={() => flushSync(() => setActiveModal("piston"))}
+                  onClick={() => flushSync(() => openModal("piston"))}
                   style={{ cursor: "pointer" }}
                   title="Click to open detailed diagnostics panel"
                 >
@@ -791,7 +794,7 @@ export default function Assembly() {
                 {/* Right Column: Clamp & Workpiece HUD */}
                 <div
                   className="asm-hud-card asm-hud-card--clickable"
-                  onClick={() => flushSync(() => setActiveModal("clamp"))}
+                  onClick={() => flushSync(() => openModal("clamp"))}
                   style={{ cursor: "pointer" }}
                   title="Click to open detailed diagnostics panel"
                 >
@@ -1261,7 +1264,7 @@ export default function Assembly() {
             alignItems: "center",
             justifyContent: "center"
           }}
-          onClick={() => setActiveModal(null)}
+          onClick={() => closeModal()}
         >
           <div
             style={{
@@ -1280,7 +1283,7 @@ export default function Assembly() {
           >
             {/* Close Button */}
             <button
-              onClick={() => setActiveModal(null)}
+              onClick={() => closeModal()}
               style={{
                 position: "absolute",
                 top: "16px",
