@@ -46,6 +46,7 @@ export default function Assembly() {
   const [plotData, setPlotData] = useState([]);
   const plotTimestampRef = useRef(0);
   const plotDataPointsRef = useRef([]);
+  const plantDataRef = useRef(null);
 
   // Canvas refs for real-time plotting
   const rawCanvasRef = useRef(null);
@@ -104,9 +105,17 @@ export default function Assembly() {
     };
 
     ws.onmessage = (e) => {
-      const data = JSON.parse(e.data);
+      const msg = JSON.parse(e.data);
       const now = performance.now();
 
+      let data = msg;
+      if (msg.type === 'snapshot') {
+        data = msg.data;
+        plantDataRef.current = data;
+      } else if (msg.type === 'delta') {
+        data = deepMerge(plantDataRef.current || {}, msg.data);
+        plantDataRef.current = data;
+      }
 
       // Capture telemetry values instantly in refs to bypass React state update lag / throttling
       if (data.position?.displacement_mm !== undefined) {
