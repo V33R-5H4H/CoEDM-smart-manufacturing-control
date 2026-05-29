@@ -235,13 +235,14 @@
 }
 
 .asm-axis-letter {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  font-weight: 700;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 800;
 }
 
-.asm-axis-letter--x { color: #8f9097; }
-.asm-axis-letter--z { color: #8f9097; }
+.asm-axis-letter--x { color: #38bdf8; }
+.asm-axis-letter--y { color: #4ade80; }
+.asm-axis-letter--z { color: #ff7b00; }
 
 .asm-axis-line {
   flex: 1;
