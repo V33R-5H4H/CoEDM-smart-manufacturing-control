@@ -255,19 +255,31 @@ class TriacBroadcaster:
             # Modbus TCP is request-response only — sensors cannot push data.
             # Polling every 8s ensures we capture each new reading within one
             # update cycle with minimal wasted reads.
+            #
+            # All three readers share ONE persistent TCP connection via VibitGateway.
+            # The gateway's internal RLock serialises reads — no gaps needed.
             now = time.time()
             if now - self._last_modbus_read_time >= 8.0:
                 self._last_modbus_read_time = now
-                vibit1_data, vibit2_data, vibit3_data = await asyncio.gather(
-                    asyncio.to_thread(self.vibit_reader_1.read_snapshot),
-                    asyncio.to_thread(self.vibit_reader_2.read_snapshot),
-                    asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, True),
-                    return_exceptions=True
-                )
-                # Treat exceptions as None (sensor offline)
-                if isinstance(vibit1_data, Exception): vibit1_data = None
-                if isinstance(vibit2_data, Exception): vibit2_data = None
-                if isinstance(vibit3_data, Exception): vibit3_data = None
+
+                # Read U1 (spindle VibIT)
+                try:
+                    vibit1_data = await asyncio.to_thread(self.vibit_reader_1.read_snapshot)
+                except Exception:
+                    vibit1_data = None
+
+                # Read U2 (tool VibIT)
+                try:
+                    vibit2_data = await asyncio.to_thread(self.vibit_reader_2.read_snapshot)
+                except Exception:
+                    vibit2_data = None
+
+                # Read U3 (energy meter) — always read last
+                try:
+                    vibit3_data = await asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, False)
+                except Exception:
+                    vibit3_data = None
+
                 self._cached_modbus_data = (vibit1_data, vibit2_data, vibit3_data)
 
                 # Log to DB when we get new snapshots
