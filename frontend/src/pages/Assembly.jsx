@@ -27,6 +27,7 @@ export default function Assembly() {
   const { resolved: theme } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [lastCommand, setLastCommand] = useState(null);
+  const [lastCommandTime, setLastCommandTime] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isWsConnected, setIsWsConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
@@ -169,15 +170,16 @@ export default function Assembly() {
         bearing: data.assembly?.bearing ? 1 : 0,
         shaft: data.assembly?.shaft ? 1 : 0,
       };
-      plotDataPointsRef.current.push(newPoint);
-      plotTimestampRef.current += 1;
-
-      // Keep last 500 points for performance
-      if (plotDataPointsRef.current.length > 500) {
+      // Keep only the last 60 seconds of data
+      const now60 = Date.now();
+      plotDataPointsRef.current.push({ ...newPoint, ts: now60 });
+      // Trim points older than 60s
+      while (plotDataPointsRef.current.length > 0 && now60 - plotDataPointsRef.current[0].ts > 60000) {
         plotDataPointsRef.current.shift();
-        plotDataPointsRef.current.forEach((point, index) => { point.time = index; });
-        plotTimestampRef.current = plotDataPointsRef.current.length;
       }
+      // Re-index time for Recharts
+      plotDataPointsRef.current.forEach((point, index) => { point.time = index; });
+      plotTimestampRef.current = plotDataPointsRef.current.length;
 
       if (now - lastUpdateRef.current > 100) {
         setPlotData([...plotDataPointsRef.current]);
@@ -448,6 +450,7 @@ export default function Assembly() {
     try {
       const response = await AssemblyControlService.runCommand('BEARING_ON');
       setLastCommand('Bearing ON');
+      setLastCommandTime(new Date().toTimeString().slice(0, 8));
       toast.success(response.message || 'Bearing command executed');
     } catch (e) {
       toast.error(`Failed to execute Bearing command: ${e.message}`);
@@ -461,6 +464,7 @@ export default function Assembly() {
     try {
       const response = await AssemblyControlService.runCommand('SHAFT_ON');
       setLastCommand('Shaft ON');
+      setLastCommandTime(new Date().toTimeString().slice(0, 8));
       toast.success(response.message || 'Shaft command executed');
     } catch (e) {
       toast.error(`Failed to execute Shaft command: ${e.message}`);
@@ -474,6 +478,7 @@ export default function Assembly() {
     try {
       const response = await AssemblyControlService.runCommand('VICE_OPEN');
       setLastCommand('Vice OPEN');
+      setLastCommandTime(new Date().toTimeString().slice(0, 8));
       toast.success(response.message || 'Vice open command executed');
     } catch (e) {
       toast.error(`Failed to execute Vice Open command: ${e.message}`);
@@ -487,6 +492,7 @@ export default function Assembly() {
     try {
       const response = await AssemblyControlService.runCommand('VICE_CLOSE');
       setLastCommand('Vice CLOSE');
+      setLastCommandTime(new Date().toTimeString().slice(0, 8));
       toast.success(response.message || 'Vice close command executed');
     } catch (e) {
       toast.error(`Failed to execute Vice Close command: ${e.message}`);
@@ -502,6 +508,7 @@ export default function Assembly() {
     try {
       const response = await AssemblyControlService.runCommand(command);
       setLastCommand(label);
+      setLastCommandTime(new Date().toTimeString().slice(0, 8));
       toast.success(response.message || `Vice ${command === 'VICE_OPEN' ? 'open' : 'close'} command executed`);
     } catch (e) {
       toast.error(`Failed to execute Vice command: ${e.message}`);
@@ -863,6 +870,14 @@ export default function Assembly() {
                 ? (lastCommand === 'Vice OPEN' ? 'Opening…' : 'Closing…')
                 : plantData?.vice?.close ? 'Close Vice ●' : 'Open Vice ○'}
             </button>
+            {lastCommandTime && (
+              <span style={{
+                fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#475569',
+                marginLeft: 'auto', fontWeight: 600
+              }}>
+                LAST: {lastCommandTime}
+              </span>
+            )}
           </div>
         </main>
       </div>

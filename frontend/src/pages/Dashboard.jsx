@@ -22,6 +22,7 @@ export default function Dashboard() {
   const [triacFeed, setTriacFeed] = useState(null);
 
   const [transactions, setTransactions] = useState([]);
+  const [lastUpdated, setLastUpdated] = useState({});
 
   // Fetch initial ASRS inventory count
   useEffect(() => {
@@ -72,6 +73,7 @@ export default function Dashboard() {
               row: data.payload.row,
               state: data.payload.state,
             });
+            setLastUpdated(prev => ({ ...prev, asrs: new Date().toTimeString().slice(0, 8) }));
           } else if (data.type === "led") {
             setTimeout(async () => {
               try {
@@ -90,6 +92,7 @@ export default function Dashboard() {
               } catch {}
             }, 1000);
           }
+          window.dispatchEvent(new Event('asrs-ws-activity'));
         } catch {}
       };
       asrsWs.onclose = () => {
@@ -130,6 +133,7 @@ export default function Dashboard() {
           } else {
             setAssemblySafety("OK");
           }
+          setLastUpdated(prev => ({ ...prev, assembly: new Date().toTimeString().slice(0, 8) }));
         } catch {}
       };
       assemblyWs.onclose = () => {
@@ -167,6 +171,7 @@ export default function Dashboard() {
           if (data.spindle?.temperature !== undefined && data.spindle?.temperature !== null) {
             setMiracTemp(data.spindle.temperature);
           }
+          setLastUpdated(prev => ({ ...prev, mirac: new Date().toTimeString().slice(0, 8) }));
         } catch {}
       };
       miracWs.onclose = () => {
@@ -207,6 +212,7 @@ export default function Dashboard() {
           if (data.axes?.x?.feed !== undefined && data.axes?.x?.feed !== null) {
             setTriacFeed(data.axes.x.feed);
           }
+          setLastUpdated(prev => ({ ...prev, triac: new Date().toTimeString().slice(0, 8) }));
         } catch {}
       };
       triacWs.onclose = () => {
@@ -228,12 +234,13 @@ export default function Dashboard() {
     };
   }, []);
 
-  // Fetch transaction log
+  // Fetch transaction log — initial load + refresh on WS activity (debounced)
   useEffect(() => {
     const apiBase = import.meta.env.VITE_API_URL || '/api';
     const httpBase = apiBase.startsWith('http') ? apiBase : `${window.location.origin}${apiBase}`;
     let isMounted = true;
-    
+    let refreshTimer = null;
+
     const fetchEvents = async () => {
       try {
         const res = await fetch(`${httpBase}/data/events?limit=25`);
@@ -245,18 +252,34 @@ export default function Dashboard() {
         console.error("Failed to fetch events:", e);
       }
     };
-    
+
+    // Initial load
     fetchEvents();
-    const interval = setInterval(fetchEvents, 3000);
+
+    // Refresh at most once every 5s when triggered by WS activity
+    const scheduleRefresh = () => {
+      if (refreshTimer) return;
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null;
+        if (isMounted) fetchEvents();
+      }, 5000);
+    };
+
+    // Listen for any WS message on the page to trigger a refresh
+    const handleWsActivity = () => scheduleRefresh();
+    window.addEventListener('asrs-ws-activity', handleWsActivity);
+
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      if (refreshTimer) clearTimeout(refreshTimer);
+      window.removeEventListener('asrs-ws-activity', handleWsActivity);
     };
   }, []);
 
   const stations = [
     {
       name: "AS/RS",
+      key: "asrs",
       to: "/asrs",
       icon: "inventory_2",
       description: "Automated Storage & Retrieval System",
@@ -269,6 +292,7 @@ export default function Dashboard() {
     },
     {
       name: "Assembly Station",
+      key: "assembly",
       to: "/assembly",
       icon: "factory",
       description: "Hydraulic Press Control",
@@ -281,6 +305,7 @@ export default function Dashboard() {
     },
     {
       name: "Smart MIRAC",
+      key: "mirac",
       to: "/mirac",
       icon: "settings_input_component",
       description: "CNC Lathe Monitoring",
@@ -293,6 +318,7 @@ export default function Dashboard() {
     },
     {
       name: "Smart TRIAC",
+      key: "triac",
       to: "/triac",
       icon: "precision_manufacturing",
       description: "Process Control",
@@ -305,6 +331,7 @@ export default function Dashboard() {
     },
     {
       name: "Testing Station",
+      key: null,
       to: "/testing-station",
       icon: "fact_check",
       description: "Quality Assurance",
@@ -317,6 +344,7 @@ export default function Dashboard() {
     },
     {
       name: "AMR",
+      key: null,
       to: "/amr",
       icon: "local_shipping",
       description: "Autonomous Mobile Robots",
@@ -329,6 +357,7 @@ export default function Dashboard() {
     },
     {
       name: "Cobot",
+      key: null,
       to: "/cobot",
       icon: "smart_toy",
       description: "Collaborative Robot Arm",
@@ -341,6 +370,7 @@ export default function Dashboard() {
     },
     {
       name: "Inspection",
+      key: null,
       to: "/inspection",
       icon: "policy",
       description: "Visual Defect Inspection",
@@ -468,11 +498,19 @@ export default function Dashboard() {
               {/* Details link footer */}
               <div style={{
                 display: 'flex',
-                justifyContent: 'flex-end',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 borderTop: '1px solid var(--border-light)',
                 paddingTop: '8px',
                 marginTop: '8px'
               }}>
+                {lastUpdated[s.key] ? (
+                  <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#475569' }}>
+                    UPD: {lastUpdated[s.key]}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '9px', color: 'transparent' }}>—</span>
+                )}
                 <span style={{
                   fontSize: '9px',
                   fontWeight: 800,

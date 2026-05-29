@@ -593,7 +593,9 @@ function RackView({
     <div style={{
       background: 'var(--bg-tertiary)',
       borderRadius: '4px',
-      border: '1px solid var(--border)',
+      border: Object.values(ledStates || {}).every(v => !v) ? '1px solid rgba(58, 157, 110, 0.4)' : '1px solid var(--border)',
+      boxShadow: Object.values(ledStates || {}).every(v => !v) ? '0 0 12px rgba(58, 157, 110, 0.15)' : 'none',
+      transition: 'border 0.5s ease, box-shadow 0.5s ease',
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
@@ -616,6 +618,13 @@ function RackView({
           <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Primary Storage Matrix [Z-BAY 01]
           </span>
+          {Object.values(ledStates || {}).every(v => !v) && (
+            <span style={{
+              fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700,
+              color: '#3a9d6e', border: '1px solid rgba(58,157,110,0.4)',
+              padding: '1px 6px', borderRadius: '3px', background: 'rgba(58,157,110,0.08)'
+            }}>ALL CLEAR</span>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <button
@@ -835,6 +844,13 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
   const [items, setItems] = useState([]);
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   useEffect(() => {
     fetchSubCompartments();

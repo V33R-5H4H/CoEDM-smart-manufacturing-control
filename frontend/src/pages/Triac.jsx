@@ -355,6 +355,7 @@ export default function Triac() {
   const [statusLoading, setStatusLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("monitoring");
   const { activeModal, openModal, closeModal } = useModal();
+  const [energyHistory, setEnergyHistory] = useState([]);
 
   // Smooth position state for axis coordinate interpolation
   const [smoothedX, setSmoothedX] = useState(0);
@@ -448,6 +449,9 @@ export default function Triac() {
           if (latestData?.data_sources?.vibit1) { vibit1LastSeenRef.current = timeStr; setVibit1LastSeen(timeStr); }
           if (latestData?.data_sources?.vibit2) { vibit2LastSeenRef.current = timeStr; setVibit2LastSeen(timeStr); }
           if (latestData?.data_sources?.vibit3) { vibit3LastSeenRef.current = timeStr; setVibit3LastSeen(timeStr); }
+          if (latestData?.energy_meter?.power != null) {
+            setEnergyHistory(prev => [...prev.slice(-9), latestData.energy_meter.power]);
+          }
         }
 
       } catch (err) {
@@ -930,22 +934,49 @@ export default function Triac() {
                 </div>
               </div>
               {data?.energy_meter ? (
-                <div className="asm-val-grid">
-                  <div className="asm-val">
-                    <div className="asm-val__label">Active Power</div>
-                    <div className="asm-val__num asm-val__num--glowing-green">
-                      {sensorVal(data.energy_meter.power, 3)}
-                      <span className="asm-val__unit">kW</span>
+                <>
+                  <div className="asm-val-grid">
+                    <div className="asm-val">
+                      <div className="asm-val__label">Active Power</div>
+                      <div className="asm-val__num asm-val__num--glowing-green">
+                        {sensorVal(data.energy_meter.power, 3)}
+                        <span className="asm-val__unit">kW</span>
+                      </div>
+                    </div>
+                    <div className="asm-val">
+                      <div className="asm-val__label">Total consumption</div>
+                      <div className="asm-val__num">
+                        {sensorVal(data.energy_meter.kwh, 4)}
+                        <span className="asm-val__unit">kWh</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="asm-val">
-                    <div className="asm-val__label">Total consumption</div>
-                    <div className="asm-val__num">
-                      {sensorVal(data.energy_meter.kwh, 4)}
-                      <span className="asm-val__unit">kWh</span>
-                    </div>
+                  {energyHistory.length > 1 && (
+                  <div style={{ marginTop: '6px' }}>
+                    <div className="asm-val__label">Power Trend</div>
+                    <svg width="100%" height="28" viewBox="0 0 100 28" preserveAspectRatio="none" style={{ display: 'block', marginTop: '4px' }}>
+                      {(() => {
+                        const max = Math.max(...energyHistory, 0.001);
+                        const min = Math.min(...energyHistory);
+                        const range = max - min || 1;
+                        const pts = energyHistory.map((v, i) => {
+                          const x = (i / (energyHistory.length - 1)) * 100;
+                          const y = 24 - ((v - min) / range) * 20;
+                          return x + ',' + y;
+                        }).join(' ');
+                        const lastX = 100;
+                        const lastY = 24 - ((energyHistory[energyHistory.length - 1] - min) / range) * 20;
+                        return (
+                          <>
+                            <polyline points={pts} fill="none" stroke="#3a9d6e" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+                            <circle cx={lastX} cy={lastY} r="2.5" fill="#3a9d6e" />
+                          </>
+                        );
+                      })()}
+                    </svg>
                   </div>
-                </div>
+                )}
+                </>
               ) : (
                 <div style={{
                   display: "flex",
@@ -1088,6 +1119,21 @@ export default function Triac() {
                     </div>
                   </div>
                 </div>
+                {/* Position bar — X axis */}
+                <div style={{ marginTop: '4px' }}>
+                  <div style={{ width: '100%', height: '3px', background: '#1f2937', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${Math.min(100, Math.max(0, ((data?.axes?.x?.value ?? 0) / 300) * 100))}%`,
+                      background: '#38bdf8',
+                      borderRadius: '2px',
+                      transition: 'width 0.2s ease'
+                    }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8px', color: '#475569', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+                    <span>0</span><span>300mm</span>
+                  </div>
+                </div>
               </div>
 
               {/* Y Axis */}
@@ -1113,6 +1159,21 @@ export default function Triac() {
                     </div>
                   </div>
                 </div>
+                {/* Position bar — Y axis */}
+                <div style={{ marginTop: '4px' }}>
+                  <div style={{ width: '100%', height: '3px', background: '#1f2937', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${Math.min(100, Math.max(0, ((data?.axes?.y?.value ?? 0) / 300) * 100))}%`,
+                      background: '#4ade80',
+                      borderRadius: '2px',
+                      transition: 'width 0.2s ease'
+                    }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8px', color: '#475569', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+                    <span>0</span><span>300mm</span>
+                  </div>
+                </div>
               </div>
 
               {/* Z Axis */}
@@ -1136,6 +1197,21 @@ export default function Triac() {
                       {plcOnline ? smoothedZ.toFixed(3) : "---"}
                       <span className="asm-val__unit">mm</span>
                     </div>
+                  </div>
+                </div>
+                {/* Position bar — Z axis */}
+                <div style={{ marginTop: '4px' }}>
+                  <div style={{ width: '100%', height: '3px', background: '#1f2937', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${Math.min(100, Math.max(0, ((data?.axes?.z?.value ?? 0) / 200) * 100))}%`,
+                      background: '#fb923c',
+                      borderRadius: '2px',
+                      transition: 'width 0.2s ease'
+                    }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8px', color: '#475569', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+                    <span>0</span><span>200mm</span>
                   </div>
                 </div>
               </div>

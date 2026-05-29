@@ -218,6 +218,38 @@ class ASRSController:
         logging.info(f"[ASRS] {operation} command '{cmd}' executed successfully.")
         _log_asrs_event("info", "info", f"ASRS {operation} Issued: {cmd}", {"box_id": cmd.rstrip("S"), "command": cmd, "operation": operation})
 
+        # Persist shuttle movement to DB so position survives server restarts
+        try:
+            from backend.database.db import SessionLocal as _SessionLocal
+            from sqlalchemy import text as _text
+            from backend.core.timezone import ist_now as _ist_now
+            _session = _SessionLocal()
+            try:
+                snap = self.shuttle.snapshot()
+                _session.execute(
+                    _text("""
+                        INSERT INTO shuttle_movements
+                            (machine_id, time, command, to_row, to_col, state, initiated_by)
+                        VALUES
+                            ('asrs', :time, :command, :to_row, :to_col, :state, 'operator')
+                    """),
+                    {
+                        "time": _ist_now(),
+                        "command": cmd,
+                        "to_row": snap.get("row"),
+                        "to_col": snap.get("column"),
+                        "state": snap.get("state", "busy"),
+                    }
+                )
+                _session.commit()
+            except Exception as _db_err:
+                logging.warning(f"[ASRS] Failed to persist shuttle movement: {_db_err}")
+                _session.rollback()
+            finally:
+                _session.close()
+        except Exception:
+            pass
+
         return {
             "success": True,
             "command": cmd,

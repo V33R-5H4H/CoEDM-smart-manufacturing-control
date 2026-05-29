@@ -251,11 +251,12 @@ class TriacBroadcaster:
         try:
             plc_connected = triac_opcua_connection.connected
 
-            # Throttle physical Modbus reads to 1 Hz (every 1.0s).
-            # VibIT sensors update their internal RMS registers ~1s — reading
-            # faster returns stale values. 1.0s is the practical minimum.
+            # Throttle physical Modbus reads to match sensor update rate.
+            # VibIT sensors update their internal RMS registers every ~7-8s.
+            # Reading at 30s reduces unnecessary RS485 bus traffic while still
+            # capturing every meaningful update cycle.
             now = time.time()
-            if now - self._last_modbus_read_time >= 1.0:
+            if now - self._last_modbus_read_time >= 30.0:
                 self._last_modbus_read_time = now
                 vibit1_data, vibit2_data, vibit3_data = await asyncio.gather(
                     asyncio.to_thread(self.vibit_reader_1.read_snapshot),

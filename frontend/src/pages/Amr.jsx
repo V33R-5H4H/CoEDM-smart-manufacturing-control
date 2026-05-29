@@ -25,6 +25,20 @@ export default function Amr() {
   const [theta, setTheta] = useState(0); // rotation in degrees
   const [cargo, setCargo] = useState("NONE"); // 'NONE' | 'BEARING_CRATE' | 'SHAFT_CRATE'
   const [currentMission, setCurrentMission] = useState("Idle / Standby");
+
+  const [fleetLogs, setFleetLogs] = useState([
+    { time: "15:48:10", msg: "Docked at Charging Pad. Charging commenced." },
+    { time: "15:47:05", msg: "Dispatched from AS/RS Dock 1 to Charger." },
+    { time: "15:45:20", msg: "Crate loaded successfully onto payload tray." },
+    { time: "15:44:00", msg: "Navigating to AS/RS Warehouse Dock 1." },
+    { time: "15:40:15", msg: "AMR-04 initialized successfully. Self-diagnostics OK." },
+  ]);
+
+  const addLog = (msg) => {
+    const now = new Date();
+    const t = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    setFleetLogs(prev => [{ time: t, msg }, ...prev.slice(0, 9)]);
+  };
   
   // Navigation coordinates for stations on our map
   const STATIONS = {
@@ -81,6 +95,7 @@ export default function Amr() {
     setRobotStatus("NAVIGATING");
     setCurrentMission(`Navigating to ${station.name}`);
     toast.info(`AMR Dispatched: Heading to ${station.name}...`);
+    addLog(`Dispatched to ${station.name}.`);
 
     // Animation variables
     const startX = svgPos.x;
@@ -118,10 +133,12 @@ export default function Amr() {
           setRobotStatus("CHARGING");
           setCurrentMission("Charging Battery...");
           toast.success("AMR Docked at Charger: Commencing fast-charge", { icon: "⚡" });
+          addLog("Docked at Charging Pad. Charging commenced.");
         } else {
           setRobotStatus("IDLE");
           setCurrentMission(`Docked at ${station.name}`);
           toast.success(`AMR Arrived successfully at ${station.name}`, { icon: "📍" });
+          addLog(`Arrived at ${station.name}.`);
         }
       }
     }, stepTime);
@@ -132,10 +149,12 @@ export default function Amr() {
       setRobotStatus("IDLE");
       setCurrentMission("Idle / Standby");
       toast.info("AMR emergency condition cleared. System standing by.");
+      addLog("Emergency Stop cleared. System standing by.");
     } else {
       setRobotStatus("ESTOP");
       setCurrentMission("EMERGENCY STOP ACTIVE");
       toast.error("AMR EMERGENCY STOP TRIGGERED INSTANTLY!", { icon: "🚨" });
+      addLog("EMERGENCY STOP TRIGGERED.");
     }
   };
 
@@ -425,6 +444,14 @@ export default function Amr() {
                   {/* Navigation paths (dotted lines) */}
                   <path d="M 60,70 L 120,220 L 260,260 L 420,260 L 480,90 L 300,90 Z" fill="none" stroke="rgba(255,255,255,0.06)" strokeDasharray="4,4" strokeWidth="1.5" />
 
+                  {/* Scale indicator */}
+                  <g transform="translate(20, 355)">
+                    <line x1="0" y1="0" x2="50" y2="0" stroke="#475569" strokeWidth="1.5" />
+                    <line x1="0" y1="-4" x2="0" y2="4" stroke="#475569" strokeWidth="1.5" />
+                    <line x1="50" y1="-4" x2="50" y2="4" stroke="#475569" strokeWidth="1.5" />
+                    <text x="25" y="-6" fill="#475569" fontSize="8" fontFamily="JetBrains Mono" textAnchor="middle" fontWeight="600">1 grid = 5m</text>
+                  </g>
+
                   {/* AMR Mobile Robot Vector Asset (Rotates and slides dynamically) */}
                   <g 
                     transform={`translate(${svgPos.x}, ${svgPos.y}) rotate(${theta})`}
@@ -562,21 +589,11 @@ export default function Amr() {
                 <span className="asm-hud-badge">FLEET</span>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "6px", fontFamily: "JetBrains Mono", fontSize: "10px", color: "var(--text-secondary)", overflowY: "auto", maxHeight: "170px" }}>
-                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: "4px" }}>
-                  <span style={{ color: "#64748b" }}>[15:48:10]</span> Docked at Charging Pad. Charging commenced.
-                </div>
-                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: "4px" }}>
-                  <span style={{ color: "#64748b" }}>[15:47:05]</span> Dispatched from AS/RS Dock 1 to Charger.
-                </div>
-                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: "4px" }}>
-                  <span style={{ color: "#64748b" }}>[15:45:20]</span> Crate loaded successfully onto payload tray.
-                </div>
-                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: "4px" }}>
-                  <span style={{ color: "#64748b" }}>[15:44:00]</span> Navigating to AS/RS Warehouse Dock 1.
-                </div>
-                <div>
-                  <span style={{ color: "#64748b" }}>[15:40:15]</span> AMR-04 initialized successfully. Self-diagnostics OK.
-                </div>
+                {fleetLogs.map((log, i) => (
+                  <div key={i} style={{ borderBottom: i < fleetLogs.length - 1 ? "1px solid var(--border)" : "none", paddingBottom: "4px" }}>
+                    <span style={{ color: "#64748b" }}>[{log.time}]</span> {log.msg}
+                  </div>
+                ))}
               </div>
             </div>
 
