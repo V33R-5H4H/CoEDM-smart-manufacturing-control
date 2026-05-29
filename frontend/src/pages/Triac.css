@@ -4,7 +4,7 @@
 
 /* Base overrides for Functional Dark Design */
 .asm-page {
-  background: #1b1e24 !important; /* Level 0 Base */
+  background: #242423 !important; /* Level 0 Base */
 }
 
 /* 3-Column Dashboard Grid */
@@ -17,7 +17,7 @@
   min-height: 0;
   padding: 16px;
   box-sizing: border-box;
-  background: #1b1e24; /* Warm charcoal background */
+  background: #242423; /* Warm charcoal background */
 }
 
 /* Columns */
@@ -36,7 +36,7 @@
   background: transparent;
 }
 .triac-column::-webkit-scrollbar-thumb {
-  background: #44474c;
+  background: #555855;
   border-radius: 4px;
 }
 
@@ -46,37 +46,37 @@
   justify-content: space-between;
   align-items: center;
   font-family: 'Inter', sans-serif;
-  font-size: 11px !important;
+  font-size: 13px !important;
   font-weight: 600 !important;
-  color: #e1e2ea !important;
+  color: #E8EDDF !important;
   text-transform: uppercase;
   letter-spacing: 0.05em !important;
-  border-bottom: 1px solid #323842 !important;
+  border-bottom: 1px solid #4a4d4a !important;
   padding-bottom: 6px !important;
 }
 
 /* Custom Badges */
 .asm-hud-badge {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 13px;
   padding: 2px 6px;
   border-radius: 4px;
-  background: #191c22;
-  border: 1px solid #323842;
-  color: #8f9097;
+  background: #2e302e;
+  border: 1px solid #4a4d4a;
+  color: #8a9490;
   flex-shrink: 0;
 }
 
 .asm-hud-badge--active {
   color: #3a9d6e; /* Green */
-  background: #191c22;
+  background: #2e302e;
   border-color: #3a9d6e;
 }
 
 /* Card Overrides (Flat UI) */
 .asm-hud-card {
-  background: #252932 !important; /* Level 1 Surface */
-  border: 1px solid #323842 !important;
+  background: #333533 !important; /* Level 1 Surface */
+  border: 1px solid #4a4d4a !important;
   border-radius: 4px !important;
   padding: 12px !important;
   box-shadow: none !important;
@@ -96,10 +96,10 @@
 .asm-hud-card--clickable:hover,
 .asm-hud-card--clickable.energy-hover:hover,
 .asm-hud-card--clickable.tool-hover:hover {
-  background-color: #2a2e38 !important; /* +5% brightness */
+  background-color: #404340 !important; /* +5% brightness */
   transform: none !important;
   box-shadow: none !important;
-  border-color: #44474c !important;
+  border-color: #555855 !important;
 }
 
 /* Typography Overrides */
@@ -111,23 +111,23 @@
 
 .asm-val__label {
   font-family: 'Inter', sans-serif;
-  font-size: 11px !important;
+  font-size: 13px !important;
   font-weight: 600 !important;
-  color: #8f9097 !important;
+  color: #8a9490 !important;
   text-transform: uppercase;
   letter-spacing: 0.05em !important;
 }
 
 .asm-val__num {
   font-family: 'JetBrains Mono', monospace !important;
-  font-size: 20px !important;
+  font-size: 22px !important;
   font-weight: 500 !important;
-  color: #e1e2ea !important;
+  color: #E8EDDF !important;
   text-shadow: none !important; /* Remove glow */
 }
 
 .asm-val__num--sm {
-  font-size: 14px !important;
+  font-size: 16px !important;
 }
 
 /* Remove Glowing variations completely */
@@ -135,7 +135,7 @@
 .asm-val__num--glowing-green,
 .asm-val__num--glowing-orange {
   text-shadow: none !important;
-  color: #e1e2ea !important; 
+  color: #E8EDDF !important; 
 }
 
 /* Status LEDs Flat Design */
@@ -143,10 +143,10 @@
   display: flex;
   justify-content: space-around;
   align-items: center;
-  background: #14161a !important; /* Inset Level 2 */
+  background: #2a2c2a !important; /* Inset Level 2 */
   padding: 8px !important;
   border-radius: 4px !important;
-  border: 1px solid #323842 !important;
+  border: 1px solid #4a4d4a !important;
 }
 
 .asm-led-indicator {
@@ -158,9 +158,9 @@
 
 .asm-led-indicator span {
   font-family: 'Inter', sans-serif;
-  font-size: 11px !important;
+  font-size: 13px !important;
   font-weight: 600 !important;
-  color: #8f9097 !important;
+  color: #8a9490 !important;
   text-transform: uppercase;
 }
 
@@ -169,7 +169,7 @@
   height: 10px !important;
   border-radius: 50% !important;
   background: transparent !important;
-  border: 1px solid #44474c !important; /* Hollow when off */
+  border: 1px solid #555855 !important; /* Hollow when off */
   box-shadow: none !important;
 }
 
@@ -201,8 +201,8 @@
 
 .asm-viz-panel {
   flex: 1;
-  background: #252932 !important;
-  border: 1px solid #323842 !important;
+  background: #333533 !important;
+  border: 1px solid #4a4d4a !important;
   border-radius: 4px !important;
   padding: 12px !important;
   box-shadow: none !important;
@@ -219,8 +219,8 @@
 }
 
 .asm-footer-stats-card {
-  background: #252932 !important;
-  border: 1px solid #323842 !important;
+  background: #333533 !important;
+  border: 1px solid #4a4d4a !important;
   border-radius: 4px !important;
   padding: 8px 12px !important;
   display: flex;

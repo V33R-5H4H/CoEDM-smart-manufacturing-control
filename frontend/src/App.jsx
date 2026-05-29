@@ -91,10 +91,10 @@ export default function App() {
         }
 
         .bottom-nav-item.active {
-          background: rgba(249, 115, 22, 0.08);
+          background: rgba(245, 203, 92, 0.12);
           color: var(--primary);
-          border: 1px solid rgba(249, 115, 22, 0.2);
-          box-shadow: 0 0 8px rgba(249, 115, 22, 0.05);
+          border: 1px solid rgba(245, 203, 92, 0.3);
+          box-shadow: 0 0 8px rgba(245, 203, 92, 0.08);
         }
 
         .bottom-nav-status {

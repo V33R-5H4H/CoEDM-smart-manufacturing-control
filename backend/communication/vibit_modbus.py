@@ -62,6 +62,8 @@ class VibitModbusReader:
         self.port = port
         self.device_id = device_id
         self._last_log_time = {}
+        self._last_connect_attempt = 0.0   # timestamp of last connection attempt
+        self._connect_fail_count = 0        # consecutive failures — drives backoff
         if base_address is not None and register_type is not None:
             self._base_address = base_address
             self._register_type = register_type
@@ -104,11 +106,21 @@ class VibitModbusReader:
         if self.client.connected:
             return True
 
+        # Exponential backoff: 8s → 16s → 32s → 60s cap after repeated failures
+        import time as _time
+        backoff = min(8 * (2 ** self._connect_fail_count), 60)
+        if _time.time() - self._last_connect_attempt < backoff:
+            return False  # Still in backoff window — skip attempt
+
+        self._last_connect_attempt = _time.time()
+
         try:
             connected = self.client.connect()
             if connected:
+                self._connect_fail_count = 0  # Reset on success
                 logger.info("Connected to VibIT Modbus at %s:%s", self.host, self.port)
             else:
+                self._connect_fail_count += 1
                 self._log_throttled(
                     "connect_fail",
                     "Unable to connect to VibIT Modbus at %s:%s (Unit ID %s)",
@@ -119,6 +131,7 @@ class VibitModbusReader:
                 )
             return bool(connected)
         except Exception as e:
+            self._connect_fail_count += 1
             self._log_throttled(
                 "connect_exception",
                 "Exception connecting to VibIT Modbus at %s:%s: %s",
@@ -414,6 +427,9 @@ class VibitModbusReader:
 
         if not values:
             return None
+
+        # Successful read — reset connection failure counter
+        self._connect_fail_count = 0
 
         # Expose auto-detected profile parameters so the frontend and broadcaster
         # can show the precise physical address mapping.

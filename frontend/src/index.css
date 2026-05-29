@@ -11,7 +11,7 @@
 }
 
 html {
-  font-size: 16px;
+  font-size: 17px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -1033,7 +1033,7 @@ a:hover {
   box-shadow: var(--shadow-lg) !important;
   border-radius: var(--radius) !important;
   font-family: var(--font-sans) !important;
-  font-size: 0.8125rem !important;
+  font-size: 0.875rem !important;
 }
 
 /* ========================================
