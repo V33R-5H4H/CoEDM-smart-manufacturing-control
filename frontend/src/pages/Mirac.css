@@ -4,7 +4,8 @@
 
 /* Base overrides for Functional Dark Design */
 .asm-page {
-  background: #1b1e24 !important; /* Level 0 Base */
+  background: #242423 !important;
+  /* Level 0 Base */
 }
 
 /* 3-Column Dashboard Grid */
@@ -17,14 +18,16 @@
   min-height: 0;
   padding: 16px;
   box-sizing: border-box;
-  background: #1b1e24; /* Warm charcoal background */
+  background: #242423;
+  /* Warm charcoal background */
 }
 
 /* Columns */
 .mirac-column {
   display: flex;
   flex-direction: column;
-  gap: 8px; /* Gutter */
+  gap: 8px;
+  /* Gutter */
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -32,11 +35,13 @@
 .mirac-column::-webkit-scrollbar {
   width: 4px;
 }
+
 .mirac-column::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .mirac-column::-webkit-scrollbar-thumb {
-  background: #44474c;
+  background: #555855;
   border-radius: 4px;
 }
 
@@ -46,37 +51,39 @@
   justify-content: space-between;
   align-items: center;
   font-family: 'Inter', sans-serif;
-  font-size: 11px !important;
+  font-size: 13px !important;
   font-weight: 600 !important;
-  color: #e1e2ea !important;
+  color: #E8EDDF !important;
   text-transform: uppercase;
   letter-spacing: 0.05em !important;
-  border-bottom: 1px solid #323842 !important;
+  border-bottom: 1px solid #4a4d4a !important;
   padding-bottom: 6px !important;
 }
 
 /* Custom Badges */
 .asm-hud-badge {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 13px;
   padding: 2px 6px;
   border-radius: 4px;
-  background: #191c22;
-  border: 1px solid #323842;
-  color: #8f9097;
+  background: #2e302e;
+  border: 1px solid #4a4d4a;
+  color: #8a9490;
   flex-shrink: 0;
 }
 
 .asm-hud-badge--active {
-  color: #3a9d6e; /* Green */
-  background: #191c22;
+  color: #3a9d6e;
+  /* Green */
+  background: #2e302e;
   border-color: #3a9d6e;
 }
 
 /* Card Overrides (Flat UI) */
 .asm-hud-card {
-  background: #252932 !important; /* Level 1 Surface */
-  border: 1px solid #323842 !important;
+  background: #333533 !important;
+  /* Level 1 Surface */
+  border: 1px solid #4a4d4a !important;
   border-radius: 4px !important;
   padding: 12px !important;
   box-shadow: none !important;
@@ -96,10 +103,11 @@
 .asm-hud-card--clickable:hover,
 .asm-hud-card--clickable.energy-hover:hover,
 .asm-hud-card--clickable.tool-hover:hover {
-  background-color: #2a2e38 !important; /* +5% brightness */
+  background-color: #404340 !important;
+  /* +5% brightness */
   transform: none !important;
   box-shadow: none !important;
-  border-color: #44474c !important;
+  border-color: #555855 !important;
 }
 
 /* Typography Overrides */
@@ -111,23 +119,24 @@
 
 .asm-val__label {
   font-family: 'Inter', sans-serif;
-  font-size: 11px !important;
+  font-size: 13px !important;
   font-weight: 600 !important;
-  color: #8f9097 !important;
+  color: #8a9490 !important;
   text-transform: uppercase;
   letter-spacing: 0.05em !important;
 }
 
 .asm-val__num {
   font-family: 'JetBrains Mono', monospace !important;
-  font-size: 20px !important;
+  font-size: 22px !important;
   font-weight: 500 !important;
-  color: #e1e2ea !important;
-  text-shadow: none !important; /* Remove glow */
+  color: #E8EDDF !important;
+  text-shadow: none !important;
+  /* Remove glow */
 }
 
 .asm-val__num--sm {
-  font-size: 14px !important;
+  font-size: 16px !important;
 }
 
 /* Remove Glowing variations completely */
@@ -135,7 +144,7 @@
 .asm-val__num--glowing-green,
 .asm-val__num--glowing-orange {
   text-shadow: none !important;
-  color: #e1e2ea !important; 
+  color: #E8EDDF !important;
 }
 
 /* Value Grid Alignments */
@@ -154,10 +163,11 @@
   display: flex;
   justify-content: space-around;
   align-items: center;
-  background: #14161a !important; /* Inset Level 2 */
+  background: #2a2c2a !important;
+  /* Inset Level 2 */
   padding: 8px !important;
   border-radius: 4px !important;
-  border: 1px solid #323842 !important;
+  border: 1px solid #4a4d4a !important;
 }
 
 .asm-led-indicator {
@@ -169,9 +179,9 @@
 
 .asm-led-indicator span {
   font-family: 'Inter', sans-serif;
-  font-size: 11px !important;
+  font-size: 13px !important;
   font-weight: 600 !important;
-  color: #8f9097 !important;
+  color: #8a9490 !important;
   text-transform: uppercase;
 }
 
@@ -180,24 +190,28 @@
   height: 10px !important;
   border-radius: 50% !important;
   background: transparent !important;
-  border: 1px solid #44474c !important; /* Hollow when off */
+  border: 1px solid #555855 !important;
+  /* Hollow when off */
   box-shadow: none !important;
 }
 
 .asm-led-lamp--green.active {
-  background: #3a9d6e !important; /* Solid Green */
+  background: #3a9d6e !important;
+  /* Solid Green */
   border-color: #3a9d6e !important;
   box-shadow: none !important;
 }
 
 .asm-led-lamp--yellow.active {
-  background: #c9922e !important; /* Solid Orange */
+  background: #c9922e !important;
+  /* Solid Orange */
   border-color: #c9922e !important;
   box-shadow: none !important;
 }
 
 .asm-led-lamp--red.active {
-  background: #c4424b !important; /* Solid Red */
+  background: #c4424b !important;
+  /* Solid Red */
   border-color: #c4424b !important;
   box-shadow: none !important;
 }
@@ -212,8 +226,8 @@
 
 .asm-viz-panel {
   flex: 1;
-  background: #252932 !important;
-  border: 1px solid #323842 !important;
+  background: #333533 !important;
+  border: 1px solid #4a4d4a !important;
   border-radius: 4px !important;
   padding: 12px !important;
   box-shadow: none !important;
@@ -224,7 +238,7 @@
 
 /* Live Axis Sections */
 .asm-axis-section {
-  border-top: 1px solid #323842;
+  border-top: 1px solid #4a4d4a;
   padding-top: 8px;
 }
 
@@ -241,14 +255,18 @@
   font-weight: 800;
 }
 
-.asm-axis-letter--x { color: #38bdf8; }
-.asm-axis-letter--y { color: #4ade80; }
-.asm-axis-letter--z { color: #ff7b00; }
+.asm-axis-letter--x {
+  color: #8a9490;
+}
+
+.asm-axis-letter--z {
+  color: #8a9490;
+}
 
 .asm-axis-line {
   flex: 1;
   height: 1px;
-  background: #323842;
+  background: #4a4d4a;
 }
 
 /* Action Group and Gateway Controls */
@@ -262,15 +280,15 @@
   flex: 1;
   height: 32px;
   font-family: 'Inter', sans-serif;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   border-radius: 4px;
   cursor: pointer;
-  border: 1px solid #323842;
-  background: #14161a;
-  color: #8f9097;
+  border: 1px solid #4a4d4a;
+  background: #2a2c2a;
+  color: #8a9490;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -279,9 +297,9 @@
 }
 
 .asm-btn-control:hover:not(:disabled) {
-  background: #1b1e24;
-  border-color: #44474c;
-  color: #e1e2ea;
+  background: #242423;
+  border-color: #555855;
+  color: #E8EDDF;
   box-shadow: none !important;
 }
 
@@ -296,7 +314,7 @@
 
 .asm-btn-control--connect:hover:not(:disabled) {
   border-color: #3a9d6e;
-  background: #14161a;
+  background: #2a2c2a;
   color: #3a9d6e;
   box-shadow: none !important;
 }
@@ -307,7 +325,7 @@
 
 .asm-btn-control--disconnect:hover:not(:disabled) {
   border-color: #c4424b;
-  background: #14161a;
+  background: #2a2c2a;
   color: #c4424b;
   box-shadow: none !important;
 }
@@ -318,14 +336,14 @@
 
 .asm-btn-control--demo:hover:not(:disabled) {
   border-color: #c9922e;
-  background: #14161a;
+  background: #2a2c2a;
   color: #c9922e;
   box-shadow: none !important;
 }
 
 .asm-btn-control--demo.active {
   border-color: #c9922e;
-  color: #1b1e24;
+  color: #242423;
   background: #c9922e;
   box-shadow: none !important;
 }
@@ -338,8 +356,8 @@
 }
 
 .asm-footer-stats-card {
-  background: #252932 !important;
-  border: 1px solid #323842 !important;
+  background: #333533 !important;
+  border: 1px solid #4a4d4a !important;
   border-radius: 4px !important;
   padding: 8px 12px !important;
   display: flex;
@@ -352,9 +370,9 @@
     opacity: 0;
     transform: scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
   }
 }
-
