@@ -67,9 +67,8 @@ const Mirac = () => {
   const [activeTab, setActiveTab] = useState("monitoring");
   const [activeModal, setActiveModal] = useState(null); // 'spindle' | 'tool' | 'energy' | null
 
-  // Smooth position state for axis coordinate interpolation
-  const [smoothedX, setSmoothedX] = useState(0);
-  const [smoothedZ, setSmoothedZ] = useState(0);
+  // machineViewRef exposes setPosition() for imperative 60fps SVG updates (no React setState)
+  const machineViewRef = useRef(null);
 
   // Refs for tracking target coordinates and physics state
   const targetXRef = useRef(0);
@@ -249,14 +248,16 @@ const Mirac = () => {
       const nextX = targetX + (AX + BX * dt) * expTermX;
       const nextVX = (BX - omega * (AX + BX * dt)) * expTermX;
 
+      // Compute the SVG pixel coordinates
+      let displayX, displayZ;
       if (Math.abs(nextX - targetX) < 0.05 && Math.abs(nextVX) < 0.1) {
         smoothedXRef.current = targetX;
         velocityXRef.current = 0;
-        setSmoothedX(targetX);
+        displayX = targetX;
       } else {
         smoothedXRef.current = nextX;
         velocityXRef.current = nextVX;
-        setSmoothedX(nextX);
+        displayX = nextX;
       }
 
       // Critically damped spring integration for Z Axis
@@ -273,11 +274,20 @@ const Mirac = () => {
       if (Math.abs(nextZ - targetZ) < 0.05 && Math.abs(nextVZ) < 0.1) {
         smoothedZRef.current = targetZ;
         velocityZRef.current = 0;
-        setSmoothedZ(targetZ);
+        displayZ = targetZ;
       } else {
         smoothedZRef.current = nextZ;
         velocityZRef.current = nextVZ;
-        setSmoothedZ(nextZ);
+        displayZ = nextZ;
+      }
+
+      // Drive SVG directly — no React setState, no reconciliation
+      if (machineViewRef.current) {
+        const normalizedZ = Math.min(1, Math.max(0, Math.abs(displayZ) / 300));
+        const tx = 170 - normalizedZ * 530;
+        const normalizedX = Math.min(1, Math.max(0, Math.abs(displayX) / 100));
+        const ty = 10 + normalizedX * 90;
+        machineViewRef.current.setPosition(tx, ty);
       }
 
       animationFrameId = requestAnimationFrame(updateLoop);
@@ -656,12 +666,11 @@ const Mirac = () => {
               {/* High-Fidelity SVG Viewer */}
               <div className="asm-viz-panel" style={{ position: "relative" }}>
                 <MiracMachineView
+                  ref={machineViewRef}
                   spindleRPM={data?.spindle?.speed || 0}
-                  xAxisValue={smoothedX}
-                  zAxisValue={smoothedZ}
                   spindleRunning={data?.status?.cycle_start || false}
                   alarmActive={data?.status?.red || false}
-                  toolEngaged={data?.status?.cycle_start && smoothedX > 10}
+                  toolEngaged={data?.status?.cycle_start && smoothedXRef.current > 10}
                   coolantOn={data?.status?.cycle_start || false}
                   toolNumber={data?.tool?.number ?? 0}
                   vibit1Online={vibit1Online}
@@ -735,7 +744,7 @@ const Mirac = () => {
                   <div className="asm-val">
                     <div className="asm-val__label">Smoothed Pos</div>
                     <div className="asm-val__num asm-val__num--sm asm-val__num--glowing-blue">
-                      {plcOnline ? smoothedX.toFixed(3) : "---"}
+                      {plcOnline ? smoothedXRef.current.toFixed(3) : "---"}
                       <span className="asm-val__unit">mm</span>
                     </div>
                   </div>
@@ -767,7 +776,7 @@ const Mirac = () => {
                   <div className="asm-val">
                     <div className="asm-val__label">Smoothed Pos</div>
                     <div className="asm-val__num asm-val__num--sm asm-val__num--glowing-orange">
-                      {plcOnline ? smoothedZ.toFixed(3) : "---"}
+                      {plcOnline ? smoothedZRef.current.toFixed(3) : "---"}
                       <span className="asm-val__unit">mm</span>
                     </div>
                   </div>

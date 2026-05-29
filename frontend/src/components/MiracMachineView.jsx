@@ -1,14 +1,12 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 
 /**
  * MiracMachineView — Re-designed high-fidelity SVG visualization of the MIRAC CNC Lathe.
  * Matches the user's reference layout with premium grid, boxy headstock, knurled workpiece,
  * and multi-axis carriage assembly with a dynamic tool label.
  */
-const MiracMachineView = ({
+const MiracMachineView = forwardRef(function MiracMachineView({
   spindleRPM = 0,
-  xAxisValue = 0, // tool position (transverse X axis, vertical in 2D view)
-  zAxisValue = 0, // carriage position (longitudinal Z axis, horizontal in 2D view)
   spindleRunning = false,
   toolEngaged = false,
   alarmActive = false,
@@ -18,14 +16,22 @@ const MiracMachineView = ({
   vibit1Data = null,
   vibit2Online = false,
   vibit2Data = null
-}) => {
-  // zAxisValue: 0 (retracted, right) to 300 (close, left) -> map to tx: 170 to -360
-  const normalizedZ = Math.min(1, Math.max(0, Math.abs(zAxisValue) / 300));
-  const tx = 170 - normalizedZ * 530;
+}, ref) {
+  // Direct DOM refs for the two animated SVG groups — driven imperatively at 60fps
+  const carriageRef = useRef(null);
+  const crossSlideRef = useRef(null);
 
-  // xAxisValue: 0 (retracted, up) to 100 (plunged, centerline) -> map to ty: 10 to 100
-  const normalizedX = Math.min(1, Math.max(0, Math.abs(xAxisValue) / 100));
-  const ty = 10 + normalizedX * 90;
+  // Expose setPosition() so Mirac.jsx RAF loop can update transforms without setState
+  useImperativeHandle(ref, () => ({
+    setPosition(tx, ty) {
+      if (carriageRef.current) {
+        carriageRef.current.setAttribute('transform', `translate(${tx}, 0)`);
+      }
+      if (crossSlideRef.current) {
+        crossSlideRef.current.setAttribute('transform', `translate(0, ${ty})`);
+      }
+    }
+  }), []);
 
   // Calculate spin duration for CSS animation from RPM
   const spinDuration = useMemo(() => {
@@ -44,11 +50,8 @@ const MiracMachineView = ({
     return `T${String(num).padStart(2, '0')}`;
   }, [toolNumber]);
 
-  const containerRef = useRef(null);
-
   return (
     <div
-      ref={containerRef}
       style={{
         position: 'relative',
         width: '100%',
@@ -202,7 +205,7 @@ const MiracMachineView = ({
         {/* ========================================
             DYNAMIC TOOL CARRIAGE (RIGHT)
             ======================================== */}
-        <g id="carriage-assembly" transform={`translate(${tx}, 0)`}>
+        <g id="carriage-assembly" ref={carriageRef} transform="translate(170, 0)">
           {/* Carriage base/slide block */}
           <rect
             x="550"
@@ -216,7 +219,7 @@ const MiracMachineView = ({
           />
 
           {/* Cross-slide assembly (translates vertically relative to base) */}
-          <g id="cross-slide" transform={`translate(0, ${ty})`}>
+          <g id="cross-slide" ref={crossSlideRef} transform="translate(0, 10)">
             {/* Vertical block */}
             <rect
               x="590"
@@ -315,6 +318,6 @@ const MiracMachineView = ({
 
     </div>
   );
-};
+});
 
 export default MiracMachineView;
