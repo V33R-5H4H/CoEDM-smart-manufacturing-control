@@ -46,10 +46,13 @@ class TriacBroadcaster:
         )
         self._last_modbus_read_time = 0.0
         self._cached_modbus_data = (None, None, None)
+        self._modbus_data_fresh = False  # True when new Modbus data was just read
+        self._modbus_task = None  # Background task for Modbus reads
         self._sensor_ids_cached = None
         self._last_good_vibit1 = None
         self._last_good_vibit2 = None
         self._last_good_vibit3 = None
+        self._db_init_done = False  # Ensures DB init runs exactly once
         # Delta-send state
         self._last_broadcast_payload: dict = {}
         self._heartbeat_tick: int = 0
@@ -199,6 +202,7 @@ class TriacBroadcaster:
         # Start broadcasting if this is the first connection
         if not self.is_broadcasting:
             self.broadcast_task = asyncio.create_task(self._broadcast_loop())
+            self._modbus_task = asyncio.create_task(self._modbus_poll_loop())
 
     def disconnect(self, websocket: WebSocket):
         """Unregister a WebSocket connection"""
@@ -210,6 +214,8 @@ class TriacBroadcaster:
             self.is_broadcasting = False
             if self.broadcast_task:
                 self.broadcast_task.cancel()
+            if self._modbus_task:
+                self._modbus_task.cancel()
 
     def _update_coordinate_simulation(self, is_spindle_running: bool):
         """Linearly interpolate coordinate changes to drive milling visualizer smoothly"""
@@ -243,6 +249,142 @@ class TriacBroadcaster:
             self.sim_fraction = 0.0
             self.gcode_index = (self.gcode_index + 1) % total_steps
 
+    async def _modbus_poll_loop(self):
+        """
+        Background task: polls Modbus sensors every 8s independently of the
+        10 Hz broadcast loop. Prevents Modbus timeouts from blocking axis updates.
+        """
+        logger.info("[TRIAC] Modbus poll loop started")
+        while self.is_broadcasting and len(self.active_connections) > 0:
+            try:
+                try:
+                    vibit1_data = await asyncio.to_thread(self.vibit_reader_1.read_snapshot)
+                except Exception:
+                    vibit1_data = None
+
+                try:
+                    vibit2_data = await asyncio.to_thread(self.vibit_reader_2.read_snapshot)
+                except Exception:
+                    vibit2_data = None
+
+                try:
+                    vibit3_data = await asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, False)
+                except Exception:
+                    vibit3_data = None
+
+                self._cached_modbus_data = (vibit1_data, vibit2_data, vibit3_data)
+                self._modbus_data_fresh = True
+
+                # Log to DB
+                sensors = self._get_sensor_ids()
+                if sensors:
+                    from backend.database.db import SessionLocal
+                    from sqlalchemy import text
+                    from backend.core.timezone import ist_now
+                    plc_connected = triac_opcua_connection.connected
+                    now_dt = ist_now()
+                    session = SessionLocal()
+                    try:
+                        plc_sensor_id = sensors.get("triac")
+                        if plc_sensor_id:
+                            v1_rpm = vibit1_data.get("rpm") if vibit1_data else None
+                            spindle_speed = float(v1_rpm) if v1_rpm is not None else 0.0
+                            is_running = spindle_speed > 0
+                            spindle_temp = float(vibit1_data.get("temperature") or 0.0) if vibit1_data else 0.0
+                            tool_temp = float(vibit2_data.get("temperature") or 0.0) if vibit2_data else 0.0
+                            spindle_vibration = max([v for v in [
+                                vibit1_data.get("x_rms_vel"), vibit1_data.get("y_rms_vel"), vibit1_data.get("z_rms_vel")
+                            ] if v is not None] or [0.0]) if vibit1_data else 0.0
+                            tool_vibration = max([v for v in [
+                                vibit2_data.get("x_peak_vel"), vibit2_data.get("y_peak_vel"), vibit2_data.get("z_peak_vel")
+                            ] if v is not None] or [0.0]) if vibit2_data else 0.0
+                            curr_block = self.gcode_program[self.gcode_index % len(self.gcode_program)]
+                            feed_rate = float(curr_block["feed"] if is_running and plc_connected else 0.0)
+                            session.execute(text("""
+                                INSERT INTO triac_sensor_data (
+                                    time, machine_id, sensor_id,
+                                    x_axis_value, y_axis_value, z_axis_value,
+                                    x_axis_feed, y_axis_feed, z_axis_feed,
+                                    spindle_speed, spindle_temperature, spindle_vibration,
+                                    tool_temperature, tool_vibration, tool_number,
+                                    led_red, led_yellow, led_green, safety_curtain_status
+                                ) VALUES (
+                                    :time, 'triac', :sensor_id,
+                                    :x_val, :y_val, :z_val, :x_feed, :y_feed, :z_feed,
+                                    :speed, :temp, :vib, :tool_temp, :tool_vib, :tool_num,
+                                    :red, :yellow, :green, false
+                                )
+                            """), {
+                                "time": now_dt, "sensor_id": plc_sensor_id,
+                                "x_val": float(self.x_pos or 0.0), "y_val": float(self.y_pos or 0.0), "z_val": float(self.z_pos or 0.0),
+                                "x_feed": feed_rate, "y_feed": feed_rate, "z_feed": feed_rate,
+                                "speed": spindle_speed, "temp": spindle_temp, "vib": spindle_vibration,
+                                "tool_temp": tool_temp, "tool_vib": tool_vibration, "tool_num": int(2 if is_running else 0),
+                                "red": bool(not plc_connected), "yellow": bool(plc_connected and is_running), "green": bool(plc_connected and not is_running)
+                            })
+
+                        if vibit1_data and any(v is not None for v in vibit1_data.values()):
+                            vibit1_sensor_id = sensors.get("triac_vibit1")
+                            if vibit1_sensor_id:
+                                session.execute(text("""
+                                    INSERT INTO vibit_readings (time, machine_id, sensor_id, modbus_unit_id,
+                                        x_rms_acc, y_rms_acc, z_rms_acc, x_rms_vel, y_rms_vel, z_rms_vel,
+                                        x_peak_acc, y_peak_acc, z_peak_acc, x_peak_vel, y_peak_vel, z_peak_vel, temperature, rpm)
+                                    VALUES (:time, 'triac', :sensor_id, 1,
+                                        :x_rms, :y_rms, :z_rms, :x_vel, :y_vel, :z_vel,
+                                        :x_peak, :y_peak, :z_peak, :x_pvel, :y_pvel, :z_pvel, :temp, :rpm)
+                                """), {
+                                    "time": now_dt, "sensor_id": vibit1_sensor_id,
+                                    "x_rms": float(vibit1_data.get("x_rms_acc") or 0.0), "y_rms": float(vibit1_data.get("y_rms_acc") or 0.0), "z_rms": float(vibit1_data.get("z_rms_acc") or 0.0),
+                                    "x_vel": float(vibit1_data.get("x_rms_vel") or 0.0), "y_vel": float(vibit1_data.get("y_rms_vel") or 0.0), "z_vel": float(vibit1_data.get("z_rms_vel") or 0.0),
+                                    "x_peak": float(vibit1_data.get("x_peak_acc") or 0.0), "y_peak": float(vibit1_data.get("y_peak_acc") or 0.0), "z_peak": float(vibit1_data.get("z_peak_acc") or 0.0),
+                                    "x_pvel": float(vibit1_data.get("x_peak_vel") or 0.0), "y_pvel": float(vibit1_data.get("y_peak_vel") or 0.0), "z_pvel": float(vibit1_data.get("z_peak_vel") or 0.0),
+                                    "temp": float(vibit1_data.get("temperature") or 0.0), "rpm": float(vibit1_data.get("rpm") or 0.0)
+                                })
+
+                        if vibit2_data and any(v is not None for v in vibit2_data.values()):
+                            vibit2_sensor_id = sensors.get("triac_vibit2")
+                            if vibit2_sensor_id:
+                                session.execute(text("""
+                                    INSERT INTO vibit_readings (time, machine_id, sensor_id, modbus_unit_id,
+                                        x_rms_acc, y_rms_acc, z_rms_acc, x_rms_vel, y_rms_vel, z_rms_vel,
+                                        x_peak_acc, y_peak_acc, z_peak_acc, x_peak_vel, y_peak_vel, z_peak_vel, temperature, rpm)
+                                    VALUES (:time, 'triac', :sensor_id, 2,
+                                        :x_rms, :y_rms, :z_rms, :x_vel, :y_vel, :z_vel,
+                                        :x_peak, :y_peak, :z_peak, :x_pvel, :y_pvel, :z_pvel, :temp, 0.0)
+                                """), {
+                                    "time": now_dt, "sensor_id": vibit2_sensor_id,
+                                    "x_rms": float(vibit2_data.get("x_rms_acc") or 0.0), "y_rms": float(vibit2_data.get("y_rms_acc") or 0.0), "z_rms": float(vibit2_data.get("z_rms_acc") or 0.0),
+                                    "x_vel": float(vibit2_data.get("x_rms_vel") or 0.0), "y_vel": float(vibit2_data.get("y_rms_vel") or 0.0), "z_vel": float(vibit2_data.get("z_rms_vel") or 0.0),
+                                    "x_peak": float(vibit2_data.get("x_peak_acc") or 0.0), "y_peak": float(vibit2_data.get("y_peak_acc") or 0.0), "z_peak": float(vibit2_data.get("z_peak_acc") or 0.0),
+                                    "x_pvel": float(vibit2_data.get("x_peak_vel") or 0.0), "y_pvel": float(vibit2_data.get("y_peak_vel") or 0.0), "z_pvel": float(vibit2_data.get("z_peak_vel") or 0.0),
+                                    "temp": float(vibit2_data.get("temperature") or 0.0)
+                                })
+
+                        if vibit3_data and (vibit3_data.get("kwh") is not None or vibit3_data.get("power") is not None):
+                            energy_sensor_id = sensors.get("triac_energy")
+                            if energy_sensor_id:
+                                power = float(vibit3_data.get("power") or 0.0)
+                                session.execute(text("""
+                                    INSERT INTO energy_meter_data (time, machine_id, sensor_id,
+                                        average_voltage_ln, average_voltage_ll, average_current, total_net_kwh)
+                                    VALUES (:time, 'triac', :sensor_id, 230.0, 400.0, :current, :kwh)
+                                """), {"time": now_dt, "sensor_id": energy_sensor_id, "current": power / 230.0, "kwh": float(vibit3_data.get("kwh") or 0.0)})
+
+                        session.commit()
+                    except Exception as e:
+                        logger.error(f"[TRIAC] DB log error: {e}")
+                        session.rollback()
+                    finally:
+                        session.close()
+
+            except Exception as e:
+                logger.error(f"[TRIAC] Modbus poll error: {e}")
+
+            await asyncio.sleep(8.0)
+
+        logger.info("[TRIAC] Modbus poll loop stopped")
+
     async def _read_triac_data(self) -> Dict[str, Any] | None:
         """Build unified payload for frontend using real sensors from TRIAC.
         For the OPC UA connection, check gateway state.
@@ -251,233 +393,13 @@ class TriacBroadcaster:
         try:
             plc_connected = triac_opcua_connection.connected
 
-            # Poll at the sensor's natural update rate (~7-8s).
-            # Modbus TCP is request-response only — sensors cannot push data.
-            # Polling every 8s ensures we capture each new reading within one
-            # update cycle with minimal wasted reads.
-            now = time.time()
-            if now - self._last_modbus_read_time >= 8.0:
-                self._last_modbus_read_time = now
-                vibit1_data, vibit2_data, vibit3_data = await asyncio.gather(
-                    asyncio.to_thread(self.vibit_reader_1.read_snapshot),
-                    asyncio.to_thread(self.vibit_reader_2.read_snapshot),
-                    asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, True),
-                    return_exceptions=True
-                )
-                # Treat exceptions as None (sensor offline)
-                if isinstance(vibit1_data, Exception): vibit1_data = None
-                if isinstance(vibit2_data, Exception): vibit2_data = None
-                if isinstance(vibit3_data, Exception): vibit3_data = None
-                self._cached_modbus_data = (vibit1_data, vibit2_data, vibit3_data)
+            # Use cached Modbus data (updated every 8s by _modbus_poll_loop)
+            vibit1_data, vibit2_data, vibit3_data = copy.deepcopy(self._cached_modbus_data)
 
-                # Log to DB when we get new snapshots
-                sensors = self._get_sensor_ids()
-                if sensors:
-                    from backend.database.db import SessionLocal
-                    from sqlalchemy import text
-                    from backend.core.timezone import ist_now
-
-                    now_dt = ist_now()
-                    session = SessionLocal()
-                    try:
-                        # 1. Log to triac_sensor_data
-                        plc_sensor_id = sensors.get("triac")
-                        if plc_sensor_id:
-                            # Spindle speed
-                            v1_rpm = vibit1_data.get("rpm") if vibit1_data else None
-                            spindle_speed = float(v1_rpm) if v1_rpm is not None else 0.0
-                            is_running = spindle_speed > 0
-
-                            # Vibration / Temp fallbacks
-                            spindle_temp = float(vibit1_data.get("temperature") or 0.0) if vibit1_data else 0.0
-                            tool_temp = float(vibit2_data.get("temperature") or 0.0) if vibit2_data else 0.0
-
-                            # Spindle vibration (max of x_rms_vel, y_rms_vel, z_rms_vel)
-                            spindle_vibration = 0.0
-                            if vibit1_data:
-                                spindle_vibration = max([v for v in [
-                                    vibit1_data.get("x_rms_vel"),
-                                    vibit1_data.get("y_rms_vel"),
-                                    vibit1_data.get("z_rms_vel")
-                                ] if v is not None] or [0.0])
-
-                            # Tool vibration (max of x_peak_vel, y_peak_vel, z_peak_vel)
-                            tool_vibration = 0.0
-                            if vibit2_data:
-                                tool_vibration = max([v for v in [
-                                    vibit2_data.get("x_peak_vel"),
-                                    vibit2_data.get("y_peak_vel"),
-                                    vibit2_data.get("z_peak_vel")
-                                ] if v is not None] or [0.0])
-
-                            # Get current active block feed rate
-                            total_steps = len(self.gcode_program)
-                            curr_idx = self.gcode_index % total_steps
-                            curr_block = self.gcode_program[curr_idx]
-                            feed_rate = float(curr_block["feed"] if is_running and plc_connected else 0.0)
-
-                            session.execute(
-                                text("""
-                                    INSERT INTO triac_sensor_data (
-                                        time, machine_id, sensor_id,
-                                        x_axis_value, y_axis_value, z_axis_value,
-                                        x_axis_feed, y_axis_feed, z_axis_feed,
-                                        spindle_speed, spindle_temperature, spindle_vibration,
-                                        tool_temperature, tool_vibration, tool_number,
-                                        led_red, led_yellow, led_green, safety_curtain_status
-                                    )
-                                    VALUES (
-                                        :time, 'triac', :sensor_id,
-                                        :x_val, :y_val, :z_val,
-                                        :x_feed, :y_feed, :z_feed,
-                                        :speed, :temp, :vib,
-                                        :tool_temp, :tool_vib, :tool_num,
-                                        :red, :yellow, :green, false
-                                    )
-                                """),
-                                {
-                                    "time": now_dt,
-                                    "sensor_id": plc_sensor_id,
-                                    "x_val": float(self.x_pos or 0.0),
-                                    "y_val": float(self.y_pos or 0.0),
-                                    "z_val": float(self.z_pos or 0.0),
-                                    "x_feed": feed_rate,
-                                    "y_feed": feed_rate,
-                                    "z_feed": feed_rate,
-                                    "speed": spindle_speed,
-                                    "temp": spindle_temp,
-                                    "vib": spindle_vibration,
-                                    "tool_temp": tool_temp,
-                                    "tool_vib": tool_vibration,
-                                    "tool_num": int(2 if is_running else 0),
-                                    "red": bool(not plc_connected),
-                                    "yellow": bool(plc_connected and is_running),
-                                    "green": bool(plc_connected and not is_running)
-                                }
-                            )
-
-                        # 2. Log to vibit_readings for Spindle (VibIT 1)
-                        if vibit1_data and any(v is not None for v in vibit1_data.values()):
-                            vibit1_sensor_id = sensors.get("triac_vibit1")
-                            if vibit1_sensor_id:
-                                session.execute(
-                                    text("""
-                                        INSERT INTO vibit_readings (
-                                            time, machine_id, sensor_id, modbus_unit_id,
-                                            x_rms_acc, y_rms_acc, z_rms_acc,
-                                            x_rms_vel, y_rms_vel, z_rms_vel,
-                                            x_peak_acc, y_peak_acc, z_peak_acc,
-                                            x_peak_vel, y_peak_vel, z_peak_vel,
-                                            temperature, rpm
-                                        )
-                                        VALUES (
-                                            :time, 'triac', :sensor_id, 1,
-                                            :x_rms, :y_rms, :z_rms,
-                                            :x_vel, :y_vel, :z_vel,
-                                            :x_peak, :y_peak, :z_peak,
-                                            :x_pvel, :y_pvel, :z_pvel,
-                                            :temp, :rpm
-                                        )
-                                    """),
-                                    {
-                                        "time": now_dt,
-                                        "sensor_id": vibit1_sensor_id,
-                                        "x_rms": float(vibit1_data.get("x_rms_acc") or 0.0),
-                                        "y_rms": float(vibit1_data.get("y_rms_acc") or 0.0),
-                                        "z_rms": float(vibit1_data.get("z_rms_acc") or 0.0),
-                                        "x_vel": float(vibit1_data.get("x_rms_vel") or 0.0),
-                                        "y_vel": float(vibit1_data.get("y_rms_vel") or 0.0),
-                                        "z_vel": float(vibit1_data.get("z_rms_vel") or 0.0),
-                                        "x_peak": float(vibit1_data.get("x_peak_acc") or 0.0),
-                                        "y_peak": float(vibit1_data.get("y_peak_acc") or 0.0),
-                                        "z_peak": float(vibit1_data.get("z_peak_acc") or 0.0),
-                                        "x_pvel": float(vibit1_data.get("x_peak_vel") or 0.0),
-                                        "y_pvel": float(vibit1_data.get("y_peak_vel") or 0.0),
-                                        "z_pvel": float(vibit1_data.get("z_peak_vel") or 0.0),
-                                        "temp": float(vibit1_data.get("temperature") or 0.0),
-                                        "rpm": float(vibit1_data.get("rpm") or 0.0)
-                                    }
-                                )
-
-                        # 3. Log to vibit_readings for Tool (VibIT 2)
-                        if vibit2_data and any(v is not None for v in vibit2_data.values()):
-                            vibit2_sensor_id = sensors.get("triac_vibit2")
-                            if vibit2_sensor_id:
-                                session.execute(
-                                    text("""
-                                        INSERT INTO vibit_readings (
-                                            time, machine_id, sensor_id, modbus_unit_id,
-                                            x_rms_acc, y_rms_acc, z_rms_acc,
-                                            x_rms_vel, y_rms_vel, z_rms_vel,
-                                            x_peak_acc, y_peak_acc, z_peak_acc,
-                                            x_peak_vel, y_peak_vel, z_peak_vel,
-                                            temperature, rpm
-                                        )
-                                        VALUES (
-                                            :time, 'triac', :sensor_id, 2,
-                                            :x_rms, :y_rms, :z_rms,
-                                            :x_vel, :y_vel, :z_vel,
-                                            :x_peak, :y_peak, :z_peak,
-                                            :x_pvel, :y_pvel, :z_pvel,
-                                            :temp, 0.0
-                                        )
-                                    """),
-                                    {
-                                        "time": now_dt,
-                                        "sensor_id": vibit2_sensor_id,
-                                        "x_rms": float(vibit2_data.get("x_rms_acc") or 0.0),
-                                        "y_rms": float(vibit2_data.get("y_rms_acc") or 0.0),
-                                        "z_rms": float(vibit2_data.get("z_rms_acc") or 0.0),
-                                        "x_vel": float(vibit2_data.get("x_rms_vel") or 0.0),
-                                        "y_vel": float(vibit2_data.get("y_rms_vel") or 0.0),
-                                        "z_vel": float(vibit2_data.get("z_rms_vel") or 0.0),
-                                        "x_peak": float(vibit2_data.get("x_peak_acc") or 0.0),
-                                        "y_peak": float(vibit2_data.get("y_peak_acc") or 0.0),
-                                        "z_peak": float(vibit2_data.get("z_peak_acc") or 0.0),
-                                        "x_pvel": float(vibit2_data.get("x_peak_vel") or 0.0),
-                                        "y_pvel": float(vibit2_data.get("y_peak_vel") or 0.0),
-                                        "z_pvel": float(vibit2_data.get("z_peak_vel") or 0.0),
-                                        "temp": float(vibit2_data.get("temperature") or 0.0)
-                                    }
-                                )
-
-                        # 4. Log to energy_meter_data (VibIT 3)
-                        if vibit3_data and (vibit3_data.get("kwh") is not None or vibit3_data.get("power") is not None):
-                            energy_sensor_id = sensors.get("triac_energy")
-                            if energy_sensor_id:
-                                power = float(vibit3_data.get("power") or 0.0)
-                                session.execute(
-                                    text("""
-                                        INSERT INTO energy_meter_data (
-                                            time, machine_id, sensor_id,
-                                            average_voltage_ln, average_voltage_ll, average_current,
-                                            total_net_kwh
-                                        )
-                                        VALUES (
-                                            :time, 'triac', :sensor_id,
-                                            230.0, 400.0, :current,
-                                            :kwh
-                                        )
-                                    """),
-                                    {
-                                        "time": now_dt,
-                                        "sensor_id": energy_sensor_id,
-                                        "current": power / 230.0,
-                                        "kwh": float(vibit3_data.get("kwh") or 0.0)
-                                    }
-                                )
-
-                        session.commit()
-                    except Exception as e:
-                        logger.error(f"Error logging triac data to DB: {e}")
-                    finally:
-                        session.close()
-            else:
-                vibit1_data, vibit2_data, vibit3_data = copy.deepcopy(self._cached_modbus_data)
-
-            # Lazy initialize from DB if not already done
-            if self._last_good_vibit1 is None or self._last_good_vibit2 is None or self._last_good_vibit3 is None:
-                self._init_last_good_from_db()
+            # Initialize last-good cache from DB on first cycle (runs once)
+            if not self._db_init_done:
+                self._db_init_done = True
+                await asyncio.to_thread(self._init_last_good_from_db)
 
             vibit1_connected = vibit1_data is not None
             vibit2_connected = vibit2_data is not None
@@ -619,7 +541,13 @@ class TriacBroadcaster:
                         self._heartbeat_tick = 0
                     else:
                         delta = compute_delta(self._last_broadcast_payload, data)
-                        if delta:
+                        # Force snapshot when fresh Modbus data just arrived
+                        if self._modbus_data_fresh:
+                            self._modbus_data_fresh = False
+                            message = build_snapshot_message(data)
+                            self._last_broadcast_payload = copy.deepcopy(data)
+                            self._heartbeat_tick = 0
+                        elif delta:
                             delta["timestamp"] = data["timestamp"]
                             message = build_delta_message(delta)
                             self._last_broadcast_payload = copy.deepcopy(data)
@@ -651,6 +579,8 @@ class TriacBroadcaster:
             self.vibit_reader_1.close()
             self.vibit_reader_2.close()
             self.vibit_reader_3.close()
+            if self._modbus_task and not self._modbus_task.done():
+                self._modbus_task.cancel()
             self.is_broadcasting = False
             logger.info("Triac broadcast loop stopped")
 

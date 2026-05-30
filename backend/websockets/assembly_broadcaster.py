@@ -252,7 +252,7 @@ class HydraulicBroadcaster:
                 result = {}
                 for tag_name, node in list(node_cache.items()):
                     try:
-                        result[tag_name] = node.get_value()
+                        result[tag_name] = node.read_value()
                     except Exception as e:
                         logger.warning(f"[Assembly] Failed to read {tag_name}: {e}")
                         result[tag_name] = None
