@@ -268,6 +268,7 @@ export default function Assembly() {
         setSmoothedDataPoints(points => [...points.slice(-99), {
           value: Math.max(0, newVal - 43),
           workpiece,
+          timestamp: Date.now()
         }]);
         lastRenderUpdateRef.current = now;
       }
