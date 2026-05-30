@@ -201,6 +201,7 @@ class TriacBroadcaster:
 
         # Start broadcasting if this is the first connection
         if not self.is_broadcasting:
+            self.is_broadcasting = True  # Set before creating tasks so poll loop doesn't exit immediately
             self.broadcast_task = asyncio.create_task(self._broadcast_loop())
             self._modbus_task = asyncio.create_task(self._modbus_poll_loop())
 
