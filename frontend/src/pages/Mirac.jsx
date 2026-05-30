@@ -73,9 +73,11 @@ const SensorDot = ({ connected }) => (
   />
 );
 
+import { wsCache } from "../utils/wsCache";
+
 // --- Main Page Component ---
 const Mirac = () => {
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(wsCache.mirac);
   const [isWsConnected, setIsWsConnected] = useState(false);
   const [wsStatus, setWsStatus] = useState("disconnected"); // 'connected', 'connecting', 'disconnected'
   const [isConnected, setIsConnected] = useState(false); // OPC-UA connectivity
@@ -92,7 +94,7 @@ const Mirac = () => {
   const targetXRef = useRef(0);
   const targetZRef = useRef(0);
   // Ref that always holds the latest merged data (avoids stale closure in onmessage)
-  const dataRef = useRef(null);
+  const dataRef = useRef(wsCache.mirac);
   const smoothedXRef = useRef(0);
   const smoothedZRef = useRef(0);
   const velocityXRef = useRef(0);
@@ -184,6 +186,7 @@ const Mirac = () => {
         if (msg.type === "snapshot") {
           // Full state replacement — first message or new client
           dataRef.current = msg.data;
+          wsCache.mirac = msg.data;
           setData(msg.data);
           if (msg.data.axes?.x?.value != null) targetXRef.current = msg.data.axes.x.value;
           if (msg.data.axes?.z?.value != null) targetZRef.current = msg.data.axes.z.value;
@@ -192,6 +195,7 @@ const Mirac = () => {
           // Partial update — merge into current state
           const merged = deepMerge(dataRef.current, msg.data);
           dataRef.current = merged;
+          wsCache.mirac = merged;
           setData(merged);
           // Only update axis refs when those keys are present in the delta
           if (msg.data.axes?.x?.value != null) targetXRef.current = msg.data.axes.x.value;

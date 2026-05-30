@@ -347,8 +347,13 @@ const TriacMachineView = ({
   );
 };
 
+import { wsCache } from "../utils/wsCache";
+
+// --- Module-level data cache — persists across navigation ---
+let _triacDataCache = null;
+
 export default function Triac() {
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(wsCache.triac);
   const [isWsConnected, setIsWsConnected] = useState(false);
   const [wsStatus, setWsStatus] = useState("disconnected"); // 'connected', 'connecting', 'disconnected'
   const [isConnected, setIsConnected] = useState(false); // OPC-UA connectivity
@@ -378,7 +383,7 @@ export default function Triac() {
   const wsRef = useRef(null);
   const reconnectTimerRef = useRef(null);
   // Ref that always holds the latest merged data (avoids stale closure in onmessage)
-  const dataRef = useRef(null);
+  const dataRef = useRef(wsCache.triac);
 
   // VibIT last-seen timestamps (shown when sensor is offline but cached data exists)
   const vibit1LastSeenRef = useRef(null);
@@ -423,6 +428,7 @@ export default function Triac() {
         if (msg.type === "snapshot") {
           // Full state replacement — first message or new client
           dataRef.current = msg.data;
+          wsCache.triac = msg.data;
           setData(msg.data);
           if (msg.data.axes?.x?.value != null) targetXRef.current = msg.data.axes.x.value;
           if (msg.data.axes?.y?.value != null) targetYRef.current = msg.data.axes.y.value;
@@ -432,6 +438,7 @@ export default function Triac() {
           // Partial update — merge into current state
           const merged = deepMerge(dataRef.current, msg.data);
           dataRef.current = merged;
+          wsCache.triac = merged;
           setData(merged);
           // Only update axis refs when those keys are present in the delta
           if (msg.data.axes?.x?.value != null) targetXRef.current = msg.data.axes.x.value;

@@ -165,8 +165,10 @@ class OPCUAConnection:
                 with self._lock:
                     if not self.client or not self.connected:
                         continue
-                    root = self.client.get_root_node()
-                    root.get_children()  # health check inside lock
+                    # Health check: read the server status node (ns=0;i=2259)
+                    # read_value() is the correct sync method in asyncua >= 1.0.x
+                    status_node = self.client.get_node("ns=0;i=2259")
+                    status_node.read_value()
             except Exception as e:
                 logging.warning(f"[OPC] Connection lost: {e}")
                 # reconnect() acquires the lock itself

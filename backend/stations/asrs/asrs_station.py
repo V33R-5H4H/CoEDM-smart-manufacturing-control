@@ -294,7 +294,7 @@ class ASRSController:
                         node_id = f"ns={PLC_NAMESPACE};s={tag}"
                         try:
                             node = asrs_connection.client.get_node(node_id)
-                            value = node.get_value()
+                            value = node.read_value()
                             led_nodes.append(node)
                             node_to_tag[node.nodeid.to_string()] = tag
 
@@ -310,7 +310,7 @@ class ASRSController:
                 safety_node_id = f"ns={PLC_NAMESPACE};s={safety_tag}"
                 try:
                     safety_node = asrs_connection.client.get_node(safety_node_id)
-                    safety_value = safety_node.get_value()
+                    safety_value = safety_node.read_value()
                     led_nodes.append(safety_node)
                     node_to_tag[safety_node.nodeid.to_string()] = safety_tag
 

@@ -3,26 +3,27 @@ import { Link } from "react-router-dom";
 import PageHeader from "../components/PageHeader";
 import BoxService from "./asrs/services/boxService";
 import "./Assembly.css";
+import { wsCache } from "../utils/wsCache";
 
 export default function Dashboard() {
   const [asrsConnected, setAsrsConnected] = useState(false);
-  const [asrsShuttle, setAsrsShuttle] = useState({ col: 'A', row: 7, state: 'idle' });
+  const [asrsShuttle, setAsrsShuttle] = useState(wsCache.dashboard.asrsShuttle);
   const [inventoryCount, setInventoryCount] = useState(0);
 
   const [assemblyConnected, setAssemblyConnected] = useState(false);
-  const [assemblyPosition, setAssemblyPosition] = useState(null);
-  const [assemblySafety, setAssemblySafety] = useState("OK");
+  const [assemblyPosition, setAssemblyPosition] = useState(wsCache.dashboard.assemblyPosition);
+  const [assemblySafety, setAssemblySafety] = useState(wsCache.dashboard.assemblySafety);
 
   const [miracConnected, setMiracConnected] = useState(false);
-  const [miracSpindle, setMiracSpindle] = useState(null);
-  const [miracTemp, setMiracTemp] = useState(null);
+  const [miracSpindle, setMiracSpindle] = useState(wsCache.dashboard.miracSpindle);
+  const [miracTemp, setMiracTemp] = useState(wsCache.dashboard.miracTemp);
 
   const [triacConnected, setTriacConnected] = useState(false);
-  const [triacSpindle, setTriacSpindle] = useState(null);
-  const [triacFeed, setTriacFeed] = useState(null);
+  const [triacSpindle, setTriacSpindle] = useState(wsCache.dashboard.triacSpindle);
+  const [triacFeed, setTriacFeed] = useState(wsCache.dashboard.triacFeed);
 
-  const [transactions, setTransactions] = useState([]);
-  const [lastUpdated, setLastUpdated] = useState({});
+  const [transactions, setTransactions] = useState(wsCache.dashboard.transactions);
+  const [lastUpdated, setLastUpdated] = useState(wsCache.dashboard.lastUpdated);
 
   // Fetch initial ASRS inventory count
   useEffect(() => {
@@ -68,12 +69,16 @@ export default function Dashboard() {
         try {
           const data = JSON.parse(e.data);
           if (data.type === "shuttle") {
-            setAsrsShuttle({
+            const shuttle = {
               col: data.payload.column,
               row: data.payload.row,
               state: data.payload.state,
-            });
-            setLastUpdated(prev => ({ ...prev, asrs: new Date().toTimeString().slice(0, 8) }));
+            };
+            wsCache.dashboard.asrsShuttle = shuttle;
+            setAsrsShuttle(shuttle);
+            const ts = new Date().toTimeString().slice(0, 8);
+            wsCache.dashboard.lastUpdated = { ...wsCache.dashboard.lastUpdated, asrs: ts };
+            setLastUpdated(prev => ({ ...prev, asrs: ts }));
           } else if (data.type === "led") {
             setTimeout(async () => {
               try {
@@ -126,14 +131,20 @@ export default function Dashboard() {
           setAssemblyConnected(data.connected !== false);
           if (data.position?.displacement_mm !== undefined) {
             const disp = Math.max(0, data.position.displacement_mm - 43);
-            setAssemblyPosition(Math.round(disp));
+            const pos = Math.round(disp);
+            wsCache.dashboard.assemblyPosition = pos;
+            setAssemblyPosition(pos);
           }
           if (data.safety?.curtain || data.safety?.buzzer) {
+            wsCache.dashboard.assemblySafety = "BREACH";
             setAssemblySafety("BREACH");
           } else {
+            wsCache.dashboard.assemblySafety = "OK";
             setAssemblySafety("OK");
           }
-          setLastUpdated(prev => ({ ...prev, assembly: new Date().toTimeString().slice(0, 8) }));
+          const ts = new Date().toTimeString().slice(0, 8);
+          wsCache.dashboard.lastUpdated = { ...wsCache.dashboard.lastUpdated, assembly: ts };
+          setLastUpdated(prev => ({ ...prev, assembly: ts }));
         } catch {}
       };
       assemblyWs.onclose = () => {
@@ -166,12 +177,16 @@ export default function Dashboard() {
           const plcOn = data.data_sources?.plc ?? false;
           setMiracConnected(plcOn);
           if (data.spindle?.speed !== undefined && data.spindle?.speed !== null) {
+            wsCache.dashboard.miracSpindle = data.spindle.speed;
             setMiracSpindle(data.spindle.speed);
           }
           if (data.spindle?.temperature !== undefined && data.spindle?.temperature !== null) {
+            wsCache.dashboard.miracTemp = data.spindle.temperature;
             setMiracTemp(data.spindle.temperature);
           }
-          setLastUpdated(prev => ({ ...prev, mirac: new Date().toTimeString().slice(0, 8) }));
+          const ts = new Date().toTimeString().slice(0, 8);
+          wsCache.dashboard.lastUpdated = { ...wsCache.dashboard.lastUpdated, mirac: ts };
+          setLastUpdated(prev => ({ ...prev, mirac: ts }));
         } catch {}
       };
       miracWs.onclose = () => {
@@ -207,12 +222,16 @@ export default function Dashboard() {
           const plcOn = data.data_sources?.plc ?? false;
           setTriacConnected(plcOn);
           if (data.spindle?.speed !== undefined && data.spindle?.speed !== null) {
+            wsCache.dashboard.triacSpindle = data.spindle.speed;
             setTriacSpindle(data.spindle.speed);
           }
           if (data.axes?.x?.feed !== undefined && data.axes?.x?.feed !== null) {
+            wsCache.dashboard.triacFeed = data.axes.x.feed;
             setTriacFeed(data.axes.x.feed);
           }
-          setLastUpdated(prev => ({ ...prev, triac: new Date().toTimeString().slice(0, 8) }));
+          const ts = new Date().toTimeString().slice(0, 8);
+          wsCache.dashboard.lastUpdated = { ...wsCache.dashboard.lastUpdated, triac: ts };
+          setLastUpdated(prev => ({ ...prev, triac: ts }));
         } catch {}
       };
       triacWs.onclose = () => {
@@ -246,6 +265,7 @@ export default function Dashboard() {
         const res = await fetch(`${httpBase}/data/events?limit=25`);
         const json = await res.json();
         if (json.success && isMounted) {
+          wsCache.dashboard.transactions = json.data;
           setTransactions(json.data);
         }
       } catch (e) {

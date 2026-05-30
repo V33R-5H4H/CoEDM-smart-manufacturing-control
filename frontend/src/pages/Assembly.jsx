@@ -23,6 +23,11 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
+import { wsCache } from '../utils/wsCache';
+
+// --- Module-level data cache — persists across navigation ---
+let _assemblyDataCache = null;
+
 export default function Assembly() {
   const { resolved: theme } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
@@ -31,7 +36,7 @@ export default function Assembly() {
   const [isConnected, setIsConnected] = useState(false);
   const [isWsConnected, setIsWsConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
-  const [plantData, setPlantData] = useState(null);
+  const [plantData, setPlantData] = useState(wsCache.assembly);
   const [activeTab, setActiveTab] = useState('monitoring');
   const { activeModal, openModal, closeModal } = useModal();
 
@@ -61,7 +66,7 @@ export default function Assembly() {
   const wsRef = useRef(null);
   const reconnectTimerRef = useRef(null);
   // Tracks last known full state for delta merging
-  const lastDataRef = useRef(null);
+  const lastDataRef = useRef(wsCache.assembly);
 
   // Fetch historical telemetry on mount
   useEffect(() => {
@@ -134,6 +139,7 @@ export default function Assembly() {
       }
 
       // Update state immediately on every WebSocket message
+      wsCache.assembly = data;
       setPlantData(data);
       setIsConnected(data.connected !== false);
       setLastCommand(data.assembly?.bearing ? 'Bearing ON' : 'Bearing OFF');

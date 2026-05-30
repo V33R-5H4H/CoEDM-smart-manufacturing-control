@@ -47,6 +47,8 @@ class MiracBroadcaster:
         )
         self._last_modbus_read_time = 0.0
         self._cached_modbus_data = (None, None, None)
+        self._modbus_data_fresh = False  # True when new Modbus data was just read
+        self._modbus_task = None  # Background task for Modbus reads
         self._sensor_ids_cached = None
         self.last_plc_connected = None
         self.last_vibit1_connected = None
@@ -57,6 +59,7 @@ class MiracBroadcaster:
         self._last_good_vibit1 = None
         self._last_good_vibit2 = None
         self._last_good_vibit3 = None
+        self._db_init_done = False  # Ensures DB init runs exactly once
         # Delta-send state
         self._last_broadcast_payload: dict = {}
         self._heartbeat_tick: int = 0
@@ -87,6 +90,7 @@ class MiracBroadcaster:
         # Start broadcasting if this is the first connection
         if not self.is_broadcasting:
             self.broadcast_task = asyncio.create_task(self._broadcast_loop())
+            self._modbus_task = asyncio.create_task(self._modbus_poll_loop())
     
     def disconnect(self, websocket: WebSocket):
         """Unregister a WebSocket connection"""
@@ -98,6 +102,8 @@ class MiracBroadcaster:
             self.is_broadcasting = False
             if self.broadcast_task:
                 self.broadcast_task.cancel()
+            if self._modbus_task:
+                self._modbus_task.cancel()
     
     def _get_sensor_ids(self) -> dict:
         """Resolve sensor UUIDs dynamically."""
@@ -461,6 +467,48 @@ class MiracBroadcaster:
                 session.close()
         await asyncio.to_thread(_write)
 
+    async def _modbus_poll_loop(self):
+        """
+        Background task: polls Modbus sensors every 8s independently of the
+        10 Hz OPC-UA broadcast loop.  This prevents Modbus timeouts (up to 3s
+        per read × 3 sensors = 9s) from blocking axis position updates.
+        """
+        logger.info("[MIRAC] Modbus poll loop started")
+        while self.is_broadcasting and len(self.active_connections) > 0:
+            try:
+                # Read U2 first (most reliable — establishes gateway connection)
+                try:
+                    vibit2_data = await asyncio.to_thread(self.vibit_reader_2.read_snapshot)
+                except Exception:
+                    vibit2_data = None
+
+                # Read U3 (energy meter) while connection is open
+                try:
+                    vibit3_data = await asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, False)
+                except Exception:
+                    vibit3_data = None
+
+                # Read U1 (spindle VibIT) last
+                try:
+                    vibit1_data = await asyncio.to_thread(self.vibit_reader_1.read_snapshot)
+                except Exception:
+                    vibit1_data = None
+
+                self._cached_modbus_data = (vibit1_data, vibit2_data, vibit3_data)
+                self._modbus_data_fresh = True  # Signal broadcast loop to force send
+
+                # Log to DB
+                plc_data = {}  # DB log uses last PLC data — broadcaster handles this separately
+                asyncio.create_task(self._log_to_db(plc_data, vibit1_data or {}, vibit2_data or {}, vibit3_data or {}))
+
+            except Exception as e:
+                logger.error(f"[MIRAC] Modbus poll error: {e}")
+
+            # Wait 8s before next poll
+            await asyncio.sleep(8.0)
+
+        logger.info("[MIRAC] Modbus poll loop stopped")
+
     async def _read_plc_data(self) -> dict:
         """Read current MIRAC PLC data from OPC UA server.
         
@@ -473,10 +521,8 @@ class MiracBroadcaster:
         def _read_all_tags(node_cache):
             """Synchronous OPC-UA reads — run in thread pool.
             
-            Node handles are resolved once and reused across cycles to avoid
-            repeated get_node() round-trips. All values are read in a tight
-            loop inside a single thread, which is the fastest approach with
-            the synchronous asyncua client.
+            Uses read_value() which is the correct synchronous method on
+            asyncua.sync.SyncNode in asyncua >= 1.0.x.
             """
             # Build node cache on first call (or after reconnect clears it)
             if not node_cache:
@@ -490,7 +536,7 @@ class MiracBroadcaster:
             result = {}
             for tag_name, node in list(node_cache.items()):
                 try:
-                    result[tag_name] = node.get_value()
+                    result[tag_name] = node.read_value()
                 except Exception as e:
                     logger.warning(f"[MIRAC] Failed to read {tag_name}: {e}")
                     result[tag_name] = None
@@ -551,47 +597,13 @@ class MiracBroadcaster:
                     if red_active:
                         asyncio.create_task(self._log_machine_event_db("mirac", "alarm", "warning", "Status Tower: Red Indicator Active", {"light_red": True}))
 
-            # Poll at the sensor's natural update rate (~7-8s).
-            # Modbus TCP is request-response only — sensors cannot push data.
-            # Polling every 8s ensures we capture each new reading within one
-            # update cycle with minimal wasted reads.
-            #
-            # All three readers share ONE persistent TCP connection via VibitGateway.
-            # The gateway's internal RLock serialises reads — no gaps needed.
-            # We still run them sequentially (not asyncio.gather) because the
-            # gateway lock is a threading.RLock, not asyncio-aware.
-            now = time.time()
-            if now - self._last_modbus_read_time >= 8.0:
-                self._last_modbus_read_time = now
+            # Use cached Modbus data (updated every 8s by _modbus_poll_loop)
+            vibit1_data, vibit2_data, vibit3_data = copy.deepcopy(self._cached_modbus_data)
 
-                # Read U1 (spindle VibIT)
-                try:
-                    vibit1_data = await asyncio.to_thread(self.vibit_reader_1.read_snapshot)
-                except Exception:
-                    vibit1_data = None
-
-                # Read U2 (tool VibIT)
-                try:
-                    vibit2_data = await asyncio.to_thread(self.vibit_reader_2.read_snapshot)
-                except Exception:
-                    vibit2_data = None
-
-                # Read U3 (energy meter)
-                try:
-                    vibit3_data = await asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, False)
-                except Exception:
-                    vibit3_data = None
-
-                self._cached_modbus_data = (vibit1_data, vibit2_data, vibit3_data)
-
-                # Write to DB inside the Modbus read tick
-                asyncio.create_task(self._log_to_db(plc_data, vibit1_data or {}, vibit2_data or {}, vibit3_data or {}))
-            else:
-                vibit1_data, vibit2_data, vibit3_data = copy.deepcopy(self._cached_modbus_data)
-
-            # Lazy initialize from DB if not already done
-            if self._last_good_vibit1 is None or self._last_good_vibit2 is None or self._last_good_vibit3 is None:
-                self._init_last_good_from_db()
+            # Initialize last-good cache from DB on first cycle (runs once)
+            if not self._db_init_done:
+                self._db_init_done = True
+                await asyncio.to_thread(self._init_last_good_from_db)
 
             # Track which sensors are actually connected
             vibit1_connected = vibit1_data is not None
@@ -778,7 +790,15 @@ class MiracBroadcaster:
                         self._heartbeat_tick = 0
                     else:
                         delta = compute_delta(self._last_broadcast_payload, data)
-                        if delta:
+                        # Force a snapshot when fresh Modbus data just arrived,
+                        # even if values are numerically identical to last read.
+                        # This ensures the frontend always updates after each 8s poll.
+                        if self._modbus_data_fresh:
+                            self._modbus_data_fresh = False
+                            message = build_snapshot_message(data)
+                            self._last_broadcast_payload = copy.deepcopy(data)
+                            self._heartbeat_tick = 0
+                        elif delta:
                             # Include timestamp so frontend knows the message is fresh
                             delta["timestamp"] = data["timestamp"]
                             message = build_delta_message(delta)
@@ -813,6 +833,8 @@ class MiracBroadcaster:
             self.vibit_reader_1.close()
             self.vibit_reader_2.close()
             self.vibit_reader_3.close()
+            if self._modbus_task and not self._modbus_task.done():
+                self._modbus_task.cancel()
             self.is_broadcasting = False
             logger.info("Mirac broadcast loop stopped")
 

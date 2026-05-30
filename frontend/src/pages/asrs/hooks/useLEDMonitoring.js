@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import { wsCache } from '../../../utils/wsCache';
 
 export function useLEDMonitoring() {
-  const [ledStates, setLedStates] = useState({});
-  const [shuttleState, setShuttleState] = useState({ col: 'A', row: 7, state: 'idle', command: null });
+  const [ledStates, setLedStates] = useState(wsCache.asrs.ledStates);
+  const [shuttleState, setShuttleState] = useState(wsCache.asrs.shuttleState);
   const [connected, setConnected] = useState(false);
-  const [safetyCurtain, setSafetyCurtain] = useState(false);
+  const [safetyCurtain, setSafetyCurtain] = useState(wsCache.asrs.safetyCurtain);
   const wsRef = useRef(null);
 
   useEffect(() => {
@@ -33,13 +34,14 @@ export function useLEDMonitoring() {
             if (res.ok) {
               const data = await res.json();
               console.log('Initial shuttle state fetched:', data);
-              setShuttleState(prev => ({
-                ...prev,
-                col: data.column, // API uses 'column'
+              const next = {
+                col: data.column,
                 row: data.row,
                 state: data.state,
                 command: data.command
-              }));
+              };
+              wsCache.asrs.shuttleState = next;
+              setShuttleState(next);
             }
           } catch (e) {
             console.error('Failed to fetch initial shuttle state:', e);
@@ -55,8 +57,10 @@ export function useLEDMonitoring() {
           case 'snapshot':
             // Initial state snapshot
             console.log('LED snapshot received:', data.states);
+            wsCache.asrs.ledStates = data.states || {};
             setLedStates(data.states);
             if (data.safety) {
+              wsCache.asrs.safetyCurtain = !!data.safety.curtain;
               setSafetyCurtain(!!data.safety.curtain);
             }
             break;
@@ -64,27 +68,33 @@ export function useLEDMonitoring() {
           case 'led':
             // LED update
             console.log('LED update:', data.payload.box_id, data.payload.active);
-            setLedStates(prev => ({
-              ...prev,
-              [data.payload.box_id]: data.payload.active
-            }));
+            setLedStates(prev => {
+              const next = { ...prev, [data.payload.box_id]: data.payload.active };
+              wsCache.asrs.ledStates = next;
+              return next;
+            });
             break;
 
           case 'shuttle':
             // Shuttle state update
             console.log('Shuttle update:', data.payload);
-            setShuttleState(prev => ({
-              ...prev,
-              col: data.payload.column,
-              row: data.payload.row,
-              state: data.payload.state,
-              command: data.payload.command
-            }));
+            setShuttleState(prev => {
+              const next = {
+                ...prev,
+                col: data.payload.column,
+                row: data.payload.row,
+                state: data.payload.state,
+                command: data.payload.command
+              };
+              wsCache.asrs.shuttleState = next;
+              return next;
+            });
             break;
 
           case 'safety':
             // Safety curtain update
             console.log('Safety update:', data.payload.curtain);
+            wsCache.asrs.safetyCurtain = !!data.payload.curtain;
             setSafetyCurtain(!!data.payload.curtain);
             break;
 
