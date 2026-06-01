@@ -6,7 +6,7 @@ from typing import Optional
 from backend.core.timezone import ist_now
 import logging
 import uuid
-import json
+import orjson
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/data/events", tags=["Events & Alarms"])
@@ -83,7 +83,7 @@ async def create_event(payload: EventCreate):
                 "event_type": payload.event_type,
                 "severity": payload.severity,
                 "title": payload.title,
-                "payload": json.dumps(payload.payload) if payload.payload else None
+                "payload": orjson.dumps(payload.payload).decode("utf-8") if payload.payload else None
             }
         )
         session.commit()
