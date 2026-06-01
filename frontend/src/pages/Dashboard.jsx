@@ -459,12 +459,12 @@ export default function Dashboard() {
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 0 16px rgba(188, 199, 221, 0.15)';
+                e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
                 e.currentTarget.style.borderColor = 'var(--primary)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.03)';
+                e.currentTarget.style.boxShadow = 'var(--shadow)';
                 e.currentTarget.style.borderColor = 'var(--border-light)';
               }}
             >
@@ -553,7 +553,7 @@ export default function Dashboard() {
                 marginTop: '8px'
               }}>
                 {lastUpdated[s.key] ? (
-                  <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#475569' }}>
+                  <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
                     UPD: {lastUpdated[s.key]}
                   </span>
                 ) : (
@@ -572,7 +572,7 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Transaction Log */}
-        <div className="asm-viz" style={{ minHeight: 'auto', background: 'rgba(25, 28, 34, 0.85)', backdropFilter: 'blur(8px)', flex: 'none', border: '1px solid var(--border)' }}>
+        <div className="asm-viz" style={{ minHeight: 'auto', flex: 'none', border: '1px solid var(--border)' }}>
           <div className="asm-viz__bar" style={{ background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
             <span>Recent Facility Transaction Log</span>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--primary)' }}>SECURE_STREAM // ONLINE</span>

@@ -473,6 +473,7 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
         flexDirection: 'column',
         justifyContent: 'space-between',
         flex: 1,
+        paddingRight: '4px',
         overflow: 'hidden',
         height: '100%'
       }}>
@@ -480,7 +481,7 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '4px' }}>
           <span style={{
             fontFamily: 'var(--font-mono)',
-            fontSize: '11px',
+            fontSize: '13px',
             fontWeight: 700,
             color: isSelected ? 'var(--primary-light)' : 'var(--text-primary)',
             whiteSpace: 'nowrap',
@@ -507,7 +508,7 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
         {/* Row 2: numeric representation */}
         <div style={{
           fontFamily: 'var(--font-mono)',
-          fontSize: '9px',
+          fontSize: '11px',
           color: isEmpty ? 'var(--text-disabled)' : 'var(--text-secondary)',
           fontWeight: 600,
           lineHeight: 1.1
@@ -518,9 +519,9 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
         {/* Row 3: status badge */}
         <div>
           <span style={{
-            fontSize: '8px',
+            fontSize: '10px',
             fontFamily: 'var(--font-mono)',
-            padding: '1px 4px',
+            padding: '2px 5px',
             borderRadius: '2px',
             background: `${highlightColor}12`,
             color: highlightColor,
@@ -538,8 +539,9 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(2, 1fr)',
+        gridTemplateRows: 'repeat(3, 1fr)',
         gap: '3px',
-        width: '24px',
+        flex: 1,
         height: '100%',
         flexShrink: 0
       }}>
@@ -628,6 +630,7 @@ function RackView({
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <button
+            id="asrs-home-btn"
             type="button"
             onClick={onHomeShuttle}
             disabled={safetyCurtainTriggered}
@@ -822,7 +825,12 @@ function RackView({
                       rawLED={rawLED}
                       isSourceBlinking={blinking}
                       isSelected={isSelected}
-                      onClick={() => box && setSelectedBox(box)}
+                      onClick={() => {
+                        if (box) {
+                          setSelectedBox(box);
+                          window.dispatchEvent(new Event('asrs-box-clicked'));
+                        }
+                      }}
                     />
                   </div>
                 );
@@ -945,7 +953,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
   const isSelectedOccupied = selectedSub ? !!selectedSub.item_id : false;
 
   return (
-    <div style={{
+    <div id="asrs-operations-panel" style={{
       position: 'absolute',
       bottom: 0,
       left: 0,
@@ -1015,7 +1023,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
         background: 'var(--bg-primary)'
       }}>
         {/* Left Side: 2x3 Grid of Subcompartments */}
-        <div style={{
+        <div id="asrs-subcompartment-grid" style={{
           flex: '1 1 50%',
           padding: '16px',
           borderRight: '1px solid var(--border)',
@@ -1256,7 +1264,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
               </div>
 
               {/* Action Button Container */}
-              <div style={{ marginTop: '16px' }}>
+              <div id="asrs-action-area" style={{ marginTop: '16px' }}>
                 {!isSelectedOccupied ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <button

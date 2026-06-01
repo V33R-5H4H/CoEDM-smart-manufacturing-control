@@ -9,6 +9,7 @@ import { useTheme } from "../../theme/ThemeContext";
 import { toast } from "react-toastify";
 import "../Assembly.css";
 import SafetyOverlay from "../../components/SafetyOverlay";
+import TutorialOverlay from "./components/TutorialOverlay";
 
 const API_BASE = `${import.meta.env.VITE_API_URL || "/api"}/control/asrs`;
 
@@ -20,6 +21,77 @@ function Dashboard() {
   const { resolved: theme } = useTheme();
 
   const prevSafetyCurtainRef = useRef(false);
+
+  // ── Custom Tutorial ──────────────────────────────────────────────────────
+  const [tutorialActive, setTutorialActive] = useState(false);
+  // advanceRef is called by the box-click handler to move past the
+  // "click any box" step without any Joyride controlled-mode complexity.
+  const advanceRef = useRef(null);
+
+  const TUTORIAL_STEPS = [
+    {
+      targetId: 'asrs-cell-DROP_OFF',
+      title: 'Handoff Zone',
+      content: 'This is where AMRs and operators drop off or pick up crates. The shuttle crane services this position first.',
+      placement: 'right',
+    },
+    {
+      targetId: 'asrs-connect-btn',
+      title: 'Connect / Disconnect',
+      content: 'Use this button to connect the AS/RS control system to the OPC-UA server. You must be connected to run store or retrieve operations.',
+      placement: 'bottom',
+    },
+    {
+      targetId: 'asrs-rack-grid',
+      title: 'Storage Matrix',
+      content: 'Each cell is a physical bin. The colour shows occupancy: green = full, red = empty. Click any bin now to open its operations panel.',
+      placement: 'right',
+      waitForClick: true,
+    },
+    {
+      targetId: 'asrs-operations-panel',
+      title: 'Operations Panel',
+      content: 'This panel slides up whenever you select a bin. From here you can inspect the bin\'s contents and choose to Store or Retrieve an item. The left side shows the 6 subcompartment slots; the right side shows the action.',
+      placement: 'top',
+    },
+    {
+      targetId: 'asrs-subcompartment-grid',
+      title: 'Subcompartment Slots',
+      content: 'Each bin has 6 slots labelled A–F. Green slots are occupied; dashed slots are empty. Click a slot to select it — the right panel will automatically show Store or Retrieve based on whether it\'s occupied.',
+      placement: 'right',
+    },
+    {
+      targetId: 'asrs-action-area',
+      title: 'Execute Store or Retrieve',
+      content: 'Once a slot is selected, this area shows the action. For empty slots: pick an inventory item and hit Execute Store. For occupied slots: hit Execute Retrieve to dispatch the shuttle. That\'s it — you\'re ready!',
+      placement: 'top',
+    },
+  ];
+
+  // Listen for box clicks so we can advance past the "click any box" step.
+  // Registered once — reads tutorialActive via ref to avoid stale closures.
+  const tutorialActiveRef = useRef(false);
+  useEffect(() => { tutorialActiveRef.current = tutorialActive; }, [tutorialActive]);
+
+  useEffect(() => {
+    const handleBoxClicked = () => {
+      if (!tutorialActiveRef.current) return;
+      // advanceRef.current is set by TutorialOverlay and moves to the next step.
+      // We wait one rAF so the OperationsPanel has time to mount before the
+      // overlay tries to measure its bounding rect.
+      const tryAdvance = () => {
+        const panel = document.getElementById('asrs-operations-panel');
+        if (panel) {
+          advanceRef.current?.();
+        } else {
+          requestAnimationFrame(tryAdvance);
+        }
+      };
+      requestAnimationFrame(tryAdvance);
+    };
+    window.addEventListener('asrs-box-clicked', handleBoxClicked);
+    return () => window.removeEventListener('asrs-box-clicked', handleBoxClicked);
+  }, []);
 
   // Trigger edge-triggered toast notifications for ASRS Safety Curtain status
   useEffect(() => {
@@ -112,6 +184,14 @@ function Dashboard() {
       overflow: 'hidden',
       background: 'var(--bg-primary)',
     }}>
+      {/* Custom tutorial overlay — replaces Joyride */}
+      {tutorialActive && (
+        <TutorialOverlay
+          steps={TUTORIAL_STEPS}
+          advanceRef={advanceRef}
+          onFinish={() => setTutorialActive(false)}
+        />
+      )}
       {/* Stitch-style top bar */}
       <PageHeader
         title="AS/RS"
@@ -124,8 +204,40 @@ function Dashboard() {
               ledConnected={ledConnected}
               shuttleState={shuttleState}
             />
+            
+            {/* Tutorial Button */}
+            <button
+              type="button"
+              onClick={() => setTutorialActive(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '11px',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                color: '#38bdf8',
+                background: 'rgba(56, 189, 248, 0.1)',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                padding: '4px 12px',
+                borderRadius: '2px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(56, 189, 248, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(56, 189, 248, 0.1)';
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>school</span>
+              Start Tutorial
+            </button>
             {isConnected ? (
               <button
+                id="asrs-connect-btn"
                 type="button"
                 onClick={handleDisconnect}
                 style={{
@@ -147,6 +259,7 @@ function Dashboard() {
               </button>
             ) : (
               <button
+                id="asrs-connect-btn"
                 type="button"
                 onClick={handleConnect}
                 style={{
@@ -208,7 +321,7 @@ function Dashboard() {
         </div>
 
         {/* 3-LED Status Tower Indicator */}
-        <div style={{
+        <div id="asrs-status-tower" style={{
           display: 'flex',
           alignItems: 'center',
           gap: '12px',

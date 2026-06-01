@@ -2,6 +2,8 @@ import React, { Suspense, lazy, useState, useEffect } from "react";
 import { Routes, Route, NavLink } from "react-router-dom";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import ThemeToggle from "./components/ThemeToggle";
+import { useTheme } from "./theme/ThemeContext";
 
 // Lazy load page components to improve initial load performance (LCP)
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -17,6 +19,7 @@ const Inspection = lazy(() => import("./pages/Inspection"));
 export default function App() {
   const [sysStatus, setSysStatus] = useState("SYS_OP_NORMAL");
   const [pingMs, setPingMs] = useState(null);
+  const { resolved } = useTheme();
 
   useEffect(() => {
     const poll = async () => {
@@ -114,6 +117,38 @@ export default function App() {
           background: var(--status-ok);
           box-shadow: 0 0 6px var(--status-ok);
         }
+
+        .theme-toggle {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          background: none;
+          border: 1px solid var(--border);
+          border-radius: 20px;
+          padding: 4px 10px;
+          color: var(--text-muted);
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          cursor: pointer;
+          transition: all 150ms ease-out;
+          font-family: var(--font-mono);
+        }
+
+        .theme-toggle:hover {
+          background: var(--bg-hover);
+          color: var(--text-primary);
+          border-color: var(--primary);
+        }
+
+        .theme-toggle-icon {
+          font-size: 12px;
+        }
+
+        .theme-toggle-label {
+          font-size: 10px;
+        }
       `}</style>
 
       {/* Main Content */}
@@ -139,7 +174,7 @@ export default function App() {
       </main>
 
       {/* Global Toast Notifications — single instance for all lazy-loaded pages */}
-      <ToastContainer position="bottom-right" autoClose={4000} closeOnClick pauseOnHover draggable theme="dark" />
+      <ToastContainer position="bottom-right" autoClose={4000} closeOnClick pauseOnHover draggable theme={resolved} />
 
       {/* Bottom Navigation Bar */}
       <nav className="bottom-nav">
@@ -177,6 +212,8 @@ export default function App() {
 
         {/* Right Side: Status Cluster */}
         <div className="bottom-nav-status">
+          <ThemeToggle compact />
+          <div style={{ width: '1px', height: '16px', background: 'var(--border)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div className="bottom-nav-dot" style={{
               background: sysStatus === 'SYS_OP_NORMAL' ? 'var(--status-ok)' : sysStatus === 'SYS_DEGRADED' ? '#f59e0b' : '#ef4444',

@@ -102,57 +102,63 @@
 }
 
 /* ========================================
-   LIGHT THEME — Stitch M3 Industrial
+   LIGHT THEME — Premium Crisp Aesthetic
    ======================================== */
 [data-theme="light"] {
   color-scheme: light;
 
-  --primary: #545f72;
-  --primary-light: #4a5568;
-  --primary-dark: #263142;
-  --accent: #724d00;
+  /* Primary — Rich Industrial Amber/Bronze for high contrast */
+  --primary: #d97706; /* amber-600 */
+  --primary-light: #f59e0b; /* amber-500 */
+  --primary-dark: #b45309; /* amber-700 */
+  --accent: #d97706;
 
-  --success: #017a4f;
-  --success-light: #79daa6;
-  --warning: #724d00;
-  --error: #93000a;
-  --info: #545f72;
+  /* Status — Crisp & Vibrant */
+  --success: #059669; /* emerald-600 */
+  --success-light: #d1fae5; /* emerald-100 */
+  --warning: #ea580c; /* orange-600 */
+  --error: #dc2626; /* red-600 */
+  --info: #0284c7; /* sky-600 */
 
-  --status-ok: #017a4f;
-  --status-warn: #724d00;
-  --status-error: #93000a;
-  --status-idle: #44474c;
-  --status-active: #545f72;
+  --status-ok: #10b981; /* emerald-500 */
+  --status-warn: #f59e0b; /* amber-500 */
+  --status-error: #ef4444; /* red-500 */
+  --status-idle: #94a3b8; /* slate-400 */
+  --status-active: #3b82f6; /* blue-500 */
 
-  --bg-primary: #fafafc;
-  --bg-secondary: #f0f1f4;
-  --bg-tertiary: #e6e7eb;
-  --bg-elevated: #ffffff;
-  --bg-hover: #eaebed;
-  --bg-pressed: #dddee2;
-  --bg-800: #f0f1f4;
+  /* Surfaces — Clean & Modern (Slate-based grays) */
+  --bg-primary: #f8fafc; /* slate-50 */
+  --bg-secondary: #f1f5f9; /* slate-100 */
+  --bg-tertiary: #e2e8f0; /* slate-200 */
+  --bg-elevated: #ffffff; /* pure white for cards */
+  --bg-hover: #e2e8f0; 
+  --bg-pressed: #cbd5e1; /* slate-300 */
+  --bg-800: #e2e8f0;
   --bg-900: #ffffff;
-  --bg-700: #e6e7eb;
+  --bg-700: #cbd5e1;
 
-  --text-primary: #1a1c20;
-  --text-secondary: #44474c;
-  --text-muted: #74777d;
-  --text-disabled: #c5c6cd;
+  /* Text — Deep Slate */
+  --text-primary: #0f172a; /* slate-900 */
+  --text-secondary: #475569; /* slate-600 */
+  --text-muted: #64748b; /* slate-500 */
+  --text-disabled: #94a3b8; /* slate-400 */
 
-  --border: #c5c6cd;
-  --border-light: #dddee2;
-  --border-lighter: #eaebed;
-  --border-dark: #8f9097;
+  /* Borders — Subtle & Crisp */
+  --border: #cbd5e1; /* slate-300 */
+  --border-light: #e2e8f0; /* slate-200 */
+  --border-lighter: #f1f5f9; /* slate-100 */
+  --border-dark: #94a3b8; /* slate-400 */
 
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
-  --shadow: 0 1px 3px rgba(0,0,0,0.08);
-  --shadow-lg: 0 4px 12px rgba(0,0,0,0.1);
-  --shadow-xl: 0 8px 24px rgba(0,0,0,0.12);
-  --shadow-inset: inset 0 1px 2px rgba(0,0,0,0.06);
-  --shadow-elevated: var(--shadow);
+  /* Premium Diffused Shadows */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -1px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 10px 10px -5px rgba(15, 23, 42, 0.04);
+  --shadow-inset: inset 0 2px 4px rgba(15, 23, 42, 0.06);
+  --shadow-elevated: 0 8px 30px rgba(15, 23, 42, 0.08);
 
-  --focus-ring: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--primary);
-  --overlay: rgba(26,28,32,0.45);
+  --focus-ring: 0 0 0 2px var(--bg-primary), 0 0 0 4px rgba(217, 119, 6, 0.4);
+  --overlay: rgba(15, 23, 42, 0.5); /* subtle dark overlay */
 }
 
 /* Material Symbols config */
