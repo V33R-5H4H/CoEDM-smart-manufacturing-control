@@ -7,6 +7,8 @@ from fastapi import WebSocket
 from backend.communication.vibit_modbus import VibitModbusReader
 from backend.config import settings
 from backend.stations.triac.cnc_triac_station import opcua_connection as triac_opcua_connection
+import orjson
+
 from backend.core.delta import (
     compute_delta,
     build_snapshot_message,
@@ -52,6 +54,7 @@ class TriacBroadcaster:
         self._last_good_vibit2 = None
         self._last_good_vibit3 = None
         self._db_init_done = False  # Ensures DB init runs exactly once
+        self.last_connected = None  # Tracks OPC-UA connection state for edge-triggered event logging
         # Delta-send state
         self._last_broadcast_payload: dict = {}
         self._heartbeat_tick: int = 0
@@ -182,6 +185,40 @@ class TriacBroadcaster:
             logger.error(f"Error loading initial Modbus data from DB: {e}")
         finally:
             session.close()
+
+    async def _log_machine_event_db(self, event_type: str, severity: str, title: str, payload_data: dict = None):
+        """Write a new machine event or alarm to machine_events."""
+        def _write():
+            sensors = self._get_sensor_ids()
+            sensor_id = sensors.get("triac")
+            if not sensor_id:
+                return
+            from backend.database.db import SessionLocal
+            from sqlalchemy import text
+            from backend.core.timezone import ist_now
+            session = SessionLocal()
+            try:
+                session.execute(
+                    text("""
+                        INSERT INTO machine_events (time, machine_id, sensor_id, event_type, severity, title, payload)
+                        VALUES (:time, 'triac', :sensor_id, :event_type, :severity, :title, :payload)
+                    """),
+                    {
+                        "time": ist_now(),
+                        "sensor_id": sensor_id,
+                        "event_type": event_type,
+                        "severity": severity,
+                        "title": title,
+                        "payload": orjson.dumps(payload_data).decode("utf-8") if payload_data else None
+                    }
+                )
+                session.commit()
+            except Exception as e:
+                logger.error(f"Error logging machine event to DB: {e}")
+                session.rollback()
+            finally:
+                session.close()
+        await asyncio.to_thread(_write)
 
     async def connect(self, websocket: WebSocket):
         """Register a new WebSocket connection"""
@@ -392,6 +429,23 @@ class TriacBroadcaster:
         """
         try:
             plc_connected = triac_opcua_connection.connected
+
+            # Edge-triggered OPC-UA connection state logging
+            if self.last_connected is None:
+                self.last_connected = plc_connected
+                asyncio.create_task(self._log_machine_event_db(
+                    "info" if plc_connected else "alarm",
+                    "info" if plc_connected else "critical",
+                    "TRIAC OPC-UA Session Connected" if plc_connected else "TRIAC OPC-UA Offline at Startup"
+                ))
+            elif plc_connected != self.last_connected:
+                self.last_connected = plc_connected
+                title = "TRIAC OPC-UA Session Connected" if plc_connected else "TRIAC OPC-UA Session Terminated"
+                asyncio.create_task(self._log_machine_event_db(
+                    "info" if plc_connected else "alarm",
+                    "info" if plc_connected else "critical",
+                    title
+                ))
 
             # Use cached Modbus data (updated every 8s by _modbus_poll_loop)
             vibit1_data, vibit2_data, vibit3_data = copy.deepcopy(self._cached_modbus_data)
