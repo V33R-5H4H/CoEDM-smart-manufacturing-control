@@ -17,6 +17,70 @@ export default function Cobot() {
   const [statusLoading, setStatusLoading] = useState(false);
   const { activeModal, openModal, closeModal } = useModal();
 
+  // Physical robot hardware states
+  const [realConnected, setRealConnected] = useState(false);
+  const [triggering, setTriggering] = useState(false);
+
+  // Periodically check actual cobot port connectivity
+  const checkRealStatus = async () => {
+    try {
+      const res = await fetch("/api/control/cobot/connection-status");
+      const data = await res.json();
+      setRealConnected(data.connected);
+    } catch (err) {
+      setRealConnected(false);
+    }
+  };
+
+  useEffect(() => {
+    checkRealStatus();
+    const timer = setInterval(checkRealStatus, 4000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Trigger the actual TMSCT listen script
+  const handleRealTrigger = async () => {
+    setTriggering(true);
+    const toastId = toast.loading("Connecting and sending script to TM Cobot...");
+    try {
+      const res = await fetch("/api/control/cobot/trigger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ script: "ScriptExit()" })
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
+        toast.update(toastId, {
+          render: "Success: Cobot received command and proceeded past listen block!",
+          type: "success",
+          isLoading: false,
+          autoClose: 3000
+        });
+        // Fire UI simulated cycle too for beautiful coordination!
+        setIsConnected(true);
+        runAutoCycle();
+      } else {
+        toast.update(toastId, {
+          render: `Error: ${data.detail || data.message || "Failed to trigger"}`,
+          type: "error",
+          isLoading: false,
+          autoClose: 5000
+        });
+      }
+    } catch (err) {
+      toast.update(toastId, {
+        render: `Network Error: Could not reach backend API`,
+        type: "error",
+        isLoading: false,
+        autoClose: 5000
+      });
+    } finally {
+      setTriggering(false);
+    }
+  };
+
   // Cobot simulation states
   const [cobotStatus, setCobotStatus] = useState("STANDBY"); // 'STANDBY' | 'PICKING' | 'PLACING' | 'HOMING' | 'ESTOP'
   const [cycleCount, setCycleCount] = useState(42);
@@ -329,6 +393,33 @@ export default function Cobot() {
                     HOME ARM
                   </button>
                 </div>
+              </div>
+            </div>
+
+            {/* Real Physical Robot Hardware Trigger */}
+            <div className="asm-hud-card" style={{ border: realConnected ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(239, 68, 68, 0.3)", boxShadow: realConnected ? "0 0 8px rgba(16, 185, 129, 0.15)" : "none" }}>
+              <div className="asm-hud-header">
+                <span>Physical Robot Link</span>
+                <span className="asm-hud-badge" style={{ color: realConnected ? "#10b981" : "#ef4444", borderColor: realConnected ? "#10b981" : "#ef4444" }}>
+                  {realConnected ? "HARDWARE ONLINE" : "HARDWARE OFFLINE"}
+                </span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "4px" }}>
+                <button
+                  onClick={handleRealTrigger}
+                  disabled={triggering}
+                  className="asm-btn-control"
+                  style={{
+                    height: "40px",
+                    fontWeight: 800,
+                    backgroundColor: realConnected ? "rgba(16, 185, 129, 0.08)" : "rgba(239, 68, 68, 0.04)",
+                    borderColor: realConnected ? "#10b981" : "#ef4444",
+                    color: realConnected ? "#10b981" : "#ef4444",
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>send_and_archive</span>
+                  {triggering ? "TRANSMITTING..." : "TRIGGER PHYSICAL COBOT"}
+                </button>
               </div>
             </div>
 

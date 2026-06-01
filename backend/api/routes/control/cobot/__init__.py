@@ -1,1 +1,1 @@
-# Cobot control routers package — placeholder
+from .cobot_control import router
