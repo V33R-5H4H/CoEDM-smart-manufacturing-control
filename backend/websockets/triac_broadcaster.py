@@ -269,7 +269,7 @@ class TriacBroadcaster:
                     vibit2_data = None
 
                 try:
-                    vibit3_data = await asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, False)
+                    vibit3_data = await asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, True)
                 except Exception:
                     vibit3_data = None
 
