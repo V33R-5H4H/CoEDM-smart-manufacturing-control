@@ -89,6 +89,7 @@ class MiracBroadcaster:
 
         # Start broadcasting if this is the first connection
         if not self.is_broadcasting:
+            self.is_broadcasting = True  # Set before creating tasks so poll loop doesn't exit immediately
             self.broadcast_task = asyncio.create_task(self._broadcast_loop())
             self._modbus_task = asyncio.create_task(self._modbus_poll_loop())
     
@@ -523,6 +524,8 @@ class MiracBroadcaster:
             
             Uses read_value() which is the correct synchronous method on
             asyncua.sync.SyncNode in asyncua >= 1.0.x.
+            Reads all tags even if some fail — only clears cache if the
+            connection itself is broken (exception on every read).
             """
             # Build node cache on first call (or after reconnect clears it)
             if not node_cache:
@@ -532,23 +535,33 @@ class MiracBroadcaster:
                 except Exception as e:
                     logger.warning(f"[MIRAC] Failed to build node cache: {e}")
                     node_cache.clear()
+                    return {}
 
             result = {}
+            fail_count = 0
             for tag_name, node in list(node_cache.items()):
                 try:
                     result[tag_name] = node.read_value()
                 except Exception as e:
-                    logger.warning(f"[MIRAC] Failed to read {tag_name}: {e}")
+                    logger.debug(f"[MIRAC] Failed to read {tag_name}: {e}")
                     result[tag_name] = None
-                    # Invalidate cache on read error so handles are re-resolved next cycle
-                    node_cache.clear()
-                    break
+                    fail_count += 1
+
+            # If every single tag failed, the connection is broken — clear cache
+            if fail_count == len(node_cache):
+                node_cache.clear()
+                return {}
+
             return result
 
         try:
             data = await asyncio.to_thread(_read_all_tags, self._plc_node_cache)
         except Exception as e:
             logger.error(f"[MIRAC] Error reading PLC data in thread: {e}")
+            return {}
+
+        # Only treat as connected if at least one tag returned a real value
+        if not data or not any(v is not None for v in data.values()):
             return {}
 
         return data

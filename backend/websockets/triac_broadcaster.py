@@ -201,6 +201,7 @@ class TriacBroadcaster:
 
         # Start broadcasting if this is the first connection
         if not self.is_broadcasting:
+            self.is_broadcasting = True  # Set before creating tasks so poll loop doesn't exit immediately
             self.broadcast_task = asyncio.create_task(self._broadcast_loop())
             self._modbus_task = asyncio.create_task(self._modbus_poll_loop())
 
@@ -268,7 +269,7 @@ class TriacBroadcaster:
                     vibit2_data = None
 
                 try:
-                    vibit3_data = await asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, False)
+                    vibit3_data = await asyncio.to_thread(self.vibit_reader_3.read_energy_snapshot, True)
                 except Exception:
                     vibit3_data = None
 
