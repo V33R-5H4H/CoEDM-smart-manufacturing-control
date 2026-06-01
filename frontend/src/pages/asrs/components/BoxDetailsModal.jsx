@@ -8,6 +8,13 @@ import { toast } from 'react-toastify';
 function AddProductDialog({ open, onClose, onAdd, boxId, subId, items }) {
   const [selectedItem, setSelectedItem] = useState('');
 
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
@@ -57,6 +64,13 @@ function AddProductDialog({ open, onClose, onAdd, boxId, subId, items }) {
 
 // --- Retrieve Product Dialog ---
 function RetrieveProductDialog({ open, onClose, onRetrieve, boxId, subId, itemDetail }) {
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
@@ -113,6 +127,17 @@ function BoxDetailsModal({ box, onClose, openDeleteModal, operationMode = 'store
 
   // --- All available items for selection ---
   const [allItems, setAllItems] = useState([]);
+
+  // Close on Escape key (only when no sub-dialog is open)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !addDialog.open && !retrieveDialog.open) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, addDialog.open, retrieveDialog.open]);
 
   useEffect(() => {
     let mounted = true;

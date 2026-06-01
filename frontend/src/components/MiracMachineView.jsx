@@ -13,7 +13,11 @@ const MiracMachineView = ({
   toolEngaged = false,
   alarmActive = false,
   coolantOn = false,
-  toolNumber = 4
+  toolNumber = 4,
+  vibit1Online = false,
+  vibit1Data = null,
+  vibit2Online = false,
+  vibit2Data = null
 }) => {
   // zAxisValue: 0 (retracted, right) to 300 (close, left) -> map to tx: 170 to -360
   const normalizedZ = Math.min(1, Math.max(0, Math.abs(zAxisValue) / 300));
@@ -40,8 +44,11 @@ const MiracMachineView = ({
     return `T${String(num).padStart(2, '0')}`;
   }, [toolNumber]);
 
+  const containerRef = useRef(null);
+
   return (
     <div
+      ref={containerRef}
       style={{
         position: 'relative',
         width: '100%',
@@ -50,7 +57,7 @@ const MiracMachineView = ({
         border: '1px solid rgba(255, 255, 255, 0.08)',
         boxShadow: 'inset 0 0 24px rgba(0, 0, 0, 0.95), 0 8px 32px rgba(0, 0, 0, 0.5)',
         overflow: 'hidden',
-        aspectRatio: '900 / 400'
+        aspectRatio: '900 / 500'
       }}
     >
       {/* Visual Overlay: Grid Lines */}
@@ -111,7 +118,7 @@ const MiracMachineView = ({
       `}</style>
 
       <svg
-        viewBox="0 0 900 400"
+        viewBox="0 0 900 500"
         width="100%"
         height="100%"
         preserveAspectRatio="xMidYMid meet"
@@ -136,17 +143,32 @@ const MiracMachineView = ({
           </filter>
         </defs>
 
+        {/* ALARM OVERLAY */}
+        {alarmActive && (
+          <rect
+            x="5"
+            y="5"
+            width="890"
+            height="490"
+            fill="red"
+            className="asm-alarm-overlay"
+            pointerEvents="none"
+            style={{ mixBlendMode: 'color-dodge', rx: '10px' }}
+          />
+        )}
+
+        <g transform="translate(0, 50)">
         {/* ========================================
             STATIONARY COMPONENTS (LEFT)
             ======================================== */}
 
-        {/* Headstock */}
+        {/* Headstock Casing */}
         <g id="headstock">
           <rect x="10" y="70" width="110" height="260" fill="#1b1c23" rx="4" stroke="#121318" strokeWidth="2.5" />
-          {/* Ventilation slots */}
-          <rect x="30" y="110" width="60" height="8" rx="2" fill="#0f1015" />
-          <rect x="30" y="196" width="60" height="8" rx="2" fill="#0f1015" />
-          <rect x="30" y="282" width="60" height="8" rx="2" fill="#0f1015" />
+          
+
+
+
         </g>
 
         {/* Chuck Adapter */}
@@ -207,41 +229,7 @@ const MiracMachineView = ({
               rx="4"
             />
 
-            {/* Mounting sensor */}
-            <rect
-              x="625"
-              y="180"
-              width="50"
-              height="50"
-              rx="10"
-              fill="#1b1c23"
-              stroke="#3c3f4a"
-              strokeWidth="2"
-            />
-            {/* Glowing sensor LED */}
-            <circle
-              cx="650"
-              cy="205"
-              r="5.5"
-              fill={toolEngaged ? '#f59e0b' : '#3c2500'}
-              className="asm-sensor-led"
-              stroke="#1b1c23"
-              strokeWidth="1"
-            />
 
-            {/* Digital tool name text */}
-            <text
-              x="650"
-              y="272"
-              fontFamily="var(--font-mono)"
-              fontSize="20"
-              fontWeight="700"
-              fill="#e2e8f0"
-              textAnchor="middle"
-              letterSpacing="0.05em"
-            >
-              {formattedTool}
-            </text>
 
             {/* Tool post block */}
             <rect
@@ -254,6 +242,10 @@ const MiracMachineView = ({
               strokeWidth="2"
               rx="2"
             />
+            {/* Tool Number Display */}
+            <text x="650" y="130" fill="#94a3b8" fontSize="14" fontFamily="JetBrains Mono" fontWeight="bold" textAnchor="middle">
+              {formattedTool}
+            </text>
 
             {/* Yellow cutter triangle (pointing up-left) */}
             <polygon
@@ -318,23 +310,9 @@ const MiracMachineView = ({
             )}
           </g>
         </g>
-
-        {/* ========================================
-            ALARM OVERLAY
-            ======================================== */}
-        {alarmActive && (
-          <rect
-            x="5"
-            y="5"
-            width="890"
-            height="390"
-            fill="red"
-            className="asm-alarm-overlay"
-            pointerEvents="none"
-            style={{ mixBlendMode: 'color-dodge', rx: '10px' }}
-          />
-        )}
+        </g>
       </svg>
+
     </div>
   );
 };

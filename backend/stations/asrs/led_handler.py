@@ -42,8 +42,9 @@ class LEDHandler:
                 return
             
             if tag == "saftey":
-                # Route native safety curtain state change
-                self.led_service.update_safety(bool(val))
+                # Route native safety curtain state change.
+                # Invert logic: True from PLC = Safe (Normally Closed), False = Broken/Interrupted
+                self.led_service.update_safety(not bool(val))
                 return
             
             # Extract box ID from tag: "ledA1" → "A1"

@@ -3,23 +3,27 @@ import { Link } from "react-router-dom";
 import PageHeader from "../components/PageHeader";
 import BoxService from "./asrs/services/boxService";
 import "./Assembly.css";
+import { wsCache } from "../utils/wsCache";
 
 export default function Dashboard() {
   const [asrsConnected, setAsrsConnected] = useState(false);
-  const [asrsShuttle, setAsrsShuttle] = useState({ col: 'A', row: 7, state: 'idle' });
+  const [asrsShuttle, setAsrsShuttle] = useState(wsCache.dashboard.asrsShuttle);
   const [inventoryCount, setInventoryCount] = useState(0);
 
   const [assemblyConnected, setAssemblyConnected] = useState(false);
-  const [assemblyPosition, setAssemblyPosition] = useState(null);
-  const [assemblySafety, setAssemblySafety] = useState("OK");
+  const [assemblyPosition, setAssemblyPosition] = useState(wsCache.dashboard.assemblyPosition);
+  const [assemblySafety, setAssemblySafety] = useState(wsCache.dashboard.assemblySafety);
 
   const [miracConnected, setMiracConnected] = useState(false);
-  const [miracSpindle, setMiracSpindle] = useState(null);
-  const [miracTemp, setMiracTemp] = useState(null);
+  const [miracSpindle, setMiracSpindle] = useState(wsCache.dashboard.miracSpindle);
+  const [miracTemp, setMiracTemp] = useState(wsCache.dashboard.miracTemp);
 
   const [triacConnected, setTriacConnected] = useState(false);
-  const [triacSpindle, setTriacSpindle] = useState(null);
-  const [triacFeed, setTriacFeed] = useState(null);
+  const [triacSpindle, setTriacSpindle] = useState(wsCache.dashboard.triacSpindle);
+  const [triacFeed, setTriacFeed] = useState(wsCache.dashboard.triacFeed);
+
+  const [transactions, setTransactions] = useState(wsCache.dashboard.transactions);
+  const [lastUpdated, setLastUpdated] = useState(wsCache.dashboard.lastUpdated);
 
   // Fetch initial ASRS inventory count
   useEffect(() => {
@@ -65,11 +69,16 @@ export default function Dashboard() {
         try {
           const data = JSON.parse(e.data);
           if (data.type === "shuttle") {
-            setAsrsShuttle({
+            const shuttle = {
               col: data.payload.column,
               row: data.payload.row,
               state: data.payload.state,
-            });
+            };
+            wsCache.dashboard.asrsShuttle = shuttle;
+            setAsrsShuttle(shuttle);
+            const ts = new Date().toTimeString().slice(0, 8);
+            wsCache.dashboard.lastUpdated = { ...wsCache.dashboard.lastUpdated, asrs: ts };
+            setLastUpdated(prev => ({ ...prev, asrs: ts }));
           } else if (data.type === "led") {
             setTimeout(async () => {
               try {
@@ -88,6 +97,7 @@ export default function Dashboard() {
               } catch {}
             }, 1000);
           }
+          window.dispatchEvent(new Event('asrs-ws-activity'));
         } catch {}
       };
       asrsWs.onclose = () => {
@@ -100,19 +110,41 @@ export default function Dashboard() {
       const assemblyWs = new WebSocket(assemblyUrl);
       sockets.push(assemblyWs);
       assemblyWs.onopen = () => setAssemblyConnected(true);
+      let assemblyLastData = null;
       assemblyWs.onmessage = (e) => {
         try {
-          const data = JSON.parse(e.data);
+          const msg = JSON.parse(e.data);
+          let data;
+          if (msg.type === 'snapshot') {
+            data = msg.data;
+            assemblyLastData = data;
+          } else if (msg.type === 'delta') {
+            // Simple shallow merge for dashboard (only needs top-level fields)
+            assemblyLastData = assemblyLastData ? { ...assemblyLastData, ...msg.data,
+              position: { ...(assemblyLastData.position || {}), ...(msg.data.position || {}) },
+              safety: { ...(assemblyLastData.safety || {}), ...(msg.data.safety || {}) },
+            } : msg.data;
+            data = assemblyLastData;
+          } else {
+            return; // heartbeat
+          }
           setAssemblyConnected(data.connected !== false);
           if (data.position?.displacement_mm !== undefined) {
             const disp = Math.max(0, data.position.displacement_mm - 43);
-            setAssemblyPosition(Math.round(disp));
+            const pos = Math.round(disp);
+            wsCache.dashboard.assemblyPosition = pos;
+            setAssemblyPosition(pos);
           }
           if (data.safety?.curtain || data.safety?.buzzer) {
+            wsCache.dashboard.assemblySafety = "BREACH";
             setAssemblySafety("BREACH");
           } else {
+            wsCache.dashboard.assemblySafety = "OK";
             setAssemblySafety("OK");
           }
+          const ts = new Date().toTimeString().slice(0, 8);
+          wsCache.dashboard.lastUpdated = { ...wsCache.dashboard.lastUpdated, assembly: ts };
+          setLastUpdated(prev => ({ ...prev, assembly: ts }));
         } catch {}
       };
       assemblyWs.onclose = () => {
@@ -125,17 +157,36 @@ export default function Dashboard() {
       const miracWs = new WebSocket(miracUrl);
       sockets.push(miracWs);
       miracWs.onopen = () => setMiracConnected(true);
+      let miracLastData = null;
       miracWs.onmessage = (e) => {
         try {
-          const data = JSON.parse(e.data);
+          const msg = JSON.parse(e.data);
+          let data;
+          if (msg.type === 'snapshot') {
+            data = msg.data;
+            miracLastData = data;
+          } else if (msg.type === 'delta') {
+            miracLastData = miracLastData ? { ...miracLastData, ...msg.data,
+              spindle: { ...(miracLastData.spindle || {}), ...(msg.data.spindle || {}) },
+              data_sources: { ...(miracLastData.data_sources || {}), ...(msg.data.data_sources || {}) },
+            } : msg.data;
+            data = miracLastData;
+          } else {
+            return; // heartbeat
+          }
           const plcOn = data.data_sources?.plc ?? false;
           setMiracConnected(plcOn);
           if (data.spindle?.speed !== undefined && data.spindle?.speed !== null) {
+            wsCache.dashboard.miracSpindle = data.spindle.speed;
             setMiracSpindle(data.spindle.speed);
           }
           if (data.spindle?.temperature !== undefined && data.spindle?.temperature !== null) {
+            wsCache.dashboard.miracTemp = data.spindle.temperature;
             setMiracTemp(data.spindle.temperature);
           }
+          const ts = new Date().toTimeString().slice(0, 8);
+          wsCache.dashboard.lastUpdated = { ...wsCache.dashboard.lastUpdated, mirac: ts };
+          setLastUpdated(prev => ({ ...prev, mirac: ts }));
         } catch {}
       };
       miracWs.onclose = () => {
@@ -148,17 +199,39 @@ export default function Dashboard() {
       const triacWs = new WebSocket(triacUrl);
       sockets.push(triacWs);
       triacWs.onopen = () => setTriacConnected(true);
+      let triacLastData = null;
       triacWs.onmessage = (e) => {
         try {
-          const data = JSON.parse(e.data);
+          const msg = JSON.parse(e.data);
+          let data;
+          if (msg.type === 'snapshot') {
+            data = msg.data;
+            triacLastData = data;
+          } else if (msg.type === 'delta') {
+            triacLastData = triacLastData ? { ...triacLastData, ...msg.data,
+              spindle: { ...(triacLastData.spindle || {}), ...(msg.data.spindle || {}) },
+              axes: { ...(triacLastData.axes || {}), ...(msg.data.axes || {}),
+                x: { ...((triacLastData.axes || {}).x || {}), ...((msg.data.axes || {}).x || {}) },
+              },
+              data_sources: { ...(triacLastData.data_sources || {}), ...(msg.data.data_sources || {}) },
+            } : msg.data;
+            data = triacLastData;
+          } else {
+            return; // heartbeat
+          }
           const plcOn = data.data_sources?.plc ?? false;
           setTriacConnected(plcOn);
           if (data.spindle?.speed !== undefined && data.spindle?.speed !== null) {
+            wsCache.dashboard.triacSpindle = data.spindle.speed;
             setTriacSpindle(data.spindle.speed);
           }
           if (data.axes?.x?.feed !== undefined && data.axes?.x?.feed !== null) {
+            wsCache.dashboard.triacFeed = data.axes.x.feed;
             setTriacFeed(data.axes.x.feed);
           }
+          const ts = new Date().toTimeString().slice(0, 8);
+          wsCache.dashboard.lastUpdated = { ...wsCache.dashboard.lastUpdated, triac: ts };
+          setLastUpdated(prev => ({ ...prev, triac: ts }));
         } catch {}
       };
       triacWs.onclose = () => {
@@ -180,9 +253,53 @@ export default function Dashboard() {
     };
   }, []);
 
+  // Fetch transaction log — initial load + refresh on WS activity (debounced)
+  useEffect(() => {
+    const apiBase = import.meta.env.VITE_API_URL || '/api';
+    const httpBase = apiBase.startsWith('http') ? apiBase : `${window.location.origin}${apiBase}`;
+    let isMounted = true;
+    let refreshTimer = null;
+
+    const fetchEvents = async () => {
+      try {
+        const res = await fetch(`${httpBase}/data/events?limit=25`);
+        const json = await res.json();
+        if (json.success && isMounted) {
+          wsCache.dashboard.transactions = json.data;
+          setTransactions(json.data);
+        }
+      } catch (e) {
+        console.error("Failed to fetch events:", e);
+      }
+    };
+
+    // Initial load
+    fetchEvents();
+
+    // Refresh at most once every 5s when triggered by WS activity
+    const scheduleRefresh = () => {
+      if (refreshTimer) return;
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null;
+        if (isMounted) fetchEvents();
+      }, 5000);
+    };
+
+    // Listen for any WS message on the page to trigger a refresh
+    const handleWsActivity = () => scheduleRefresh();
+    window.addEventListener('asrs-ws-activity', handleWsActivity);
+
+    return () => {
+      isMounted = false;
+      if (refreshTimer) clearTimeout(refreshTimer);
+      window.removeEventListener('asrs-ws-activity', handleWsActivity);
+    };
+  }, []);
+
   const stations = [
     {
       name: "AS/RS",
+      key: "asrs",
       to: "/asrs",
       icon: "inventory_2",
       description: "Automated Storage & Retrieval System",
@@ -195,6 +312,7 @@ export default function Dashboard() {
     },
     {
       name: "Assembly Station",
+      key: "assembly",
       to: "/assembly",
       icon: "factory",
       description: "Hydraulic Press Control",
@@ -207,6 +325,7 @@ export default function Dashboard() {
     },
     {
       name: "Smart MIRAC",
+      key: "mirac",
       to: "/mirac",
       icon: "settings_input_component",
       description: "CNC Lathe Monitoring",
@@ -219,6 +338,7 @@ export default function Dashboard() {
     },
     {
       name: "Smart TRIAC",
+      key: "triac",
       to: "/triac",
       icon: "precision_manufacturing",
       description: "Process Control",
@@ -229,40 +349,74 @@ export default function Dashboard() {
       statusColor: triacConnected ? "var(--status-ok)" : "var(--status-idle)",
       statusText: triacConnected ? "CONNECTED" : "OFFLINE",
     },
+    {
+      name: "Testing Station",
+      key: null,
+      to: "/testing-station",
+      icon: "fact_check",
+      description: "Quality Assurance",
+      metrics: [
+        { label: "STATUS", value: "---", unit: "" },
+        { label: "THROUGHPUT", value: "---", unit: "u/h" },
+      ],
+      statusColor: "var(--status-idle)",
+      statusText: "OFFLINE",
+    },
+    {
+      name: "AMR",
+      key: null,
+      to: "/amr",
+      icon: "local_shipping",
+      description: "Autonomous Mobile Robots",
+      metrics: [
+        { label: "FLEET", value: "---", unit: "" },
+        { label: "BATTERY", value: "---", unit: "%" },
+      ],
+      statusColor: "var(--status-idle)",
+      statusText: "OFFLINE",
+    },
+    {
+      name: "Cobot",
+      key: null,
+      to: "/cobot",
+      icon: "smart_toy",
+      description: "Collaborative Robot Arm",
+      metrics: [
+        { label: "STATE", value: "---", unit: "" },
+        { label: "PAYLOAD", value: "---", unit: "kg" },
+      ],
+      statusColor: "var(--status-idle)",
+      statusText: "OFFLINE",
+    },
+    {
+      name: "Inspection",
+      key: null,
+      to: "/inspection",
+      icon: "policy",
+      description: "Visual Defect Inspection",
+      metrics: [
+        { label: "PASS RATE", value: "---", unit: "%" },
+        { label: "REJECTS", value: "---", unit: "" },
+      ],
+      statusColor: "var(--status-idle)",
+      statusText: "OFFLINE",
+    }
   ];
 
   return (
     <div className="asm-page">
       <PageHeader
         title="Smart Manufacturing Control Portal"
-        status="SYS_ACTIVE // 99.9% UPTIME // SECURE SCADA"
       />
 
       <div className="asm-main" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-        {/* Facility Overview Header */}
-        <div>
-          <h2 style={{
-            fontSize: '15px',
-            fontWeight: 800,
-            color: 'var(--text-primary)',
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-            marginBottom: '4px',
-          }}>Facility Overview</h2>
-          <p style={{
-            fontSize: '11px',
-            color: 'var(--text-muted)',
-            margin: 0,
-            textTransform: 'uppercase',
-            letterSpacing: '0.02em',
-          }}>Real-time cyber-physical station telemetry streams</p>
-        </div>
-
-        {/* Station Cards Grid */}
+        {/* Station Cards Grid (Top Half) */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridAutoRows: '1fr',
           gap: '16px',
+          alignContent: 'start',
         }}>
           {stations.map((s) => (
             <Link
@@ -364,11 +518,19 @@ export default function Dashboard() {
               {/* Details link footer */}
               <div style={{
                 display: 'flex',
-                justifyContent: 'flex-end',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 borderTop: '1px solid var(--border-light)',
                 paddingTop: '8px',
                 marginTop: '8px'
               }}>
+                {lastUpdated[s.key] ? (
+                  <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#475569' }}>
+                    UPD: {lastUpdated[s.key]}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '9px', color: 'transparent' }}>—</span>
+                )}
                 <span style={{
                   fontSize: '9px',
                   fontWeight: 800,
@@ -404,13 +566,14 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {[
-                  { time: '10:01:45.712', node: 'AS/RS', event: 'Shuttle moved to A7. Pallet retrieved.', code: 'OP_OK' },
-                  { time: '10:01:18.204', node: 'ASSEMBLY', event: 'Piston actuation cycle complete (12ms).', code: 'OP_OK' },
-                  { time: '10:29:05.891', node: 'MIRAC', event: 'Spindle RPM variance detected (+48 RPM). Compensating.', code: 'WARN_01' },
-                  { time: '10:28:47.553', node: 'AS/RS', event: 'Inventory update. Item ID: R0214 stored at D2.', code: 'OP_OK' },
-                  { time: '10:25:00.001', node: 'TRIAC', event: 'Connection timeout. Heartbeat lost. Node marked offline.', code: 'ERR_TIMEOUT' },
-                ].map((row, i) => (
+                {transactions.map((row, i) => {
+                  const eventTime = new Date(row.time);
+                  let timeStr = row.time;
+                  try { timeStr = eventTime.toISOString().substring(11, 23); } catch (e) {}
+                  let code = "OP_OK";
+                  if (row.severity === "warning") code = "WARN";
+                  if (row.severity === "critical") code = "ERR";
+                  return (
                   <tr key={i} style={{
                     borderBottom: '1px solid var(--border-light)',
                     transition: 'background 150ms ease-out',
@@ -420,25 +583,27 @@ export default function Dashboard() {
                   >
                     <td style={{
                       padding: '10px 16px',
-                      color: row.code.startsWith('ERR') ? 'var(--status-error)' : row.code.startsWith('WARN') ? 'var(--status-warn)' : 'var(--text-secondary)',
-                    }}>{row.time}</td>
+                      color: code.startsWith('ERR') ? 'var(--status-error)' : code.startsWith('WARN') ? 'var(--status-warn)' : 'var(--text-secondary)',
+                    }}>{timeStr}</td>
                     <td style={{
                       padding: '10px 16px',
                       fontWeight: 800,
                       color: 'var(--text-primary)',
-                    }}>{row.node}</td>
+                      textTransform: 'uppercase'
+                    }}>{row.machine_id}</td>
                     <td style={{
                       padding: '10px 16px',
                       color: 'var(--text-secondary)',
                       fontFamily: 'var(--font-sans)'
-                    }}>{row.event}</td>
+                    }}>{row.title}</td>
                     <td style={{
                       padding: '10px 16px',
                       fontWeight: 700,
-                      color: row.code.startsWith('ERR') ? 'var(--status-error)' : row.code.startsWith('WARN') ? 'var(--status-warn)' : 'var(--status-ok)',
-                    }}>{row.code}</td>
+                      color: code.startsWith('ERR') ? 'var(--status-error)' : code.startsWith('WARN') ? 'var(--status-warn)' : 'var(--status-ok)',
+                    }}>{code}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

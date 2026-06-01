@@ -7,6 +7,7 @@ venv/
 *.egg-info/
 dist/
 build/
+.kiro
 
 # Environment secrets — NEVER commit
 .env
@@ -55,3 +56,5 @@ stitch_designs/
 
 *.exe
 
+/backend/scratch/
+/.kiro/

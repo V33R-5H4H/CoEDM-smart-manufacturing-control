@@ -30,25 +30,25 @@ async def get_machine_telemetry(machine_id: str, limit: int = Query(100, ge=1, l
             columns = result.keys()
             data = [dict(zip(columns, row)) for row in result.fetchall()]
             
-        elif machine_id == "mirac":
-            # Fetch latest 100 rows of mirac_sensor_data, vibit_readings, and energy_meter_data
+        elif machine_id in ("mirac", "triac"):
+            # Fetch latest 100 rows of mirac/triac_sensor_data, vibit_readings, and energy_meter_data
             result_plc = session.execute(
-                text("SELECT * FROM mirac_sensor_data ORDER BY time DESC LIMIT :limit"),
+                text(f"SELECT * FROM {machine_id}_sensor_data ORDER BY time DESC LIMIT :limit"),
                 {"limit": limit}
             )
             columns_plc = result_plc.keys()
             rows_plc = [dict(zip(columns_plc, row)) for row in result_plc.fetchall()]
             
             result_vib = session.execute(
-                text("SELECT * FROM vibit_readings WHERE sensor_id IN (SELECT sensor_id FROM machine_sensors WHERE machine_id = 'mirac') ORDER BY time DESC LIMIT :limit"),
-                {"limit": limit * 2} # fetch double to cover both spindle & tool
+                text("SELECT * FROM vibit_readings WHERE machine_id = :machine_id ORDER BY time DESC LIMIT :limit"),
+                {"machine_id": machine_id, "limit": limit * 2} # fetch double to cover both spindle & tool
             )
             columns_vib = result_vib.keys()
             rows_vib = [dict(zip(columns_vib, row)) for row in result_vib.fetchall()]
             
             result_energy = session.execute(
-                text("SELECT * FROM energy_meter_data ORDER BY time DESC LIMIT :limit"),
-                {"limit": limit}
+                text("SELECT * FROM energy_meter_data WHERE machine_id = :machine_id ORDER BY time DESC LIMIT :limit"),
+                {"machine_id": machine_id, "limit": limit}
             )
             columns_energy = result_energy.keys()
             rows_energy = [dict(zip(columns_energy, row)) for row in result_energy.fetchall()]

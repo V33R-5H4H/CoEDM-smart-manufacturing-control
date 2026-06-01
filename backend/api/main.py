@@ -18,6 +18,7 @@ from backend.api.routes.control.asrs import asrs_control
 from backend.api.routes.control.assembly import assembly_control
 from backend.api.routes.control.mirac import mirac_control
 from backend.api.routes.control.triac import triac_control
+from backend.api.routes.control.cobot import router as cobot_router
 from backend.api.routes.control.asrs.shuttle import router as shuttle_router
 from backend.api.routes.data.asrs.asrs_data import router as asrs_data_router
 from backend.api.routes.data.machines import router as machines_router
@@ -40,6 +41,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Suppress noisy third-party loggers that spam ERROR on expected offline conditions.
+# pymodbus logs every TCP connection failure at ERROR — these are expected when
+# Modbus devices (VibIT sensors) are offline. Our vibit_modbus.py already throttles
+# its own warnings; we just need to silence pymodbus's internal logger.
+logging.getLogger("pymodbus").setLevel(logging.CRITICAL)
+logging.getLogger("pymodbus.logging").setLevel(logging.CRITICAL)
+
+# asyncua session timeout warning is informational — the PLC sets a shorter timeout
+# than we request (30s vs 3600s). This is normal behaviour, not an error.
+logging.getLogger("asyncua.client.client").setLevel(logging.ERROR)
+
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(
     title="CoEDM Smart Manufacturing Control API",
@@ -61,6 +73,7 @@ app.include_router(asrs_control.router)
 app.include_router(assembly_control.router)
 app.include_router(mirac_control.router)
 app.include_router(triac_control.router)
+app.include_router(cobot_router)
 app.include_router(shuttle_router)
 app.include_router(asrs_data_router)
 app.include_router(machines_router)
@@ -117,6 +130,13 @@ async def startup_event():
             led_ws_manager.broadcast_safety_change(active),
             loop,
         )
+        
+        # Log safety edge transition to the database
+        from backend.stations.asrs.asrs_station import _log_asrs_event
+        if active and not prev:
+            _log_asrs_event("alarm", "critical", "Safety Curtain Interrupted", {"curtain_interrupted": True})
+        elif not active and prev:
+            _log_asrs_event("info", "info", "Safety Curtain Cleared", {"curtain_interrupted": False})
 
     asrs_controller.led_service.register_safety_callback(_safety_callback)
     logger.info("[Startup] ✓ Safety broadcast callback registered")
@@ -223,4 +243,4 @@ async def health_check():
                 },
             }
         },
-    }
+    }

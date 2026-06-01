@@ -12,6 +12,14 @@ function ConfirmModal({ isOpen, onClose, onConfirm, title = "Confirm Delete" }) 
     }
   }, [isOpen]);
 
+  // Close on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const handleConfirmTextChange = (e) => {
     const value = e.target.value;
     setConfirmText(value);

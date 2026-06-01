@@ -1,24 +1,30 @@
 /* ============================================================
-   Mirac.css — CNC SCADA Dashboard Layout & Custom Styles
+   Mirac.css — CNC SCADA Dashboard Layout & Custom Styles (Functional Dark)
    ============================================================ */
+
+/* Base overrides for Functional Dark Design */
+.asm-page {
+  background: #242423 !important; /* Level 0 Base */
+}
 
 /* 3-Column Dashboard Grid */
 .mirac-grid-container {
   display: grid;
   grid-template-columns: 320px 1fr 320px;
-  gap: 20px;
+  gap: 16px;
   width: 100%;
   height: 100%;
   min-height: 0;
-  padding: 16px 24px;
+  padding: 16px;
   box-sizing: border-box;
+  background: #242423; /* Warm charcoal background */
 }
 
 /* Columns */
 .mirac-column {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 8px; /* Gutter */
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -30,7 +36,7 @@
   background: transparent;
 }
 .mirac-column::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: #555855;
   border-radius: 4px;
 }
 
@@ -39,111 +45,178 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #E8EDDF !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em !important;
+  border-bottom: 1px solid #4a4d4a !important;
+  padding-bottom: 6px !important;
 }
 
 /* Custom Badges */
 .asm-hud-badge {
-  font-family: var(--font-mono, monospace);
-  font-size: 0.58rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
   padding: 2px 6px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
+  background: #2e302e;
+  border: 1px solid #4a4d4a;
+  color: #8a9490;
   flex-shrink: 0;
 }
 
 .asm-hud-badge--active {
-  color: #10b981;
-  background: rgba(16, 185, 129, 0.05);
-  border-color: rgba(16, 185, 129, 0.2);
+  color: #3a9d6e; /* Green */
+  background: #2e302e;
+  border-color: #3a9d6e;
 }
 
-/* Additional Custom Value Types */
+/* Card Overrides (Flat UI) */
+.asm-hud-card {
+  background: #333533 !important; /* Level 1 Surface */
+  border: 1px solid #4a4d4a !important;
+  border-radius: 4px !important;
+  padding: 12px !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  display: flex;
+  flex-direction: column;
+  gap: 8px !important;
+}
+
+/* Clickable HUD Cards - No glow */
+.asm-hud-card--clickable {
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background-color 0.2s ease, border-color 0.2s ease !important;
+}
+
+.asm-hud-card--clickable:hover,
+.asm-hud-card--clickable.energy-hover:hover,
+.asm-hud-card--clickable.tool-hover:hover {
+  background-color: #404340 !important; /* +5% brightness */
+  transform: none !important;
+  box-shadow: none !important;
+  border-color: #555855 !important;
+}
+
+/* Typography Overrides */
+.asm-val {
+  display: flex;
+  flex-direction: column;
+  gap: 4px !important;
+}
+
+.asm-val__label {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #8a9490 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em !important;
+}
+
+.asm-val__num {
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 22px !important;
+  font-weight: 500 !important;
+  color: #E8EDDF !important;
+  text-shadow: none !important; /* Remove glow */
+}
+
+.asm-val__num--sm {
+  font-size: 16px !important;
+}
+
+/* Remove Glowing variations completely */
+.asm-val__num--glowing-blue,
+.asm-val__num--glowing-green,
 .asm-val__num--glowing-orange {
-  color: #fb923c;
-  text-shadow: 0 0 8px rgba(251, 146, 60, 0.3);
+  text-shadow: none !important;
+  color: #E8EDDF !important; 
 }
 
 /* Value Grid Alignments */
 .asm-val-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 8px !important;
 }
 
 .asm-val-grid--3 {
   grid-template-columns: repeat(3, 1fr);
 }
 
-/* Status LEDs */
+/* Status LEDs Flat Design */
 .asm-led-group {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 10px;
-  border-radius: var(--radius-md, 8px);
-  border: 1px solid var(--border);
+  background: #2a2c2a !important; /* Inset Level 2 */
+  padding: 8px !important;
+  border-radius: 4px !important;
+  border: 1px solid #4a4d4a !important;
 }
 
 .asm-led-indicator {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px !important;
 }
 
 .asm-led-indicator span {
-  font-size: 0.55rem;
-  font-weight: 700;
-  color: var(--text-muted);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #8a9490 !important;
   text-transform: uppercase;
 }
 
 .asm-led-lamp {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--bg-secondary);
-  border: 1.5px solid var(--bg-primary);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  border: 1px solid #555855 !important; /* Hollow when off */
+  box-shadow: none !important;
 }
 
 .asm-led-lamp--green.active {
-  background: radial-gradient(circle, #4ade80, #166534);
-  box-shadow: 0 0 12px #22c55e, inset 0 1px 2px rgba(255, 255, 255, 0.4);
-  border-color: #4ade80;
+  background: #3a9d6e !important; /* Solid Green */
+  border-color: #3a9d6e !important;
+  box-shadow: none !important;
 }
 
 .asm-led-lamp--yellow.active {
-  background: radial-gradient(circle, #fbbf24, #854d0e);
-  box-shadow: 0 0 12px #eab308, inset 0 1px 2px rgba(255, 255, 255, 0.4);
-  border-color: #fbbf24;
+  background: #c9922e !important; /* Solid Orange */
+  border-color: #c9922e !important;
+  box-shadow: none !important;
 }
 
 .asm-led-lamp--red.active {
-  background: radial-gradient(circle, #f87171, #991b1b);
-  box-shadow: 0 0 12px #ef4444, inset 0 1px 2px rgba(255, 255, 255, 0.4);
-  border-color: #f87171;
+  background: #c4424b !important; /* Solid Red */
+  border-color: #c4424b !important;
+  box-shadow: none !important;
 }
 
 /* Center Layout and Viz Panel */
 .asm-center-container {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px !important;
   height: 100%;
 }
 
 .asm-viz-panel {
   flex: 1;
-  background: rgba(3, 7, 18, 0.3);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  background: #333533 !important;
+  border: 1px solid #4a4d4a !important;
+  border-radius: 4px !important;
+  padding: 12px !important;
+  box-shadow: none !important;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -151,163 +224,136 @@
 
 /* Live Axis Sections */
 .asm-axis-section {
-  border-top: 1px solid var(--border);
-  padding-top: 12px;
+  border-top: 1px solid #4a4d4a;
+  padding-top: 8px;
 }
 
 .asm-axis-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .asm-axis-letter {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 0.8rem;
-  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
 }
 
-.asm-axis-letter--x { color: #38bdf8; }
-.asm-axis-letter--z { color: #ff7b00; }
+.asm-axis-letter--x { color: #8a9490; }
+.asm-axis-letter--z { color: #8a9490; }
 
 .asm-axis-line {
   flex: 1;
   height: 1px;
-  background: var(--border);
+  background: #4a4d4a;
 }
 
 /* Action Group and Gateway Controls */
 .asm-action-group {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   margin-top: auto;
 }
 
 .asm-btn-control {
   flex: 1;
-  height: 38px;
-  font-size: 0.72rem;
-  font-weight: 700;
+  height: 32px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  border-radius: 8px;
+  border-radius: 4px;
   cursor: pointer;
-  font-family: var(--font-sans);
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--text-secondary);
+  border: 1px solid #4a4d4a;
+  background: #2a2c2a;
+  color: #8a9490;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
 }
 
 .asm-btn-control:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.2);
-  color: var(--text-primary);
+  background: #242423;
+  border-color: #555855;
+  color: #E8EDDF;
+  box-shadow: none !important;
 }
 
 .asm-btn-control:disabled {
-  opacity: 0.3;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .asm-btn-control--connect {
-  border-color: rgba(16, 185, 129, 0.3);
-  color: #10b981;
-  background: rgba(16, 185, 129, 0.04);
+  color: #3a9d6e;
 }
 
 .asm-btn-control--connect:hover:not(:disabled) {
-  border-color: #10b981;
-  color: #ffffff;
-  background: rgba(16, 185, 129, 0.15);
-  box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+  border-color: #3a9d6e;
+  background: #2a2c2a;
+  color: #3a9d6e;
+  box-shadow: none !important;
 }
 
 .asm-btn-control--disconnect {
-  border-color: rgba(239, 68, 68, 0.3);
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.04);
+  color: #c4424b;
 }
 
 .asm-btn-control--disconnect:hover:not(:disabled) {
-  border-color: #ef4444;
-  color: #ffffff;
-  background: rgba(239, 68, 68, 0.15);
-  box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+  border-color: #c4424b;
+  background: #2a2c2a;
+  color: #c4424b;
+  box-shadow: none !important;
 }
 
 .asm-btn-control--demo {
-  border-color: rgba(245, 158, 11, 0.3);
-  color: #fbbf24;
-  background: rgba(245, 158, 11, 0.04);
+  color: #c9922e;
 }
 
 .asm-btn-control--demo:hover:not(:disabled) {
-  border-color: #fbbf24;
-  color: #ffffff;
-  background: rgba(245, 158, 11, 0.15);
-  box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+  border-color: #c9922e;
+  background: #2a2c2a;
+  color: #c9922e;
+  box-shadow: none !important;
 }
 
 .asm-btn-control--demo.active {
-  border-color: #fbbf24;
-  color: var(--bg-primary);
-  background: #fbbf24;
-  box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+  border-color: #c9922e;
+  color: #242423;
+  background: #c9922e;
+  box-shadow: none !important;
 }
 
 /* Footer Stats Quick Panel */
 .asm-footer-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  gap: 8px !important;
 }
 
 .asm-footer-stats-card {
-  background: rgba(25, 28, 34, 0.55);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 14px;
+  background: #333533 !important;
+  border: 1px solid #4a4d4a !important;
+  border-radius: 4px !important;
+  padding: 8px 12px !important;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-
-/* Clickable HUD Cards & Modals */
-.asm-hud-card--clickable {
-  cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.asm-hud-card--clickable:hover {
-  transform: translateY(-2px);
-  border-color: rgba(56, 189, 248, 0.4);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 15px rgba(56, 189, 248, 0.15);
-}
-
-.asm-hud-card--clickable.energy-hover:hover {
-  border-color: rgba(74, 222, 128, 0.4);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 15px rgba(74, 222, 128, 0.15);
-}
-
-.asm-hud-card--clickable.tool-hover:hover {
-  border-color: rgba(251, 146, 60, 0.4);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 15px rgba(251, 146, 60, 0.15);
+  gap: 4px !important;
 }
 
 @keyframes modalFadeIn {
   from {
     opacity: 0;
-    transform: scale(0.95) translateY(10px);
+    transform: scale(0.98);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: scale(1);
   }
 }
 

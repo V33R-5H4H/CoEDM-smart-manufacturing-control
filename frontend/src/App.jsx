@@ -1,14 +1,45 @@
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useState, useEffect } from "react";
 import { Routes, Route, NavLink } from "react-router-dom";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Lazy load page components to improve initial load performance (LCP)
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Triac = lazy(() => import("./pages/Triac"));
+const Asrs = lazy(() => import("./pages/asrs/Dashboard"));
 const Mirac = lazy(() => import("./pages/Mirac"));
+const Triac = lazy(() => import("./pages/Triac"));
 const Assembly = lazy(() => import("./pages/Assembly"));
-const ASRSDashboard = lazy(() => import("./pages/asrs/Dashboard"));
+const TestingStation = lazy(() => import("./pages/TestingStation"));
+const Amr = lazy(() => import("./pages/Amr"));
+const Cobot = lazy(() => import("./pages/Cobot"));
 
 export default function App() {
+  const [sysStatus, setSysStatus] = useState("SYS_OP_NORMAL");
+  const [pingMs, setPingMs] = useState(null);
+
+  useEffect(() => {
+    const poll = async () => {
+      const t0 = performance.now();
+      try {
+        const res = await fetch('/api/health');
+        const ms = Math.round(performance.now() - t0);
+        setPingMs(ms);
+        if (res.ok) {
+          const data = await res.json();
+          setSysStatus(data.status === 'ok' ? 'SYS_OP_NORMAL' : 'SYS_DEGRADED');
+        } else {
+          setSysStatus('SYS_DEGRADED');
+        }
+      } catch {
+        setSysStatus('SYS_OFFLINE');
+        setPingMs(null);
+      }
+    };
+    poll();
+    const interval = setInterval(poll, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="app-container" style={{ flexDirection: 'column' }}>
       {/* Inject custom bottom-nav styling */}
@@ -60,10 +91,10 @@ export default function App() {
         }
 
         .bottom-nav-item.active {
-          background: rgba(249, 115, 22, 0.08);
+          background: rgba(245, 203, 92, 0.12);
           color: var(--primary);
-          border: 1px solid rgba(249, 115, 22, 0.2);
-          box-shadow: 0 0 8px rgba(249, 115, 22, 0.05);
+          border: 1px solid rgba(245, 203, 92, 0.3);
+          box-shadow: 0 0 8px rgba(245, 203, 92, 0.08);
         }
 
         .bottom-nav-status {
@@ -94,13 +125,19 @@ export default function App() {
         }>
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/asrs" element={<ASRSDashboard />} />
-            <Route path="/triac" element={<Triac />} />
+            <Route path="/asrs" element={<Asrs />} />
             <Route path="/mirac" element={<Mirac />} />
+            <Route path="/triac" element={<Triac />} />
             <Route path="/assembly" element={<Assembly />} />
+            <Route path="/testing-station" element={<TestingStation />} />
+            <Route path="/amr" element={<Amr />} />
+            <Route path="/cobot" element={<Cobot />} />
           </Routes>
         </Suspense>
       </main>
+
+      {/* Global Toast Notifications — single instance for all lazy-loaded pages */}
+      <ToastContainer position="bottom-right" autoClose={4000} closeOnClick pauseOnHover draggable theme="dark" />
 
       {/* Bottom Navigation Bar */}
       <nav className="bottom-nav">
@@ -127,18 +164,26 @@ export default function App() {
         <div className="bottom-nav-links">
           <NavItem to="/" icon="dashboard" label="Dashboard" />
           <NavItem to="/asrs" icon="inventory_2" label="AS/RS" />
-          <NavItem to="/triac" icon="precision_manufacturing" label="Smart TRIAC" />
           <NavItem to="/mirac" icon="settings_input_component" label="Smart MIRAC" />
-          <NavItem to="/assembly" icon="factory" label="Assembly Station" />
+          <NavItem to="/triac" icon="precision_manufacturing" label="Smart TRIAC" />
+          <NavItem to="/assembly" icon="factory" label="Assembly" />
+          <NavItem to="/testing-station" icon="fact_check" label="Testing Station" />
+          <NavItem to="/amr" icon="local_shipping" label="AMR" />
+          <NavItem to="/cobot" icon="smart_toy" label="Cobot" />
         </div>
 
         {/* Right Side: Status Cluster */}
         <div className="bottom-nav-status">
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div className="bottom-nav-dot" />
-            <span style={{ fontWeight: 700, letterSpacing: '0.05em' }}>SYS_OP_NORMAL</span>
+            <div className="bottom-nav-dot" style={{
+              background: sysStatus === 'SYS_OP_NORMAL' ? 'var(--status-ok)' : sysStatus === 'SYS_DEGRADED' ? '#f59e0b' : '#ef4444',
+              boxShadow: `0 0 6px ${sysStatus === 'SYS_OP_NORMAL' ? 'var(--status-ok)' : sysStatus === 'SYS_DEGRADED' ? '#f59e0b' : '#ef4444'}`
+            }} />
+            <span style={{ fontWeight: 700, letterSpacing: '0.05em' }}>{sysStatus}</span>
           </div>
-          <span style={{ borderLeft: '1px solid var(--border)', paddingLeft: '12px' }}>PING: 12ms</span>
+          <span style={{ borderLeft: '1px solid var(--border)', paddingLeft: '12px' }}>
+            {pingMs !== null ? `PING: ${pingMs}ms` : 'PING: ---'}
+          </span>
         </div>
       </nav>
     </div>

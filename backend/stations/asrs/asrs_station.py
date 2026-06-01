@@ -15,6 +15,11 @@ from backend.stations.asrs.led_handler import LEDHandler
 from backend.config import settings
 import logging
 from threading import Lock
+from backend.database.db import SessionLocal
+from sqlalchemy import text
+from backend.core.timezone import ist_now
+from datetime import timedelta
+import json
 
 # Grid constants
 LETTERS = ["A", "B", "C", "D", "E"]
@@ -23,6 +28,102 @@ PLC_NAMESPACE = settings.ASRS_OPCUA_NS
 
 # Single shared connection — URL from settings
 asrs_connection = OPCUAConnection(settings.ASRS_OPCUA_URL)
+
+_asrs_sensor_id_cached = None
+
+def _get_asrs_sensor_id() -> str:
+    global _asrs_sensor_id_cached
+    if _asrs_sensor_id_cached:
+        return _asrs_sensor_id_cached
+    session = SessionLocal()
+    try:
+        row = session.execute(
+            text("SELECT sensor_id FROM machine_sensors WHERE legacy_key = 'asrs'")
+        ).fetchone()
+        if row:
+            _asrs_sensor_id_cached = str(row[0])
+            return _asrs_sensor_id_cached
+    except Exception as e:
+        logging.error(f"[ASRS DB] Error fetching sensor_id: {e}")
+    finally:
+        session.close()
+    return None
+
+def _log_asrs_connection(connected: bool, reason: str = None):
+    sensor_id = _get_asrs_sensor_id()
+    if not sensor_id:
+        return
+    session = SessionLocal()
+    try:
+        now = ist_now()
+        if connected:
+            session.execute(
+                text("""
+                    INSERT INTO machine_connections (sensor_id, connected_at, disconnected_at, disconnect_reason, simulated)
+                    VALUES (:sensor_id, :connected_at, NULL, NULL, False)
+                """),
+                {"sensor_id": sensor_id, "connected_at": now}
+            )
+        else:
+            latest = session.execute(
+                text("""
+                    SELECT id FROM machine_connections 
+                    WHERE sensor_id = :sensor_id AND disconnected_at IS NULL 
+                    ORDER BY connected_at DESC LIMIT 1
+                """),
+                {"sensor_id": sensor_id}
+            ).fetchone()
+            
+            if latest:
+                session.execute(
+                    text("""
+                        UPDATE machine_connections 
+                        SET disconnected_at = :disconnected_at, disconnect_reason = :reason
+                        WHERE id = :id
+                    """),
+                    {"disconnected_at": now, "reason": reason or "Client request / shutdown", "id": latest[0]}
+                )
+            else:
+                session.execute(
+                    text("""
+                        INSERT INTO machine_connections (sensor_id, connected_at, disconnected_at, disconnect_reason, simulated)
+                        VALUES (:sensor_id, :connected_at, :disconnected_at, :reason, False)
+                    """),
+                    {"sensor_id": sensor_id, "connected_at": now - timedelta(minutes=1), "disconnected_at": now, "reason": reason or "Disconnected"}
+                )
+        session.commit()
+    except Exception as e:
+        logging.error(f"[ASRS DB] Error logging connection: {e}")
+        session.rollback()
+    finally:
+        session.close()
+
+def _log_asrs_event(event_type: str, severity: str, title: str, payload_data: dict = None):
+    sensor_id = _get_asrs_sensor_id()
+    if not sensor_id:
+        return
+    session = SessionLocal()
+    try:
+        session.execute(
+            text("""
+                INSERT INTO machine_events (time, machine_id, sensor_id, event_type, severity, title, payload)
+                VALUES (:time, 'asrs', :sensor_id, :event_type, :severity, :title, :payload)
+            """),
+            {
+                "time": ist_now(),
+                "sensor_id": sensor_id,
+                "event_type": event_type,
+                "severity": severity,
+                "title": title,
+                "payload": json.dumps(payload_data) if payload_data else None
+            }
+        )
+        session.commit()
+    except Exception as e:
+        logging.error(f"[ASRS DB] Error logging event: {e}")
+        session.rollback()
+    finally:
+        session.close()
 
 
 class ASRSController:
@@ -51,10 +152,16 @@ class ASRSController:
     def connect(self):
         """Connect to PLC and start LED monitoring."""
         logging.info("[ASRS] connect() called")
-        asrs_connection.connect()
-
-        self._subscribe_to_leds()
-        logging.info("[ASRS] Connected and LED subscription active.")
+        try:
+            asrs_connection.connect()
+            self._subscribe_to_leds()
+            logging.info("[ASRS] Connected and LED subscription active.")
+            _log_asrs_connection(True)
+            _log_asrs_event("info", "info", "ASRS OPC-UA Session Connected")
+        except Exception as e:
+            logging.error(f"[ASRS] Connection failed: {e}")
+            _log_asrs_event("alarm", "critical", f"ASRS Connection Attempt Failed: {e}")
+            raise
 
     def disconnect(self):
         """Stop LED monitoring and disconnect from PLC."""
@@ -62,6 +169,8 @@ class ASRSController:
         self._unsubscribe_leds()
         asrs_connection.disconnect()
         logging.info("[ASRS] Disconnected.")
+        _log_asrs_connection(False, "User disconnect request")
+        _log_asrs_event("info", "info", "ASRS OPC-UA Session Disconnected")
 
     def is_connected(self) -> bool:
         return asrs_connection.connected
@@ -107,6 +216,39 @@ class ASRSController:
         logging.info(f"[ASRS] Pulsing node '{pulse_tag}'")
         asrs_connection.pulse_node(pulse_tag)
         logging.info(f"[ASRS] {operation} command '{cmd}' executed successfully.")
+        _log_asrs_event("info", "info", f"ASRS {operation} Issued: {cmd}", {"box_id": cmd.rstrip("S"), "command": cmd, "operation": operation})
+
+        # Persist shuttle movement to DB so position survives server restarts
+        try:
+            from backend.database.db import SessionLocal as _SessionLocal
+            from sqlalchemy import text as _text
+            from backend.core.timezone import ist_now as _ist_now
+            _session = _SessionLocal()
+            try:
+                snap = self.shuttle.snapshot()
+                _session.execute(
+                    _text("""
+                        INSERT INTO shuttle_movements
+                            (machine_id, time, command, to_row, to_col, state, initiated_by)
+                        VALUES
+                            ('asrs', :time, :command, :to_row, :to_col, :state, 'operator')
+                    """),
+                    {
+                        "time": _ist_now(),
+                        "command": cmd,
+                        "to_row": snap.get("row"),
+                        "to_col": snap.get("column"),
+                        "state": snap.get("state", "busy"),
+                    }
+                )
+                _session.commit()
+            except Exception as _db_err:
+                logging.warning(f"[ASRS] Failed to persist shuttle movement: {_db_err}")
+                _session.rollback()
+            finally:
+                _session.close()
+        except Exception:
+            pass
 
         return {
             "success": True,
@@ -152,7 +294,7 @@ class ASRSController:
                         node_id = f"ns={PLC_NAMESPACE};s={tag}"
                         try:
                             node = asrs_connection.client.get_node(node_id)
-                            value = node.get_value()
+                            value = node.read_value()
                             led_nodes.append(node)
                             node_to_tag[node.nodeid.to_string()] = tag
 
@@ -163,19 +305,20 @@ class ASRSController:
                         except Exception as e:
                             logging.warning(f"[ASRS] LED {tag} unavailable: {e}")
 
-                # Also subscribe to the native ASRS saftey curtain node
+                # Also subscribe to the native ASRS safety curtain node
                 safety_tag = "saftey"
                 safety_node_id = f"ns={PLC_NAMESPACE};s={safety_tag}"
                 try:
                     safety_node = asrs_connection.client.get_node(safety_node_id)
-                    safety_value = safety_node.get_value()
+                    safety_value = safety_node.read_value()
                     led_nodes.append(safety_node)
                     node_to_tag[safety_node.nodeid.to_string()] = safety_tag
 
-                    # Seed the LED service with initial safety state
-                    self.led_service.safety_curtain = bool(safety_value)
-                    self.led_service.prev_safety_curtain = bool(safety_value)
-                    logging.info(f"[ASRS] Subscribed to safety node with initial value: {safety_value}")
+                    # Seed the LED service with initial safety state (invert: True=Safe, False=Broken)
+                    is_interrupted = not bool(safety_value)
+                    self.led_service.safety_curtain = is_interrupted
+                    self.led_service.prev_safety_curtain = is_interrupted
+                    logging.info(f"[ASRS] Subscribed to safety node with initial value: {safety_value} (Interrupted={is_interrupted})")
                 except Exception as e:
                     logging.warning(f"[ASRS] Safety tag '{safety_tag}' unavailable: {e}")
 
@@ -214,6 +357,8 @@ class ASRSController:
         """Called by OPCUAConnection after a successful auto-reconnect."""
         logging.info("[ASRS] Auto-reconnect detected — re-subscribing to LEDs.")
         self._subscribe_to_leds()
+        _log_asrs_connection(True)
+        _log_asrs_event("info", "info", "ASRS OPC-UA Session Reconnected")
 
     # ------------------------------------------------------------------
     # LED state query
@@ -242,6 +387,8 @@ class ASRSController:
                     if cmd and cmd.upper().endswith("S"):
                         logging.info(f"[ASRSController] Store operation complete. Setting shuttle to idle.")
                         self.shuttle.set_idle()
+                        _log_asrs_event("info", "info", f"ASRS Store Complete on Box {box_id}", {"box_id": box_id, "command": cmd})
                     else:
                         logging.info(f"[ASRSController] Retrieve operation complete. Returning shuttle to drop-off.")
                         self.shuttle.return_to_dropoff()
+                        _log_asrs_event("info", "info", f"ASRS Retrieve Complete on Box {box_id}", {"box_id": box_id, "command": cmd})

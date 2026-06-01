@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { flushSync } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import AssemblyControlService from '../services/Assemblycontrol';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { toast } from 'react-toastify';
 import '../components/industrial-ui.css';
 import './Assembly.css';
 import PageHeader from '../components/PageHeader';
 import { useTheme } from '../theme/ThemeContext';
 import AssemblyStatusRibbon from './asrs/components/AssemblyStatusRibbon';
+import SafetyOverlay from '../components/SafetyOverlay';
+import { deepMerge } from '../utils/deepMerge';
+import { useModal } from '../hooks/useModal';
 // recharts imports kept for future graph tab (currently commented out in render)
 import {
   LineChart,
@@ -20,16 +23,22 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
+import { wsCache } from '../utils/wsCache';
+
+// --- Module-level data cache — persists across navigation ---
+let _assemblyDataCache = null;
+
 export default function Assembly() {
   const { resolved: theme } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [lastCommand, setLastCommand] = useState(null);
+  const [lastCommandTime, setLastCommandTime] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isWsConnected, setIsWsConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
-  const [plantData, setPlantData] = useState(null);
+  const [plantData, setPlantData] = useState(wsCache.assembly);
   const [activeTab, setActiveTab] = useState('monitoring');
-  const [activeModal, setActiveModal] = useState(null); // 'piston' | 'clamp' | null
+  const { activeModal, openModal, closeModal } = useModal();
 
   // Smoothed position state for animation
   const [smoothedPosition, setSmoothedPosition] = useState(43);
@@ -56,6 +65,32 @@ export default function Assembly() {
   // WebSocket ref so reconnect logic can replace it without tearing down the effect
   const wsRef = useRef(null);
   const reconnectTimerRef = useRef(null);
+  // Tracks last known full state for delta merging
+  const lastDataRef = useRef(wsCache.assembly);
+
+  // Fetch historical telemetry on mount
+  useEffect(() => {
+    const fetchHistory = async () => {
+      const response = await AssemblyControlService.getHistoricalTelemetry(250);
+      if (response && response.success && response.data && response.data.length > 0) {
+        // The data is returned newest first (DESC), so reverse it for the plot (oldest to newest)
+        const historyData = response.data.reverse().map((row, index) => {
+          // Normalize the raw displacement to match the frontend calculation
+          const rawDisp = row.displacement_mm !== null ? row.displacement_mm : 43;
+          const dispFloat = Math.max(0, rawDisp - 43);
+          return {
+            time: index,
+            displacement: Math.round(dispFloat)
+          };
+        });
+
+        plotDataPointsRef.current = historyData;
+        plotTimestampRef.current = historyData.length;
+        setPlotData([...historyData]);
+      }
+    };
+    fetchHistory();
+  }, []);
 
   const connectWS = useCallback(() => {
     // Derive WS base from VITE_WS_URL env var if set; otherwise use Vite proxy path.
@@ -75,9 +110,23 @@ export default function Assembly() {
     };
 
     ws.onmessage = (e) => {
-      const data = JSON.parse(e.data);
+      const msg = JSON.parse(e.data);
+      let data;
+
+      if (msg.type === 'snapshot') {
+        data = msg.data;
+      } else if (msg.type === 'delta') {
+        // shallow-merge delta into last known state
+        data = deepMerge(lastDataRef.current, msg.data);
+      } else {
+        // heartbeat — nothing to update
+        return;
+      }
+
+      lastDataRef.current = data;
+
       const now = performance.now();
-      
+
       // Capture telemetry values instantly in refs to bypass React state update lag / throttling
       if (data.position?.displacement_mm !== undefined) {
         targetPositionRef.current = data.position.displacement_mm;
@@ -89,13 +138,11 @@ export default function Assembly() {
         isBearingRef.current = data.assembly.bearing;
       }
 
-      // Update data references for continuous data streams (throttled to 100ms for UI re-renders)
-      if (now - lastUpdateRef.current > 100) {
-        setPlantData(data);
-        setIsConnected(data.connected !== false);
-        setLastCommand(data.assembly?.bearing ? 'Bearing ON' : 'Bearing OFF');
-        lastUpdateRef.current = now;
-      }
+      // Update state immediately on every WebSocket message
+      wsCache.assembly = data;
+      setPlantData(data);
+      setIsConnected(data.connected !== false);
+      setLastCommand(data.assembly?.bearing ? 'Bearing ON' : 'Bearing OFF');
 
       // Edge-triggered safety alerts — only toast on rising edge (false → true)
       const prev = prevSafetyRef.current;
@@ -115,11 +162,11 @@ export default function Assembly() {
       }
       // Dismiss alerts when condition clears
       if (!data.safety?.curtain && prev.curtain) toast.dismiss('curtain-alert');
-      if (!data.safety?.buzzer  && prev.buzzer)  toast.dismiss('buzzer-alert');
+      if (!data.safety?.buzzer && prev.buzzer) toast.dismiss('buzzer-alert');
 
       prevSafetyRef.current = {
         curtain: data.safety?.curtain || false,
-        buzzer:  data.safety?.buzzer  || false,
+        buzzer: data.safety?.buzzer || false,
       };
 
       // Continuously collect data points for plotting
@@ -127,20 +174,22 @@ export default function Assembly() {
         time: plotTimestampRef.current,
         displacement: data.position?.displacement_mm || 0,
         bearing: data.assembly?.bearing ? 1 : 0,
-        shaft:   data.assembly?.shaft   ? 1 : 0,
+        shaft: data.assembly?.shaft ? 1 : 0,
       };
-      plotDataPointsRef.current.push(newPoint);
-      plotTimestampRef.current += 1;
-
-      // Keep last 500 points for performance
-      if (plotDataPointsRef.current.length > 500) {
+      // Keep only the last 60 seconds of data
+      const now60 = Date.now();
+      plotDataPointsRef.current.push({ ...newPoint, ts: now60 });
+      // Trim points older than 60s
+      while (plotDataPointsRef.current.length > 0 && now60 - plotDataPointsRef.current[0].ts > 60000) {
         plotDataPointsRef.current.shift();
-        plotDataPointsRef.current.forEach((point, index) => { point.time = index; });
-        plotTimestampRef.current = plotDataPointsRef.current.length;
       }
+      // Re-index time for Recharts
+      plotDataPointsRef.current.forEach((point, index) => { point.time = index; });
+      plotTimestampRef.current = plotDataPointsRef.current.length;
 
       if (now - lastUpdateRef.current > 100) {
-         setPlotData([...plotDataPointsRef.current]);
+        setPlotData([...plotDataPointsRef.current]);
+        lastUpdateRef.current = now;
       }
     };
 
@@ -224,10 +273,10 @@ export default function Assembly() {
       // Throttled debug points collection for raw/smoothed canvas graphs
       if (now - lastRenderUpdateRef.current > 60) {
         const workpiece = isBearingRef.current ? 'bearing' : 'shaft';
-        setSmoothedDataPoints(points => [...points.slice(-99), { 
-          value: Math.max(0, newVal - 43), 
-          workpiece, 
-          timestamp: Date.now() 
+        setSmoothedDataPoints(points => [...points.slice(-99), {
+          value: Math.max(0, newVal - 43),
+          workpiece,
+          timestamp: Date.now()
         }]);
         lastRenderUpdateRef.current = now;
       }
@@ -360,6 +409,8 @@ export default function Assembly() {
 
   }, [smoothedDataPoints]);
 
+  // Close modal on Escape key — handled by useModal hook
+
   const handleConnect = async () => {
     setStatusLoading(true);
     try {
@@ -405,6 +456,7 @@ export default function Assembly() {
     try {
       const response = await AssemblyControlService.runCommand('BEARING_ON');
       setLastCommand('Bearing ON');
+      setLastCommandTime(new Date().toTimeString().slice(0, 8));
       toast.success(response.message || 'Bearing command executed');
     } catch (e) {
       toast.error(`Failed to execute Bearing command: ${e.message}`);
@@ -418,6 +470,7 @@ export default function Assembly() {
     try {
       const response = await AssemblyControlService.runCommand('SHAFT_ON');
       setLastCommand('Shaft ON');
+      setLastCommandTime(new Date().toTimeString().slice(0, 8));
       toast.success(response.message || 'Shaft command executed');
     } catch (e) {
       toast.error(`Failed to execute Shaft command: ${e.message}`);
@@ -425,6 +478,51 @@ export default function Assembly() {
       setIsLoading(false);
     }
   };
+
+  const handleViceOpen = async () => {
+    setIsLoading(true);
+    try {
+      const response = await AssemblyControlService.runCommand('VICE_OPEN');
+      setLastCommand('Vice OPEN');
+      setLastCommandTime(new Date().toTimeString().slice(0, 8));
+      toast.success(response.message || 'Vice open command executed');
+    } catch (e) {
+      toast.error(`Failed to execute Vice Open command: ${e.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleViceClose = async () => {
+    setIsLoading(true);
+    try {
+      const response = await AssemblyControlService.runCommand('VICE_CLOSE');
+      setLastCommand('Vice CLOSE');
+      setLastCommandTime(new Date().toTimeString().slice(0, 8));
+      toast.success(response.message || 'Vice close command executed');
+    } catch (e) {
+      toast.error(`Failed to execute Vice Close command: ${e.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleViceToggle = async () => {
+    const command = plantData?.vice?.close ? 'VICE_OPEN' : 'VICE_CLOSE';
+    const label = command === 'VICE_OPEN' ? 'Vice OPEN' : 'Vice CLOSE';
+    setIsLoading(true);
+    try {
+      const response = await AssemblyControlService.runCommand(command);
+      setLastCommand(label);
+      setLastCommandTime(new Date().toTimeString().slice(0, 8));
+      toast.success(response.message || `Vice ${command === 'VICE_OPEN' ? 'open' : 'close'} command executed`);
+    } catch (e) {
+      toast.error(`Failed to execute Vice command: ${e.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const isSafetyFault = !!(plantData?.safety?.curtain || plantData?.safety?.buzzer);
   const displacementFloat = smoothedPosition != null ? Math.max(0, smoothedPosition - 43) : 0;
   const displacement = smoothedPosition != null ? Math.round(displacementFloat) : null;
@@ -516,22 +614,19 @@ export default function Assembly() {
                 {/* Left Column: Piston Diagnostics HUD */}
                 <div
                   className="asm-hud-card asm-hud-card--clickable"
-                  onClick={() => setActiveModal("piston")}
+                  onClick={() => flushSync(() => openModal("piston"))}
                   style={{ cursor: "pointer" }}
                   title="Click to open detailed diagnostics panel"
                 >
                   <div className="asm-hud-header">Piston Diagnostics</div>
                   <div className="asm-val">
                     <div className="asm-val__label">Piston Extension</div>
-                    <div 
+                    <div
                       className="asm-val__num"
                       style={{
-                        color: isPressActive 
+                        color: isPressActive
                           ? (plantData?.assembly?.bearing ? '#ff6b6b' : plantData?.assembly?.shaft ? '#38bdf8' : 'var(--text-primary)')
-                          : 'var(--text-primary)',
-                        textShadow: isPressActive 
-                          ? `0 0 10px ${plantData?.assembly?.bearing ? 'rgba(255, 107, 107, 0.45)' : 'rgba(56, 189, 248, 0.45)'}`
-                          : 'none'
+                          : 'var(--text-primary)'
                       }}
                     >
                       {displacement != null ? displacement : '--'}
@@ -540,12 +635,12 @@ export default function Assembly() {
                   </div>
                   <div className="asm-val">
                     <div className="asm-val__label">Operating State</div>
-                    <div className="asm-val__num asm-val__num--sm" style={{ 
-                      color: isSafetyFault 
-                        ? '#ef4444' 
-                        : isPressActive 
-                        ? '#fbbf24' 
-                        : 'var(--text-secondary)' 
+                    <div className="asm-val__num asm-val__num--sm" style={{
+                      color: isSafetyFault
+                        ? '#ef4444'
+                        : isPressActive
+                          ? '#fbbf24'
+                          : 'var(--text-secondary)'
                     }}>
                       {isSafetyFault ? 'FAULTED' : isPressActive ? 'PRESS ACTIVE' : 'SYSTEM IDLE'}
                     </div>
@@ -562,20 +657,18 @@ export default function Assembly() {
                 <div className="asm-cylinder-wrapper">
                   {/* Left Hydraulic Pipe */}
                   <div className="asm-pipe asm-pipe--left">
-                    <div className={`asm-pipe__fluid ${
-                      isPressActive 
+                    <div className={`asm-pipe__fluid ${isPressActive
                         ? (plantData?.assembly?.bearing ? 'asm-pipe__fluid--active-bearing' : plantData?.assembly?.shaft ? 'asm-pipe__fluid--active-shaft' : '')
                         : ''
-                    }`} />
+                      }`} />
                   </div>
 
                   {/* Right Hydraulic Pipe */}
                   <div className="asm-pipe asm-pipe--right">
-                    <div className={`asm-pipe__fluid ${
-                      isPressActive 
+                    <div className={`asm-pipe__fluid ${isPressActive
                         ? (plantData?.assembly?.bearing ? 'asm-pipe__fluid--active-bearing' : plantData?.assembly?.shaft ? 'asm-pipe__fluid--active-shaft' : '')
                         : ''
-                    }`} />
+                      }`} />
                   </div>
 
                   {/* Ruler Scale */}
@@ -587,12 +680,12 @@ export default function Assembly() {
                       </div>
                     ))}
                     {/* Glowing Ruler Indicator */}
-                    <div 
-                      className="asm-ruler__pointer" 
-                      style={{ 
+                    <div
+                      className="asm-ruler__pointer"
+                      style={{
                         top: `${Math.max(0, Math.min(185, displacementFloat))}px`,
                         borderLeftColor: plantData?.assembly?.bearing ? '#ff6b6b' : plantData?.assembly?.shaft ? '#38bdf8' : 'var(--primary)'
-                      }} 
+                      }}
                     />
                   </div>
 
@@ -627,14 +720,14 @@ export default function Assembly() {
                       <div className="asm-press-head__hazard" />
                       <div className="asm-press-head__groove" />
                       {/* Active glow contact strip */}
-                      <div 
-                        className="asm-press-head__glow" 
-                        style={{ 
-                          backgroundColor: isPressActive 
+                      <div
+                        className="asm-press-head__glow"
+                        style={{
+                          backgroundColor: isPressActive
                             ? (plantData?.assembly?.bearing ? '#ff6b6b' : plantData?.assembly?.shaft ? '#38bdf8' : '#dc2626')
                             : 'rgba(255, 255, 255, 0.08)',
-                          boxShadow: isPressActive 
-                            ? `0 0 10px ${plantData?.assembly?.bearing ? '#ff6b6b' : '#38bdf8'}, 0 0 4px ${plantData?.assembly?.bearing ? '#ff6b6b' : '#38bdf8'}` 
+                          boxShadow: isPressActive
+                            ? `0 0 10px ${plantData?.assembly?.bearing ? '#ff6b6b' : '#38bdf8'}, 0 0 4px ${plantData?.assembly?.bearing ? '#ff6b6b' : '#38bdf8'}`
                             : 'none'
                         }}
                       />
@@ -714,27 +807,26 @@ export default function Assembly() {
                 {/* Right Column: Clamp & Workpiece HUD */}
                 <div
                   className="asm-hud-card asm-hud-card--clickable"
-                  onClick={() => setActiveModal("clamp")}
+                  onClick={() => flushSync(() => openModal("clamp"))}
                   style={{ cursor: "pointer" }}
                   title="Click to open detailed diagnostics panel"
                 >
                   <div className="asm-hud-header">Clamp & Workpiece</div>
                   <div className="asm-val">
                     <div className="asm-val__label">Vice Jaws Status</div>
-                    <div className={`asm-val__num asm-val__num--sm ${
-                      plantData?.vice?.close ? 'asm-val__num--glowing-blue' : 'asm-val__num--glowing-green'
-                    }`}>
+                    <div className={`asm-val__num asm-val__num--sm ${plantData?.vice?.close ? 'asm-val__num--glowing-blue' : 'asm-val__num--glowing-green'
+                      }`}>
                       {plantData?.vice?.close ? 'CLOSED' : plantData?.vice?.open ? 'OPEN' : 'UNKNOWN'}
                     </div>
                   </div>
                   <div className="asm-val">
                     <div className="asm-val__label">Active Workpiece</div>
-                    <div className="asm-val__num asm-val__num--sm" style={{ 
-                      color: plantData?.assembly?.bearing 
-                        ? '#ff6b6b' 
-                        : plantData?.assembly?.shaft 
-                        ? '#38bdf8' 
-                        : 'var(--text-muted)' 
+                    <div className="asm-val__num asm-val__num--sm" style={{
+                      color: plantData?.assembly?.bearing
+                        ? '#ff6b6b'
+                        : plantData?.assembly?.shaft
+                          ? '#38bdf8'
+                          : 'var(--text-muted)'
                     }}>
                       {plantData?.assembly?.bearing ? 'BEARING' : plantData?.assembly?.shaft ? 'SHAFT' : 'NONE'}
                     </div>
@@ -751,25 +843,50 @@ export default function Assembly() {
           </div>
 
           {/* Action controls panel */}
-          <div className="asm-cmd" style={{ marginTop: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
-            <span className="asm-cmd__label">Hydraulic Control Commands:</span>
-            <div style={{ display: 'flex', gap: '8px' }}>
+          <div className="asm-cmd" style={{ marginTop: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', flexDirection: 'column', gap: '8px' }}>
+            {/* Button row — always centred, never shifts */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span className="asm-cmd__label" style={{ marginRight: 0 }}>Press:</span>
               <button
                 type="button"
                 className="asm-btn asm-btn--bearing"
                 onClick={handleBearingToggle}
                 disabled={isLoading || isSafetyFault || !isConnected}
+                style={{ minWidth: '120px' }}
               >
-                {isLoading ? 'Processing…' : 'Bearing ON'}
+                {isLoading && lastCommand === 'Bearing ON' ? 'Processing…' : 'Bearing ON'}
               </button>
               <button
                 type="button"
                 className="asm-btn asm-btn--shaft"
                 onClick={handleShaftToggle}
                 disabled={isLoading || isSafetyFault || !isConnected}
+                style={{ minWidth: '120px' }}
               >
-                {isLoading ? 'Processing…' : 'Shaft ON'}
+                {isLoading && lastCommand === 'Shaft ON' ? 'Processing…' : 'Shaft ON'}
               </button>
+              <div style={{ width: '1px', height: '20px', background: 'var(--border)', flexShrink: 0 }} />
+              <span className="asm-cmd__label" style={{ marginRight: 0 }}>Vice:</span>
+              <button
+                type="button"
+                className={`asm-btn asm-btn--vice-toggle ${plantData?.vice?.close ? 'asm-btn--vice-toggle--open' : 'asm-btn--vice-toggle--closed'}`}
+                onClick={handleViceToggle}
+                disabled={isLoading || isSafetyFault || !isConnected}
+                title={plantData?.vice?.close ? 'Vice is CLOSED — click to open' : 'Vice is OPEN — click to close'}
+              >
+                {isLoading && (lastCommand === 'Vice OPEN' || lastCommand === 'Vice CLOSE')
+                  ? (lastCommand === 'Vice OPEN' ? 'Opening…' : 'Closing…')
+                  : plantData?.vice?.close ? 'Open Vice ○' : 'Close Vice ●'}
+              </button>
+            </div>
+            {/* Timestamp row — always present as a placeholder to prevent layout shift */}
+            <div style={{ display: 'flex', justifyContent: 'center', minHeight: '16px' }}>
+              <span style={{
+                fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#8a9490',
+                fontWeight: 600, visibility: lastCommandTime ? 'visible' : 'hidden'
+              }}>
+                LAST CMD: {lastCommandTime || '00:00:00'}
+              </span>
             </div>
           </div>
         </main>
@@ -782,7 +899,8 @@ export default function Assembly() {
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
           gap: '12px',
-          flexShrink: 0
+          flex: 1,
+          minHeight: 0
         }}>
           {/* Raw plot card */}
           <div className="asm-viz" style={{ minHeight: '190px', background: 'var(--bg-secondary)' }}>
@@ -792,18 +910,18 @@ export default function Assembly() {
                 RAW DISPLACEMENT
               </span>
             </div>
-            <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ position: 'relative', width: '100%', maxWidth: '568px' }}>
-                <canvas 
+            <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <div style={{ position: 'relative', width: '100%', flex: 1, display: 'flex' }}>
+                <canvas
                   ref={rawCanvasRef}
-                  width={568}
-                  height={100}
-                  style={{ 
+                  width={1200}
+                  height={250}
+                  style={{
                     border: '1px solid var(--border)',
                     borderRadius: '3px',
                     display: 'block',
                     width: '100%',
-                    height: '100px',
+                    height: '100%',
                     background: '#1a1a1a'
                   }}
                 />
@@ -811,7 +929,7 @@ export default function Assembly() {
                   {rawDataPoints[rawDataPoints.length - 1]?.workpiece === 'bearing' ? '185' : '135'}mm
                 </div>
                 <div style={{ position: 'absolute', bottom: '4px', left: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>0mm</div>
-                
+
                 {rawDataPoints.length > 1 && (() => {
                   const totalTime = (rawDataPoints[rawDataPoints.length - 1].timestamp - rawDataPoints[0].timestamp) / 1000;
                   return (
@@ -820,7 +938,7 @@ export default function Assembly() {
                     </div>
                   );
                 })()}
-                
+
                 <div style={{ position: 'absolute', top: '4px', right: '6px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--primary-light)', background: 'rgba(0,0,0,0.75)', padding: '2px 6px', borderRadius: '2px', border: '1px solid var(--border)' }}>
                   {rawDataPoints[rawDataPoints.length - 1]?.value != null ? `${rawDataPoints[rawDataPoints.length - 1].value.toFixed(1)} mm` : '--'}
                 </div>
@@ -840,18 +958,18 @@ export default function Assembly() {
                 EXPONENTIAL FILTER
               </span>
             </div>
-            <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ position: 'relative', width: '100%', maxWidth: '568px' }}>
-                <canvas 
+            <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <div style={{ position: 'relative', width: '100%', flex: 1, display: 'flex' }}>
+                <canvas
                   ref={smoothedCanvasRef}
-                  width={568}
-                  height={100}
-                  style={{ 
+                  width={1200}
+                  height={250}
+                  style={{
                     border: '1px solid var(--border)',
                     borderRadius: '3px',
                     display: 'block',
                     width: '100%',
-                    height: '100px',
+                    height: '100%',
                     background: '#1a1a1a'
                   }}
                 />
@@ -859,7 +977,7 @@ export default function Assembly() {
                   {smoothedDataPoints[smoothedDataPoints.length - 1]?.workpiece === 'bearing' ? '185' : '135'}mm
                 </div>
                 <div style={{ position: 'absolute', bottom: '4px', left: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>0mm</div>
-                
+
                 {smoothedDataPoints.length > 1 && (() => {
                   const totalTime = (smoothedDataPoints[smoothedDataPoints.length - 1].timestamp - smoothedDataPoints[0].timestamp) / 1000;
                   return (
@@ -868,7 +986,7 @@ export default function Assembly() {
                     </div>
                   );
                 })()}
-                
+
                 <div style={{ position: 'absolute', top: '4px', right: '6px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#4ade80', background: 'rgba(0,0,0,0.75)', padding: '2px 6px', borderRadius: '2px', border: '1px solid var(--border)' }}>
                   {smoothedDataPoints[smoothedDataPoints.length - 1]?.value != null ? `${smoothedDataPoints[smoothedDataPoints.length - 1].value.toFixed(1)} mm` : '--'}
                 </div>
@@ -882,7 +1000,7 @@ export default function Assembly() {
         </div>
 
         {/* Longer-term Telemetry Recharts Graph */}
-        <div className="asm-viz" style={{ flex: 1, minHeight: '320px', display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)' }}>
+        <div className="asm-viz" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)' }}>
           <div className="asm-viz__bar" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-elevated)' }}>
             <span>Displacement History Analytics</span>
             <button
@@ -1076,7 +1194,7 @@ export default function Assembly() {
             letterSpacing: '0.08em',
             marginRight: '2px'
           }}>STATUS TOWER:</span>
-          
+
           {/* RUN LED */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }} title="System Connected and Ready">
             <div style={{
@@ -1144,108 +1262,81 @@ export default function Assembly() {
         {tabPanels[activeTab]}
 
         {/* SAFETY INTERRUPT OVERLAY */}
-        {isSafetyFault && (
-          <div className="asm-safety-overlay" style={{ background: "rgba(0,0,0,0.92)", borderRadius: 0 }}>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "1.5rem",
-              flexWrap: "wrap",
-              padding: "2rem"
-            }}>
-              <div className="asm-safety-overlay__icon" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="84" height="84" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" strokeWidth="2" />
-                  <circle cx="12" cy="17" r="0.5" fill="#ef4444" />
-                </svg>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", alignItems: "flex-start" }}>
-                <div className="asm-safety-overlay__title">
-                  SAFETY<br />INTERRUPT
-                </div>
-                <div className="asm-safety-overlay__sub" style={{ maxWidth: "420px", fontSize: "0.85rem", margin: 0 }}>
-                  {plantData?.safety?.curtain && plantData?.safety?.buzzer
-                    ? "Human presence detected (safety curtain breached) & emergency buzzer active."
-                    : plantData?.safety?.curtain
-                    ? "Human presence detected in hydraulic station area (safety curtain breached)."
-                    : "Emergency buzzer active."}
-                </div>
-                <div className="asm-safety-overlay__badge">
-                  Hydraulic Press Operations Locked Out
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <SafetyOverlay
+          isVisible={isSafetyFault}
+          message={
+            plantData?.safety?.curtain && plantData?.safety?.buzzer
+              ? "Human presence detected (safety curtain breached) & emergency buzzer active."
+              : plantData?.safety?.curtain
+                ? "Human presence detected in hydraulic station area (safety curtain breached)."
+                : "Emergency buzzer active."
+          }
+          badgeText="Hydraulic Press Operations Locked Out"
+        />
       </div>
 
-      {/* BUZZER ALARM VIEWPORT RING */}
-      {isSafetyFault && <div className="asm-buzzer-ring" />}
+      {/* BUZZER ALARM VIEWPORT RING IS HANDLED BY SafetyOverlay */}
 
       {/* Interactive Sensor Pop-Up Overlay */}
       {activeModal && (
-        <div 
-          style={{ 
-            position: "fixed", 
-            inset: 0, 
-            background: "rgba(3, 7, 18, 0.75)", 
-            backdropFilter: "blur(10px)", 
-            zIndex: 9999, 
-            display: "flex", 
-            alignItems: "center", 
-            justifyContent: "center" 
-          }} 
-          onClick={() => setActiveModal(null)}
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.85)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}
+          onClick={() => closeModal()}
         >
-          <div 
-            style={{ 
-              background: "rgba(10, 15, 30, 0.96)", 
-              border: "1px solid rgba(255, 255, 255, 0.08)", 
-              borderRadius: "12px", 
-              width: "580px", 
-              maxWidth: "95%", 
-              padding: "24px", 
-              boxShadow: "0 24px 64px rgba(0, 0, 0, 0.85), 0 0 32px rgba(56, 189, 248, 0.05)", 
-              position: "relative", 
-              display: "flex", 
-              flexDirection: "column", 
-              gap: "20px" 
-            }} 
+          <div
+            style={{
+              background: "#333533",
+              border: "1px solid #4a4d4a",
+              borderRadius: "4px",
+              width: "580px",
+              maxWidth: "95%",
+              padding: "24px",
+              position: "relative",
+              display: "flex",
+              flexDirection: "column",
+              gap: "20px"
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
-            <button 
-              onClick={() => setActiveModal(null)} 
-              style={{ 
-                position: "absolute", 
-                top: "16px", 
-                right: "16px", 
-                background: "rgba(255,255,255,0.03)", 
-                border: "1px solid rgba(255,255,255,0.08)", 
-                color: "var(--text-secondary)", 
-                borderRadius: "50%", 
-                width: "28px", 
-                height: "28px", 
-                display: "flex", 
-                alignItems: "center", 
-                justifyContent: "center", 
-                cursor: "pointer", 
-                transition: "all 0.2s" 
-              }} 
-              onMouseEnter={(e) => { 
-                e.target.style.background = "rgba(255,255,255,0.08)"; 
-                e.target.style.color = "var(--text-primary)"; 
-              }} 
-              onMouseLeave={(e) => { 
-                e.target.style.background = "rgba(255,255,255,0.03)"; 
-                e.target.style.color = "var(--text-secondary)"; 
+            <button
+              onClick={() => closeModal()}
+              style={{
+                position: "absolute",
+                top: "16px",
+                right: "16px",
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                color: "var(--text-secondary)",
+                borderRadius: "50%",
+                width: "28px",
+                height: "28px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = "rgba(255,255,255,0.08)";
+                e.target.style.color = "var(--text-primary)";
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = "rgba(255,255,255,0.03)";
+                e.target.style.color = "var(--text-secondary)";
               }}
             >
               ✕
             </button>
-            
+
             {/* Modal Header */}
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
@@ -1262,7 +1353,7 @@ export default function Assembly() {
             </div>
 
             {/* Hardware Specifications */}
-            <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "8px", padding: "12px" }}>
+            <div style={{ background: "#1a1b1a", border: "1px solid #4a4d4a", borderRadius: "4px", padding: "12px" }}>
               <h4 style={{ margin: "0 0 8px 0", fontSize: "0.68rem", color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>
                 Hardware Specifications
               </h4>
@@ -1282,33 +1373,33 @@ export default function Assembly() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
                 {activeModal === "piston" && (
                   <>
-                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "6px", padding: "10px", textAlign: "center" }}>
+                    <div style={{ background: "#1a1b1a", border: "1px solid #4a4d4a", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
                       <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Linear Displacement</div>
                       <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#38bdf8", marginTop: "4px" }}>{displacement != null ? displacement : "---"} <span style={{ fontSize: "10px", fontWeight: 600 }}>mm</span></div>
                     </div>
-                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "6px", padding: "10px", textAlign: "center" }}>
+                    <div style={{ background: "#1a1b1a", border: "1px solid #4a4d4a", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
                       <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Raw Analog Position</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#fff", marginTop: "4px" }}>{plantData?.position?.displacement_mm != null ? plantData.position.displacement_mm.toFixed(2) : "---"} <span style={{ fontSize: "10px", fontWeight: 600 }}>mm</span></div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#E8EDDF", marginTop: "4px" }}>{plantData?.position?.displacement_mm != null ? plantData.position.displacement_mm.toFixed(2) : "---"} <span style={{ fontSize: "10px", fontWeight: 600 }}>mm</span></div>
                     </div>
-                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "6px", padding: "10px", textAlign: "center" }}>
+                    <div style={{ background: "#1a1b1a", border: "1px solid #4a4d4a", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
                       <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Piston State</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#fff", marginTop: "4px" }}>{displacement != null ? (displacement > 5 ? "EXTENDING" : "RETRACTED") : "---"}</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#E8EDDF", marginTop: "4px" }}>{displacement != null ? (displacement > 5 ? "EXTENDING" : "RETRACTED") : "---"}</div>
                     </div>
                   </>
                 )}
                 {activeModal === "clamp" && (
                   <>
-                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "6px", padding: "10px", textAlign: "center" }}>
+                    <div style={{ background: "#1a1b1a", border: "1px solid #4a4d4a", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
                       <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Clamp Status</div>
                       <div style={{ fontSize: "1.1rem", fontWeight: 800, color: plantData?.vice?.close ? "#38bdf8" : "#4ade80", marginTop: "4px" }}>{plantData?.vice?.close ? "CLOSED" : plantData?.vice?.open ? "OPEN" : "---"}</div>
                     </div>
-                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "6px", padding: "10px", textAlign: "center" }}>
+                    <div style={{ background: "#1a1b1a", border: "1px solid #4a4d4a", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
                       <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Bearing Detected</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: plantData?.assembly?.bearing ? "#ff6b6b" : "#fff", marginTop: "4px" }}>{plantData?.assembly?.bearing ? "YES" : "NO"}</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: plantData?.assembly?.bearing ? "#ff6b6b" : "#E8EDDF", marginTop: "4px" }}>{plantData?.assembly?.bearing ? "YES" : "NO"}</div>
                     </div>
-                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "6px", padding: "10px", textAlign: "center" }}>
+                    <div style={{ background: "#1a1b1a", border: "1px solid #4a4d4a", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
                       <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Shaft Detected</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: plantData?.assembly?.shaft ? "#38bdf8" : "#fff", marginTop: "4px" }}>{plantData?.assembly?.shaft ? "YES" : "NO"}</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: plantData?.assembly?.shaft ? "#38bdf8" : "#E8EDDF", marginTop: "4px" }}>{plantData?.assembly?.shaft ? "YES" : "NO"}</div>
                     </div>
                   </>
                 )}
@@ -1320,10 +1411,10 @@ export default function Assembly() {
               <h4 style={{ margin: "0 0 8px 0", fontSize: "0.68rem", color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>
                 OPC-UA Telemetry Node Table
               </h4>
-              <div style={{ overflowX: "auto", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "6px" }}>
+              <div style={{ overflowX: "auto", border: "1px solid #4a4d4a", borderRadius: "4px" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", textAlign: "left", fontFamily: "var(--font-mono)" }}>
                   <thead>
-                    <tr style={{ background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                    <tr style={{ background: "#1a1b1a", borderBottom: "1px solid #4a4d4a" }}>
                       <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "9px" }}>NODE ID (ns=4;s=...)</th>
                       <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "9px" }}>VARIABLE / SYMBOL</th>
                       <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "9px" }}>TYPE</th>
@@ -1333,13 +1424,13 @@ export default function Assembly() {
                   <tbody>
                     {activeModal === "piston" && (
                       <>
-                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                        <tr style={{ borderBottom: "1px solid #4a4d4a" }}>
                           <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>|var|CODESYS Control Win V3 x64.Application.GVL.rCylinderPos</td>
                           <td style={{ padding: "8px 12px", fontWeight: 600 }}>rCylinderPos</td>
                           <td style={{ padding: "8px 12px", color: "#38bdf8" }}>REAL</td>
                           <td style={{ padding: "8px 12px", color: "#38bdf8", fontWeight: 700 }}>{plantData?.position?.displacement_mm != null ? plantData.position.displacement_mm.toFixed(3) : "---"}</td>
                         </tr>
-                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                        <tr style={{ borderBottom: "1px solid #4a4d4a" }}>
                           <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>|var|CODESYS Control Win V3 x64.Application.GVL.bSafetyCurtain</td>
                           <td style={{ padding: "8px 12px", fontWeight: 600 }}>bSafetyCurtain</td>
                           <td style={{ padding: "8px 12px", color: "#ef4444" }}>BOOL</td>
@@ -1355,19 +1446,19 @@ export default function Assembly() {
                     )}
                     {activeModal === "clamp" && (
                       <>
-                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                        <tr style={{ borderBottom: "1px solid #4a4d4a" }}>
                           <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>|var|CODESYS Control Win V3 x64.Application.GVL.bViceOpen</td>
                           <td style={{ padding: "8px 12px", fontWeight: 600 }}>bViceOpen</td>
                           <td style={{ padding: "8px 12px", color: "#4ade80" }}>BOOL</td>
                           <td style={{ padding: "8px 12px", color: plantData?.vice?.open ? "#4ade80" : "var(--text-muted)" }}>{plantData?.vice?.open ? "TRUE" : "FALSE"}</td>
                         </tr>
-                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                        <tr style={{ borderBottom: "1px solid #4a4d4a" }}>
                           <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>|var|CODESYS Control Win V3 x64.Application.GVL.bViceClose</td>
                           <td style={{ padding: "8px 12px", fontWeight: 600 }}>bViceClose</td>
                           <td style={{ padding: "8px 12px", color: "#38bdf8" }}>BOOL</td>
                           <td style={{ padding: "8px 12px", color: plantData?.vice?.close ? "#38bdf8" : "var(--text-muted)" }}>{plantData?.vice?.close ? "TRUE" : "FALSE"}</td>
                         </tr>
-                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                        <tr style={{ borderBottom: "1px solid #4a4d4a" }}>
                           <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>|var|CODESYS Control Win V3 x64.Application.GVL.bBearingWorkpiece</td>
                           <td style={{ padding: "8px 12px", fontWeight: 600 }}>bBearingWorkpiece</td>
                           <td style={{ padding: "8px 12px", color: "#4ade80" }}>BOOL</td>
@@ -1388,15 +1479,6 @@ export default function Assembly() {
           </div>
         </div>
       )}
-
-      <ToastContainer
-        position="bottom-right"
-        autoClose={4000}
-        closeOnClick
-        pauseOnHover
-        draggable
-        theme={theme}
-      />
 
       {/* DEBUG: Temporary Data Visualization */}
       {/* <div style={{
