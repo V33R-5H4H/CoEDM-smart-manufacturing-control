@@ -360,11 +360,11 @@ export default function Assembly() {
     const height = canvas.height;
 
     // Clear canvas
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(0, 0, width, height);
+    ctx.clearRect(0, 0, width, height);
 
     // Draw grid
-    ctx.strokeStyle = '#333';
+    const computedStyle = getComputedStyle(document.body);
+    ctx.strokeStyle = computedStyle.getPropertyValue('--border') || '#333';
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 4]);
     for (let i = 0; i <= 4; i++) {
@@ -412,11 +412,11 @@ export default function Assembly() {
     const height = canvas.height;
 
     // Clear canvas
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(0, 0, width, height);
+    ctx.clearRect(0, 0, width, height);
 
     // Draw grid
-    ctx.strokeStyle = '#333';
+    const computedStyle = getComputedStyle(document.body);
+    ctx.strokeStyle = computedStyle.getPropertyValue('--border') || '#333';
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 4]);
     for (let i = 0; i <= 4; i++) {
@@ -967,7 +967,7 @@ export default function Assembly() {
                     display: 'block',
                     width: '100%',
                     height: '100%',
-                    background: '#1a1a1a'
+                    background: 'var(--bg-elevated)'
                   }}
                 />
                 <div style={{ position: 'absolute', top: '4px', left: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
@@ -986,7 +986,7 @@ export default function Assembly() {
                 })()}
 
 
-                <div style={{ position: 'absolute', top: '4px', right: '6px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--primary-light)', background: 'rgba(0,0,0,0.75)', padding: '2px 6px', borderRadius: '2px', border: '1px solid var(--border)' }}>
+                <div style={{ position: 'absolute', top: '4px', right: '6px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--primary-light)', background: 'var(--bg-elevated)', padding: '2px 6px', borderRadius: '2px', border: '1px solid var(--border)' }}>
                   {rawDataPoints[rawDataPoints.length - 1]?.value != null ? `${rawDataPoints[rawDataPoints.length - 1].value.toFixed(1)} mm` : '--'}
                 </div>
               </div>
@@ -1017,7 +1017,7 @@ export default function Assembly() {
                     display: 'block',
                     width: '100%',
                     height: '100%',
-                    background: '#1a1a1a'
+                    background: 'var(--bg-elevated)'
                   }}
                 />
                 <div style={{ position: 'absolute', top: '4px', left: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
@@ -1036,7 +1036,7 @@ export default function Assembly() {
                 })()}
 
 
-                <div style={{ position: 'absolute', top: '4px', right: '6px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#4ade80', background: 'rgba(0,0,0,0.75)', padding: '2px 6px', borderRadius: '2px', border: '1px solid var(--border)' }}>
+                <div style={{ position: 'absolute', top: '4px', right: '6px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#4ade80', background: 'var(--bg-elevated)', padding: '2px 6px', borderRadius: '2px', border: '1px solid var(--border)' }}>
                   {smoothedDataPoints[smoothedDataPoints.length - 1]?.value != null ? `${smoothedDataPoints[smoothedDataPoints.length - 1].value.toFixed(1)} mm` : '--'}
                 </div>
               </div>
@@ -1057,7 +1057,7 @@ export default function Assembly() {
               disabled={plotData.length === 0}
               className="asm-btn asm-btn--clear"
               style={{
-                background: plotData.length === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(239, 68, 68, 0.1)',
+                background: plotData.length === 0 ? 'var(--bg-secondary)' : 'rgba(239, 68, 68, 0.1)',
                 borderColor: plotData.length === 0 ? 'var(--border)' : 'rgba(239, 68, 68, 0.3)',
                 color: plotData.length === 0 ? 'var(--text-disabled)' : '#ef4444'
               }}
