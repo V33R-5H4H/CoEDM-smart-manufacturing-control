@@ -95,10 +95,9 @@ export default function App() {
         }
 
         .bottom-nav-item.active {
-          background: rgba(245, 203, 92, 0.12);
+          background: var(--color-accent-amber-bg, rgba(245, 203, 92, 0.12));
           color: var(--primary);
-          border: 1px solid rgba(245, 203, 92, 0.3);
-          box-shadow: 0 0 8px rgba(245, 203, 92, 0.08);
+          border: 1px solid var(--primary);
         }
 
         .bottom-nav-status {

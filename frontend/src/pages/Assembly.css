@@ -736,3 +736,109 @@
   0%, 100% { opacity: 0; border-width: 2px; }
   50% { opacity: 0.5; border-width: 4px; }
 }
+
+/* ============================================================
+   Light mode overrides — Assembly / Dashboard shared CSS
+   Corrects dark-only hardcoded colours in machine schematic
+   ============================================================ */
+[data-theme="light"] .asm-press-area {
+  background-color: var(--bg-pressed);
+  background-image:
+    linear-gradient(rgba(26, 28, 26, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(26, 28, 26, 0.05) 1px, transparent 1px);
+  box-shadow: inset 0 0 20px rgba(26, 28, 26, 0.06);
+}
+
+[data-theme="light"] .asm-cylinder {
+  background: rgba(200, 200, 196, 0.45);
+  border-bottom: 2px dashed rgba(26, 28, 26, 0.10);
+}
+
+[data-theme="light"] .asm-cylinder__wall--left,
+[data-theme="light"] .asm-cylinder__wall--right {
+  border-color: rgba(26, 28, 26, 0.08);
+  box-shadow: none;
+}
+
+[data-theme="light"] .asm-vice {
+  background: rgba(200, 200, 196, 0.30);
+  border-color: rgba(26, 28, 26, 0.06);
+}
+
+[data-theme="light"] .asm-jaw {
+  box-shadow:
+    inset 1px 1px 2px rgba(255, 255, 255, 0.7),
+    inset -1px -1px 3px rgba(26, 28, 26, 0.08),
+    0 3px 8px rgba(26, 28, 26, 0.10);
+}
+
+[data-theme="light"] .asm-jaw--left {
+  background: linear-gradient(90deg, #e8e8e5 0%, #d8d8d4 50%, #ebebea 100%);
+  border-right-color: rgba(255, 255, 255, 0.8);
+}
+
+[data-theme="light"] .asm-jaw--right {
+  background: linear-gradient(270deg, #e8e8e5 0%, #d8d8d4 50%, #ebebea 100%);
+  border-left-color: rgba(255, 255, 255, 0.8);
+}
+
+[data-theme="light"] .asm-jaw__groove {
+  background: rgba(26, 28, 26, 0.14);
+  border-top-color: rgba(255, 255, 255, 0.5);
+  border-bottom-color: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"] .asm-flange {
+  background: linear-gradient(180deg, #f0f0ee 0%, #e4e4e0 40%, #d4d3d0 100%);
+  border-color: rgba(26, 28, 26, 0.12);
+  border-bottom-color: rgba(26, 28, 26, 0.18);
+  box-shadow: 0 3px 8px rgba(26, 28, 26, 0.08);
+}
+
+[data-theme="light"] .asm-press-head__hazard {
+  background: repeating-linear-gradient(
+    -45deg,
+    #fbbf24,
+    #fbbf24 4px,
+    #d4d3d0 4px,
+    #d4d3d0 8px
+  );
+}
+
+[data-theme="light"] .asm-hud-card {
+  background: var(--bg-elevated);
+  border-color: var(--border);
+}
+
+[data-theme="light"] .asm-hud-card--clickable:hover {
+  background-color: var(--bg-hover) !important;
+  border-color: var(--border-dark) !important;
+}
+
+[data-theme="light"] .asm-safety-item {
+  border-color: var(--border);
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+}
+
+[data-theme="light"] .asm-safety-item--danger {
+  border-color: rgba(192, 40, 47, 0.30);
+  color: #c0282f;
+  background: rgba(192, 40, 47, 0.05);
+}
+
+[data-theme="light"] .asm-viz {
+  background: var(--bg-elevated);
+  border-color: var(--border);
+}
+
+[data-theme="light"] .asm-viz__bar {
+  background: var(--bg-secondary);
+  border-bottom-color: var(--border);
+}
+
+[data-theme="light"] .asm-cmd {
+  background: var(--bg-elevated);
+  border-color: var(--border);
+}
+

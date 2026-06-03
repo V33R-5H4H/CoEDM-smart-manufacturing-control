@@ -99,66 +99,117 @@
 
   --focus-ring: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--primary);
   --overlay: rgba(0,0,0,0.72);
+
+  /* ASRS / Matrix specific indicators (Original hardcoded dark mode colors) */
+  --matrix-green: #10b981;
+  --matrix-red: #ef4444;
+  --matrix-orange: #f97316;
+  --matrix-yellow: #eab308;
+  --matrix-info: #06b6d4;
+  --matrix-info-bg: rgba(6,182,212,0.12);
+  --rail-idle: #475569;
+  --rail-moving: #00bcd4;
+  --rail-busy: #00e5ff;
+  --rail-bg: radial-gradient(circle at 30% 30%, #374151, #1a202c);
 }
 
 /* ========================================
-   LIGHT THEME — Premium Crisp Aesthetic
+   LIGHT THEME — CoEDM Design Spec
+   Derived from light_mode.md pixel analysis
    ======================================== */
 [data-theme="light"] {
   color-scheme: light;
 
-  /* Primary — Rich Industrial Amber/Bronze for high contrast */
-  --primary: #d97706; /* amber-600 */
-  --primary-light: #f59e0b; /* amber-500 */
-  --primary-dark: #b45309; /* amber-700 */
-  --accent: #d97706;
+  /* Primary / Accent — Amber (spec: --color-accent-amber) */
+  --primary:       #c8860a;
+  --primary-light: #d99b1a;
+  --primary-dark:  #a06808;
+  --accent:        #c8860a;
 
-  /* Status — Crisp & Vibrant */
-  --success: #059669; /* emerald-600 */
-  --success-light: #d1fae5; /* emerald-100 */
-  --warning: #ea580c; /* orange-600 */
-  --error: #dc2626; /* red-600 */
-  --info: #0284c7; /* sky-600 */
+  /* Status — solid, spec-defined LED colors */
+  --success:        #1e7a48;
+  --success-light:  #d6f0e4;
+  --warning:        #b06010;
+  --error:          #c0282f;
+  --info:           #0b7a6e;
 
-  --status-ok: #10b981; /* emerald-500 */
-  --status-warn: #f59e0b; /* amber-500 */
-  --status-error: #ef4444; /* red-500 */
-  --status-idle: #94a3b8; /* slate-400 */
-  --status-active: #3b82f6; /* blue-500 */
+  --status-ok:      #1e7a48;   /* --color-led-green */
+  --status-warn:    #b06010;   /* --color-led-orange */
+  --status-error:   #c0282f;   /* --color-led-red */
+  --status-idle:    #a0a09c;   /* --color-led-off-border */
+  --status-active:  #0b7a6e;   /* --color-accent-teal */
 
-  /* Surfaces — Clean & Modern (Slate-based grays) */
-  --bg-primary: #f8fafc; /* slate-50 */
-  --bg-secondary: #f1f5f9; /* slate-100 */
-  --bg-tertiary: #e2e8f0; /* slate-200 */
-  --bg-elevated: #ffffff; /* pure white for cards */
-  --bg-hover: #e2e8f0; 
-  --bg-pressed: #cbd5e1; /* slate-300 */
-  --bg-800: #e2e8f0;
-  --bg-900: #ffffff;
-  --bg-700: #cbd5e1;
+  /* Surfaces
+     topbar   → --bg-tertiary  (#f5f5f3)
+     subheader → --bg-secondary (#e8e8e5)
+     page-bg  → --bg-primary   (#edecea)
+     card-bg  → --bg-elevated  (#ffffff)
+     alt-card → --bg-800       (#f9f9f7)
+     bottomnav → --bg-900      (#e4e4e0)
+     hover    → --bg-hover     (#e2e2de)
+     pressed  → --bg-pressed   (#d4d3d0)  viewport bg
+  */
+  --bg-primary:   #edecea;
+  --bg-secondary: #e8e8e5;
+  --bg-tertiary:  #f5f5f3;
+  --bg-elevated:  #ffffff;
+  --bg-hover:     #e2e2de;
+  --bg-pressed:   #d4d3d0;
+  --bg-800:       #f9f9f7;
+  --bg-900:       #e4e4e0;
+  --bg-700:       #c2c1be;
 
-  /* Text — Deep Slate */
-  --text-primary: #0f172a; /* slate-900 */
-  --text-secondary: #475569; /* slate-600 */
-  --text-muted: #64748b; /* slate-500 */
-  --text-disabled: #94a3b8; /* slate-400 */
+  /* Text */
+  --text-primary:   #1a1c1a;   /* --color-text-primary */
+  --text-secondary: #52544f;   /* --color-text-secondary */
+  --text-muted:     #858780;   /* --color-text-dim */
+  --text-disabled:  #a0a09c;   /* --color-led-off-border */
 
-  /* Borders — Subtle & Crisp */
-  --border: #cbd5e1; /* slate-300 */
-  --border-light: #e2e8f0; /* slate-200 */
-  --border-lighter: #f1f5f9; /* slate-100 */
-  --border-dark: #94a3b8; /* slate-400 */
+  /* Borders */
+  --border:        #d0d0cc;    /* --color-border */
+  --border-light:  #d8d8d4;
+  --border-lighter: #e4e4e0;
+  --border-dark:   #b8b8b4;    /* --color-border-strong */
 
-  /* Premium Diffused Shadows */
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -1px rgba(15, 23, 42, 0.04);
-  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
-  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 10px 10px -5px rgba(15, 23, 42, 0.04);
-  --shadow-inset: inset 0 2px 4px rgba(15, 23, 42, 0.06);
-  --shadow-elevated: 0 8px 30px rgba(15, 23, 42, 0.08);
+  /* Extended semantic tokens for components */
+  --color-accent-amber:    #c8860a;
+  --color-accent-amber-bg: #fef3e0;
+  --color-accent-teal:     #0b7a6e;
+  --color-accent-teal-bg:  #e0f5f3;
+  --color-accent-cyan:     #007db8;
+  --color-accent-cyan-bg:  #e0f3fc;
+  --color-tool-amber:      #f99c01;
 
-  --focus-ring: 0 0 0 2px var(--bg-primary), 0 0 0 4px rgba(217, 119, 6, 0.4);
-  --overlay: rgba(15, 23, 42, 0.5); /* subtle dark overlay */
+  --color-led-green:      #1e7a48;
+  --color-led-green-bg:   #d6f0e4;
+  --color-led-orange:     #b06010;
+  --color-led-orange-bg:  #fde8d0;
+  --color-led-red:        #c0282f;
+  --color-led-red-bg:     #fcd8d9;
+  --color-led-off-border: #a0a09c;
+
+  /* Shadows — diffuse, warm-neutral */
+  --shadow-sm:       0 1px 2px rgba(26, 28, 26, 0.06);
+  --shadow:          0 2px 6px rgba(26, 28, 26, 0.08);
+  --shadow-lg:       0 6px 14px rgba(26, 28, 26, 0.10);
+  --shadow-xl:       0 12px 28px rgba(26, 28, 26, 0.12);
+  --shadow-inset:    inset 0 1px 3px rgba(26, 28, 26, 0.06);
+  --shadow-elevated: 0 4px 16px rgba(26, 28, 26, 0.10);
+
+  --focus-ring: 0 0 0 2px var(--bg-primary), 0 0 0 4px rgba(200, 134, 10, 0.45);
+  --overlay:    rgba(26, 28, 26, 0.48);
+
+  /* ASRS / Matrix specific indicators (Adapted for light mode) */
+  --matrix-green: var(--status-ok);
+  --matrix-red: var(--status-error);
+  --matrix-orange: var(--status-warn);
+  --matrix-yellow: var(--status-warn);
+  --matrix-info: var(--info);
+  --matrix-info-bg: rgba(11,122,110,0.12);
+  --rail-idle: var(--text-disabled);
+  --rail-moving: var(--primary);
+  --rail-busy: var(--primary-light);
+  --rail-bg: var(--bg-elevated);
 }
 
 /* Material Symbols config */

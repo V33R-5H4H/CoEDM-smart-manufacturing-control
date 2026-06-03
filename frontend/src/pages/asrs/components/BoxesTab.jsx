@@ -411,10 +411,10 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
 
   // Compute highlight color based on percentage of subcompartment occupation
   const getHighlightColor = () => {
-    if (isEmpty) return '#ef4444'; // Red if empty
-    if (isFull) return '#10b981'; // Green if full
-    if (filledCount <= 2) return '#f97316'; // Orange
-    return '#eab308'; // Yellow
+    if (isEmpty) return 'var(--matrix-red)'; // Red if empty
+    if (isFull) return 'var(--matrix-green)'; // Green if full
+    if (filledCount <= 2) return 'var(--matrix-orange)'; // Orange
+    return 'var(--matrix-orange)'; // Yellow
   };
 
   const highlightColor = getHighlightColor();
@@ -492,14 +492,14 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
             {isBlinking && (
-              <span style={{ fontSize: '7px', color: 'var(--status-ok)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>ACC</span>
+              <span style={{ fontSize: '7px', color: 'var(--matrix-green)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>ACC</span>
             )}
             <div style={{
               width: '7px',
               height: '7px',
               borderRadius: '50%',
-              background: rawLED ? 'var(--status-ok)' : (isEmpty ? 'var(--border)' : 'var(--accent)'),
-              boxShadow: rawLED ? '0 0 6px var(--status-ok)' : 'none',
+              background: rawLED ? 'var(--matrix-green)' : (isEmpty ? 'var(--border)' : 'var(--accent)'),
+              boxShadow: rawLED ? '0 0 6px var(--matrix-green)' : 'none',
               animation: isBlinking ? 'pulse 1s infinite' : 'none'
             }} />
           </div>
@@ -548,7 +548,7 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
         {subLabels.map((label) => {
           const sub = boxSubs.find(s => s.sub_id === label);
           const isOccupied = sub?.status === 'Occupied';
-          const cellColor = isOccupied ? '#10b981' : '#ef4444';
+          const cellColor = isOccupied ? 'var(--matrix-green)' : 'var(--matrix-red)';
           
           return (
             <div
@@ -668,15 +668,15 @@ function RackView({
             Home Shuttle
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#10b981' }} />
+            <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--matrix-green)' }} />
             <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Full</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#ef4444' }} />
+            <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--matrix-red)' }} />
             <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Empty</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--status-ok)' }} />
+            <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--matrix-green)' }} />
             <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Shuttle</span>
           </div>
         </div>
@@ -730,7 +730,7 @@ function RackView({
             fontFamily: 'var(--font-mono)',
             fontSize: '11px',
             fontWeight: 700,
-            color: '#06b6d4',
+            color: 'var(--matrix-info)',
             borderRight: '1px solid var(--border)',
             whiteSpace: 'nowrap'
           }}>HANDOFF</div>
@@ -740,7 +740,7 @@ function RackView({
             id="asrs-cell-DROP_OFF"
             style={{ 
               position: 'relative',
-              background: 'linear-gradient(135deg, rgba(6,182,212,0.12) 0%, rgba(6,182,212,0.02) 100%)',
+              background: 'linear-gradient(135deg, var(--matrix-info-bg) 0%, rgba(11,122,110,0.02) 100%)',
               border: '2px dashed #06b6d4',
               borderRadius: '4px',
               height: '84px',
@@ -748,7 +748,7 @@ function RackView({
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 0 10px rgba(6,182,212,0.15)',
+              boxShadow: '0 0 10px rgba(11,122,110,0.15)',
               overflow: 'hidden',
               width: '100%'
             }}
@@ -762,12 +762,12 @@ function RackView({
               height: '4px',
               background: 'repeating-linear-gradient(45deg, #06b6d4, #06b6d4 10px, transparent 10px, transparent 20px)'
             }} />
-            <span className="material-symbols-outlined" style={{ color: '#06b6d4', fontSize: '20px', marginBottom: '2px' }}>swap_horiz</span>
+            <span className="material-symbols-outlined" style={{ color: 'var(--matrix-info)', fontSize: '20px', marginBottom: '2px' }}>swap_horiz</span>
             <span style={{
               fontSize: '9px',
               fontFamily: 'var(--font-mono)',
               fontWeight: 700,
-              color: '#06b6d4',
+              color: 'var(--matrix-info)',
               letterSpacing: '0.05em'
             }}>HANDOFF ZONE</span>
             <span style={{
@@ -937,10 +937,10 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
   const isFull = filledCount === totalCount;
 
   const getStatusInfo = () => {
-    if (isEmpty) return { color: '#ef4444', text: '#ffffff', name: 'EMPTY' };
-    if (isFull) return { color: '#10b981', text: '#ffffff', name: 'FULL' };
-    if (filledCount <= 2) return { color: '#f97316', text: '#ffffff', name: 'PARTIAL' };
-    return { color: '#eab308', text: '#1c1917', name: 'PARTIAL' };
+    if (isEmpty) return { color: 'var(--matrix-red)', text: '#ffffff', name: 'EMPTY' };
+    if (isFull) return { color: 'var(--matrix-green)', text: '#ffffff', name: 'FULL' };
+    if (filledCount <= 2) return { color: 'var(--matrix-orange)', text: '#ffffff', name: 'PARTIAL' };
+    return { color: 'var(--matrix-orange)', text: '#1c1917', name: 'PARTIAL' };
   };
 
   const statusInfo = getStatusInfo();
@@ -1067,7 +1067,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                     border: isSelected
                       ? '2px solid var(--primary)'
                       : isOccupied
-                        ? '1px solid #10b981'
+                        ? '1px solid var(--matrix-green)'
                         : '1px dashed var(--border)',
                     background: isSelected
                       ? 'var(--bg-hover)'
@@ -1087,7 +1087,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                   }}
                 >
                   {isOccupied && (
-                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: '#10b981', borderRadius: '6px 6px 0 0' }} />
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'var(--matrix-green)', borderRadius: '6px 6px 0 0' }} />
                   )}
                   
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
@@ -1103,9 +1103,9 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                       width: '6px',
                       height: '6px',
                       borderRadius: '50%',
-                      background: isOccupied ? '#10b981' : 'transparent',
+                      background: isOccupied ? 'var(--matrix-green)' : 'transparent',
                       border: isOccupied ? 'none' : '1px solid var(--border)',
-                      boxShadow: isOccupied ? '0 0 6px #10b981' : 'none'
+                      boxShadow: isOccupied ? '0 0 6px var(--matrix-green)' : 'none'
                     }} />
                   </div>
                   
@@ -1188,8 +1188,8 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                     padding: '2px 6px',
                     borderRadius: '3px',
                     background: isSelectedOccupied ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
-                    color: isSelectedOccupied ? '#10b981' : '#ef4444',
-                    border: `1px solid ${isSelectedOccupied ? '#10b98133' : '#ef444433'}`,
+                    color: isSelectedOccupied ? 'var(--matrix-green)' : 'var(--matrix-red)',
+                    border: `1px solid ${isSelectedOccupied ? 'var(--matrix-green)33' : '#ef444433'}`,
                     fontWeight: 700
                   }}>
                     {isSelectedOccupied ? 'OCCUPIED' : 'EMPTY'}
@@ -1314,7 +1314,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                     onClick={handleRetrieve}
                     disabled={loading}
                     style={{
-                      background: '#ef4444',
+                      background: 'var(--matrix-red)',
                       color: '#ffffff',
                       border: 'none',
                       borderRadius: '4px',

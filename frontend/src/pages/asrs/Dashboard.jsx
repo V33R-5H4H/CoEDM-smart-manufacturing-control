@@ -346,16 +346,13 @@ function Dashboard() {
               width: '12px',
               height: '12px',
               borderRadius: '50%',
-              border: '1.5px solid #333',
-              background: greenActive
-                ? 'radial-gradient(circle, #4ade80, #22c55e)'
-                : 'radial-gradient(circle, #1a1a1a, #0a0a0a)',
-              boxShadow: greenActive
-                ? '0 0 8px rgba(74, 222, 128, 0.75), inset 0 1px 1px rgba(255,255,255,0.3)'
-                : 'inset 0 1px 2px rgba(0,0,0,0.5)',
+              border: '1.5px solid var(--border-dark)',
+              background: greenActive ? 'var(--status-ok)' : 'transparent',
+              opacity: greenActive ? 1 : 0.3,
+              boxShadow: greenActive ? '0 0 8px var(--status-ok)' : 'none',
               transition: 'all 0.3s ease'
             }} />
-            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: greenActive ? '#4ade80' : 'var(--text-disabled)' }}>RUN</span>
+            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: greenActive ? 'var(--status-ok)' : 'var(--text-disabled)' }}>RUN</span>
           </div>
 
           {/* BUSY LED */}
@@ -364,16 +361,13 @@ function Dashboard() {
               width: '12px',
               height: '12px',
               borderRadius: '50%',
-              border: '1.5px solid #333',
-              background: orangeActive
-                ? 'radial-gradient(circle, #fbbf24, #f59e0b)'
-                : 'radial-gradient(circle, #1a1a1a, #0a0a0a)',
-              boxShadow: orangeActive
-                ? '0 0 8px rgba(251, 191, 36, 0.75), inset 0 1px 1px rgba(255,255,255,0.3)'
-                : 'inset 0 1px 2px rgba(0,0,0,0.5)',
+              border: '1.5px solid var(--border-dark)',
+              background: orangeActive ? 'var(--status-warn)' : 'transparent',
+              opacity: orangeActive ? 1 : 0.3,
+              boxShadow: orangeActive ? '0 0 8px var(--status-warn)' : 'none',
               transition: 'all 0.3s ease'
             }} />
-            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: orangeActive ? '#fbbf24' : 'var(--text-disabled)' }}>BUSY</span>
+            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: orangeActive ? 'var(--status-warn)' : 'var(--text-disabled)' }}>BUSY</span>
           </div>
 
           {/* FLT LED */}
@@ -382,16 +376,13 @@ function Dashboard() {
               width: '12px',
               height: '12px',
               borderRadius: '50%',
-              border: '1.5px solid #333',
-              background: redActive
-                ? 'radial-gradient(circle, #ef4444, #dc2626)'
-                : 'radial-gradient(circle, #1a1a1a, #0a0a0a)',
-              boxShadow: redActive
-                ? '0 0 8px rgba(239, 68, 68, 0.75), inset 0 1px 1px rgba(255,255,255,0.3)'
-                : 'inset 0 1px 2px rgba(0,0,0,0.5)',
+              border: '1.5px solid var(--border-dark)',
+              background: redActive ? 'var(--status-error)' : 'transparent',
+              opacity: redActive ? 1 : 0.3,
+              boxShadow: redActive ? '0 0 8px var(--status-error)' : 'none',
               transition: 'all 0.3s ease'
             }} />
-            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: redActive ? '#ef4444' : 'var(--text-disabled)' }}>FLT</span>
+            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: redActive ? 'var(--status-error)' : 'var(--text-disabled)' }}>FLT</span>
           </div>
         </div>
       </div>

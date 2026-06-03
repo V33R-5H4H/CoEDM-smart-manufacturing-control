@@ -4,7 +4,7 @@
 
 /* Base overrides for Functional Dark Design */
 .asm-page {
-  background: #242423 !important; /* Level 0 Base */
+  background: var(--bg-primary) !important; /* Level 0 Base */
 }
 
 /* 3-Column Dashboard Grid */
@@ -17,7 +17,7 @@
   min-height: 0;
   padding: 16px;
   box-sizing: border-box;
-  background: #242423; /* Warm charcoal background */
+  background: var(--bg-primary); /* Warm charcoal background */
 }
 
 /* Columns */
@@ -36,7 +36,7 @@
   background: transparent;
 }
 .triac-column::-webkit-scrollbar-thumb {
-  background: #555855;
+  background: var(--border-dark);
   border-radius: 4px;
 }
 
@@ -48,10 +48,10 @@
   font-family: 'Inter', sans-serif;
   font-size: 13px !important;
   font-weight: 600 !important;
-  color: #E8EDDF !important;
+  color: var(--text-primary) !important;
   text-transform: uppercase;
   letter-spacing: 0.05em !important;
-  border-bottom: 1px solid #4a4d4a !important;
+  border-bottom: 1px solid var(--border) !important;
   padding-bottom: 6px !important;
 }
 
@@ -61,22 +61,22 @@
   font-size: 13px;
   padding: 2px 6px;
   border-radius: 4px;
-  background: #2e302e;
-  border: 1px solid #4a4d4a;
-  color: #8a9490;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
 .asm-hud-badge--active {
-  color: #3a9d6e; /* Green */
-  background: #2e302e;
-  border-color: #3a9d6e;
+  color: var(--status-ok); /* Green */
+  background: var(--bg-secondary);
+  border-color: var(--status-ok);
 }
 
 /* Card Overrides (Flat UI) */
 .asm-hud-card {
-  background: #333533 !important; /* Level 1 Surface */
-  border: 1px solid #4a4d4a !important;
+  background: var(--bg-elevated) !important; /* Level 1 Surface */
+  border: 1px solid var(--border) !important;
   border-radius: 4px !important;
   padding: 12px !important;
   box-shadow: none !important;
@@ -96,10 +96,10 @@
 .asm-hud-card--clickable:hover,
 .asm-hud-card--clickable.energy-hover:hover,
 .asm-hud-card--clickable.tool-hover:hover {
-  background-color: #404340 !important; /* +5% brightness */
+  background-color: var(--bg-hover) !important; /* +5% brightness */
   transform: none !important;
   box-shadow: none !important;
-  border-color: #555855 !important;
+  border-color: var(--border-dark) !important;
 }
 
 /* Typography Overrides */
@@ -113,7 +113,7 @@
   font-family: 'Inter', sans-serif;
   font-size: 13px !important;
   font-weight: 600 !important;
-  color: #8a9490 !important;
+  color: var(--text-muted) !important;
   text-transform: uppercase;
   letter-spacing: 0.05em !important;
 }
@@ -122,7 +122,7 @@
   font-family: 'JetBrains Mono', monospace !important;
   font-size: 22px !important;
   font-weight: 500 !important;
-  color: #E8EDDF !important;
+  color: var(--text-primary) !important;
   text-shadow: none !important; /* Remove glow */
 }
 
@@ -135,7 +135,7 @@
 .asm-val__num--glowing-green,
 .asm-val__num--glowing-orange {
   text-shadow: none !important;
-  color: #E8EDDF !important; 
+  color: var(--text-primary) !important; 
 }
 
 /* Status LEDs Flat Design */
@@ -143,10 +143,10 @@
   display: flex;
   justify-content: space-around;
   align-items: center;
-  background: #2a2c2a !important; /* Inset Level 2 */
+  background: var(--bg-secondary) !important; /* Inset Level 2 */
   padding: 8px !important;
   border-radius: 4px !important;
-  border: 1px solid #4a4d4a !important;
+  border: 1px solid var(--border) !important;
 }
 
 .asm-led-indicator {
@@ -160,7 +160,7 @@
   font-family: 'Inter', sans-serif;
   font-size: 13px !important;
   font-weight: 600 !important;
-  color: #8a9490 !important;
+  color: var(--text-muted) !important;
   text-transform: uppercase;
 }
 
@@ -169,25 +169,25 @@
   height: 10px !important;
   border-radius: 50% !important;
   background: transparent !important;
-  border: 1px solid #555855 !important; /* Hollow when off */
+  border: 1px solid var(--border-dark) !important; /* Hollow when off */
   box-shadow: none !important;
 }
 
 .asm-led-lamp--green.active {
-  background: #3a9d6e !important; /* Solid Green */
-  border-color: #3a9d6e !important;
+  background: var(--status-ok) !important; /* Solid Green */
+  border-color: var(--status-ok) !important;
   box-shadow: none !important;
 }
 
 .asm-led-lamp--yellow.active {
-  background: #c9922e !important; /* Solid Orange */
-  border-color: #c9922e !important;
+  background: var(--status-warn) !important; /* Solid Orange */
+  border-color: var(--status-warn) !important;
   box-shadow: none !important;
 }
 
 .asm-led-lamp--red.active {
-  background: #c4424b !important; /* Solid Red */
-  border-color: #c4424b !important;
+  background: var(--status-error) !important; /* Solid Red */
+  border-color: var(--status-error) !important;
   box-shadow: none !important;
 }
 
@@ -201,8 +201,8 @@
 
 .asm-viz-panel {
   flex: 1;
-  background: #333533 !important;
-  border: 1px solid #4a4d4a !important;
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--border) !important;
   border-radius: 4px !important;
   padding: 12px !important;
   box-shadow: none !important;
@@ -219,8 +219,8 @@
 }
 
 .asm-footer-stats-card {
-  background: #333533 !important;
-  border: 1px solid #4a4d4a !important;
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--border) !important;
   border-radius: 4px !important;
   padding: 8px 12px !important;
   display: flex;
