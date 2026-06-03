@@ -11,6 +11,7 @@ import AssemblyStatusRibbon from './asrs/components/AssemblyStatusRibbon';
 import SafetyOverlay from '../components/SafetyOverlay';
 import { deepMerge } from '../utils/deepMerge';
 import { useModal } from '../hooks/useModal';
+import TutorialOverlay from './asrs/components/TutorialOverlay';
 // recharts imports kept for future graph tab (currently commented out in render)
 import {
   LineChart,
@@ -39,6 +40,51 @@ export default function Assembly() {
   const [plantData, setPlantData] = useState(wsCache.assembly);
   const [activeTab, setActiveTab] = useState('monitoring');
   const { activeModal, openModal, closeModal } = useModal();
+
+  // ── Tutorial ─────────────────────────────────────────────────────────────
+  const [tutorialActive, setTutorialActive] = useState(false);
+  const advanceRef = useRef(null);
+  const tutorialActiveRef = useRef(false);
+  useEffect(() => { tutorialActiveRef.current = tutorialActive; }, [tutorialActive]);
+
+  const TUTORIAL_STEPS = [
+    {
+      targetId: 'asm-page-header',
+      title: 'Assembly — Hydraulic Press Station',
+      content: 'Welcome to the Hydraulic Press Assembly page. This station controls a PLC-driven hydraulic press used to press-fit bearings and shafts onto workpieces. Follow this tutorial to get familiar with every panel.',
+      placement: 'bottom',
+    },
+    {
+      targetId: 'asm-connect-btn',
+      title: 'Connect & Disconnect',
+      content: 'Use the Connect button to establish a live OPC-UA connection to the PLC. You must be connected before any press commands are dispatched. The button switches to "Disconnect" once live.',
+      placement: 'bottom',
+    },
+    {
+      targetId: 'asm-status-tower',
+      title: 'Status Tower Indicator',
+      content: 'RUN (green) = system idle and connected. BUSY (orange) = press cycle is active. FLT (red) = safety curtain tripped or buzzer active. Operations are locked out whenever FLT is lit.',
+      placement: 'left',
+    },
+    {
+      targetId: 'asm-machine-view',
+      title: 'Machine View — Hydraulic Press Schematic',
+      content: 'This animated schematic mirrors the real machine. The piston rod extends downward as the press operates. Colour-coded hydraulic pipes indicate the active workpiece — red for bearing, blue for shaft. Click the HUD cards for detailed diagnostics.',
+      placement: 'top',
+    },
+    {
+      targetId: 'asm-controls',
+      title: 'Press Controls',
+      content: 'Use these buttons to send commands to the PLC. "Bearing ON" starts a bearing press cycle; "Shaft ON" starts a shaft cycle. The Vice toggle opens or closes the fixture clamp that holds the workpiece. All commands are disabled during a safety fault.',
+      placement: 'top',
+    },
+    {
+      targetId: 'asm-plots-tab',
+      title: 'Plots & Analytics Tab',
+      content: 'Switch to the Plots tab to view real-time displacement graphs. The Raw Signal canvas shows the unfiltered Modbus reading; the Filtered Signal canvas shows the critically-damped smoothed value. The Recharts graph shows the full historical telemetry buffer. That\'s it — you\'re ready!',
+      placement: 'bottom',
+    },
+  ];
 
   // Smoothed position state for animation
   const [smoothedPosition, setSmoothedPosition] = useState(43);
@@ -138,7 +184,8 @@ export default function Assembly() {
       // Update state immediately on every WebSocket message
       wsCache.assembly = data;
       setPlantData(data);
-      setIsConnected(data.connected !== false);
+      // NOTE: isConnected is managed only by the explicit Connect/Disconnect buttons.
+      // We do NOT derive it from data.connected to prevent auto-connect on page load.
       setLastCommand(data.assembly?.bearing ? 'Bearing ON' : 'Bearing OFF');
 
       // Edge-triggered safety alerts — only toast on rising edge (false → true)
@@ -599,7 +646,7 @@ export default function Assembly() {
         {/* Right Main Panel: Hydraulic Press Assembly */}
         <main className="asm-main" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
           {/* Unified Press Assembly Schematic card */}
-          <div className="asm-viz" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)' }}>
+          <div id="asm-machine-view" className="asm-viz" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)' }}>
             <div className="asm-viz__bar" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-elevated)' }}>
               <span>Hydraulic Press Schematic</span>
               <span className={`asm-workpiece-badge ${plantData?.assembly?.bearing ? 'asm-workpiece-badge--bearing' : plantData?.assembly?.shaft ? 'asm-workpiece-badge--shaft' : ''}`}>
@@ -841,7 +888,7 @@ export default function Assembly() {
           </div>
 
           {/* Action controls panel */}
-          <div className="asm-cmd" style={{ marginTop: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', flexDirection: 'column', gap: '8px' }}>
+          <div id="asm-controls" className="asm-cmd" style={{ marginTop: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', flexDirection: 'column', gap: '8px' }}>
             {/* Button row — always centred, never shifts */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span className="asm-cmd__label" style={{ marginRight: 0 }}>Press:</span>
@@ -1083,6 +1130,15 @@ export default function Assembly() {
       overflow: 'hidden',
       background: 'var(--bg-primary)',
     }}>
+      {/* Tutorial overlay */}
+      {tutorialActive && (
+        <TutorialOverlay
+          steps={TUTORIAL_STEPS}
+          advanceRef={advanceRef}
+          onFinish={() => setTutorialActive(false)}
+        />
+      )}
+      <div id="asm-page-header">
       <PageHeader
         title="Assembly"
         subtitle="Hydraulic station"
@@ -1094,8 +1150,35 @@ export default function Assembly() {
               plantData={plantData}
               smoothedPosition={smoothedPosition}
             />
+            {/* Tutorial Button */}
+            <button
+              type="button"
+              onClick={() => setTutorialActive(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '11px',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                color: '#38bdf8',
+                background: 'rgba(56, 189, 248, 0.1)',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                padding: '4px 12px',
+                borderRadius: '2px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(56, 189, 248, 0.2)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(56, 189, 248, 0.1)'; }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>school</span>
+              Start Tutorial
+            </button>
             {isConnected ? (
               <button
+                id="asm-connect-btn"
                 type="button"
                 onClick={handleDisconnect}
                 style={{
@@ -1117,6 +1200,7 @@ export default function Assembly() {
               </button>
             ) : (
               <button
+                id="asm-connect-btn"
                 type="button"
                 onClick={handleConnect}
                 style={{
@@ -1140,6 +1224,7 @@ export default function Assembly() {
           </>
         }
       />
+      </div>
 
       {/* Sub-nav: Tabs — Stitch pattern */}
       <div style={{
@@ -1156,6 +1241,7 @@ export default function Assembly() {
           {["monitoring", "plots"].map((tab) => (
             <button
               key={tab}
+              id={tab === 'plots' ? 'asm-plots-tab' : undefined}
               type="button"
               onClick={() => setActiveTab(tab)}
               style={{
@@ -1178,7 +1264,7 @@ export default function Assembly() {
         </div>
 
         {/* 3-LED Status Tower Indicator */}
-        <div style={{
+        <div id="asm-status-tower" style={{
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
