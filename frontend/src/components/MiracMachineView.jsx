@@ -51,32 +51,33 @@ const MiracMachineView = forwardRef(function MiracMachineView({
   }, [toolNumber]);
 
   return (
-    <div
-      style={{
-        position: 'relative',
-        width: '100%',
-        backgroundColor: '#0a0a0f',
-        borderRadius: '12px',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        boxShadow: 'inset 0 0 24px rgba(0, 0, 0, 0.95), 0 8px 32px rgba(0, 0, 0, 0.5)',
-        overflow: 'hidden',
-        aspectRatio: '900 / 500'
-      }}
-    >
-      {/* Visual Overlay: Grid Lines */}
       <div
         style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px)',
-          backgroundSize: '20px 20px',
-          pointerEvents: 'none',
-          zIndex: 1
+          position: 'relative',
+          width: '100%',
+          backgroundColor: 'var(--bg-secondary)',
+          borderRadius: '12px',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-md)',
+          overflow: 'hidden',
+          aspectRatio: '900 / 500'
         }}
-      />
+      >
+        {/* Visual Overlay: Grid Lines */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundImage: 'linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)',
+            backgroundSize: '20px 20px',
+            opacity: 0.1,
+            pointerEvents: 'none',
+            zIndex: 1
+          }}
+        />
 
       <style>{`
         @keyframes spinWorkpiece {

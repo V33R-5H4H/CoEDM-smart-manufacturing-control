@@ -54,13 +54,13 @@
   --accent: #F5CB5C;
 
   /* Status */
-  --success: #CFDBD5;
-  --success-light: #e0ebe7;
+  --success: #10b981;
+  --success-light: #34d399;
   --warning: #F5CB5C;
   --error: #ff6b6b;
-  --info: #CFDBD5;
+  --info: #38bdf8;
 
-  --status-ok: #CFDBD5;
+  --status-ok: #10b981;
   --status-warn: #F5CB5C;
   --status-error: #ff6b6b;
   --status-idle: #8a9490;

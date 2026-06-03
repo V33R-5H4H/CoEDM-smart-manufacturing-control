@@ -927,7 +927,7 @@ export default function Assembly() {
             {/* Timestamp row — always present as a placeholder to prevent layout shift */}
             <div style={{ display: 'flex', justifyContent: 'center', minHeight: '16px' }}>
               <span style={{
-                fontSize: '11px', fontFamily: 'var(--font-mono)', color: '#8a9490',
+                fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)',
                 fontWeight: 600, visibility: lastCommandTime ? 'visible' : 'hidden'
               }}>
                 LAST CMD: {lastCommandTime || '00:00:00'}
@@ -1382,8 +1382,8 @@ export default function Assembly() {
         >
           <div
             style={{
-              background: "#333533",
-              border: "1px solid #4a4d4a",
+              background: "var(--border)",
+              border: "1px solid var(--border)",
               borderRadius: "4px",
               width: "580px",
               maxWidth: "95%",
@@ -1443,7 +1443,7 @@ export default function Assembly() {
             </div>
 
             {/* Hardware Specifications */}
-            <div style={{ background: "#1a1b1a", border: "1px solid #4a4d4a", borderRadius: "4px", padding: "12px" }}>
+            <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "12px" }}>
               <h4 style={{ margin: "0 0 8px 0", fontSize: "0.68rem", color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>
                 Hardware Specifications
               </h4>
@@ -1463,33 +1463,33 @@ export default function Assembly() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
                 {activeModal === "piston" && (
                   <>
-                    <div style={{ background: "#1a1b1a", border: "1px solid #4a4d4a", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
+                    <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
                       <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Linear Displacement</div>
                       <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#38bdf8", marginTop: "4px" }}>{displacement != null ? displacement : "---"} <span style={{ fontSize: "10px", fontWeight: 600 }}>mm</span></div>
                     </div>
-                    <div style={{ background: "#1a1b1a", border: "1px solid #4a4d4a", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
+                    <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
                       <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Raw Analog Position</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#E8EDDF", marginTop: "4px" }}>{plantData?.position?.displacement_mm != null ? plantData.position.displacement_mm.toFixed(2) : "---"} <span style={{ fontSize: "10px", fontWeight: 600 }}>mm</span></div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--text-primary)", marginTop: "4px" }}>{plantData?.position?.displacement_mm != null ? plantData.position.displacement_mm.toFixed(2) : "---"} <span style={{ fontSize: "10px", fontWeight: 600 }}>mm</span></div>
                     </div>
-                    <div style={{ background: "#1a1b1a", border: "1px solid #4a4d4a", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
+                    <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
                       <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Piston State</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#E8EDDF", marginTop: "4px" }}>{displacement != null ? (displacement > 5 ? "EXTENDING" : "RETRACTED") : "---"}</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--text-primary)", marginTop: "4px" }}>{displacement != null ? (displacement > 5 ? "EXTENDING" : "RETRACTED") : "---"}</div>
                     </div>
                   </>
                 )}
                 {activeModal === "clamp" && (
                   <>
-                    <div style={{ background: "#1a1b1a", border: "1px solid #4a4d4a", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
+                    <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
                       <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Clamp Status</div>
                       <div style={{ fontSize: "1.1rem", fontWeight: 800, color: plantData?.vice?.close ? "#38bdf8" : "#4ade80", marginTop: "4px" }}>{plantData?.vice?.close ? "CLOSED" : plantData?.vice?.open ? "OPEN" : "---"}</div>
                     </div>
-                    <div style={{ background: "#1a1b1a", border: "1px solid #4a4d4a", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
+                    <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
                       <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Bearing Detected</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: plantData?.assembly?.bearing ? "#ff6b6b" : "#E8EDDF", marginTop: "4px" }}>{plantData?.assembly?.bearing ? "YES" : "NO"}</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: plantData?.assembly?.bearing ? "#ff6b6b" : "var(--text-primary)", marginTop: "4px" }}>{plantData?.assembly?.bearing ? "YES" : "NO"}</div>
                     </div>
-                    <div style={{ background: "#1a1b1a", border: "1px solid #4a4d4a", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
+                    <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
                       <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Shaft Detected</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: plantData?.assembly?.shaft ? "#38bdf8" : "#E8EDDF", marginTop: "4px" }}>{plantData?.assembly?.shaft ? "YES" : "NO"}</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: plantData?.assembly?.shaft ? "#38bdf8" : "var(--text-primary)", marginTop: "4px" }}>{plantData?.assembly?.shaft ? "YES" : "NO"}</div>
                     </div>
                   </>
                 )}
@@ -1501,10 +1501,10 @@ export default function Assembly() {
               <h4 style={{ margin: "0 0 8px 0", fontSize: "0.68rem", color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>
                 OPC-UA Telemetry Node Table
               </h4>
-              <div style={{ overflowX: "auto", border: "1px solid #4a4d4a", borderRadius: "4px" }}>
+              <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: "4px" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", textAlign: "left", fontFamily: "var(--font-mono)" }}>
                   <thead>
-                    <tr style={{ background: "#1a1b1a", borderBottom: "1px solid #4a4d4a" }}>
+                    <tr style={{ background: "var(--bg-900)", borderBottom: "1px solid var(--border)" }}>
                       <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "9px" }}>NODE ID (ns=4;s=...)</th>
                       <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "9px" }}>VARIABLE / SYMBOL</th>
                       <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "9px" }}>TYPE</th>
@@ -1514,13 +1514,13 @@ export default function Assembly() {
                   <tbody>
                     {activeModal === "piston" && (
                       <>
-                        <tr style={{ borderBottom: "1px solid #4a4d4a" }}>
+                        <tr style={{ borderBottom: "1px solid var(--border)" }}>
                           <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>|var|CODESYS Control Win V3 x64.Application.GVL.rCylinderPos</td>
                           <td style={{ padding: "8px 12px", fontWeight: 600 }}>rCylinderPos</td>
                           <td style={{ padding: "8px 12px", color: "#38bdf8" }}>REAL</td>
                           <td style={{ padding: "8px 12px", color: "#38bdf8", fontWeight: 700 }}>{plantData?.position?.displacement_mm != null ? plantData.position.displacement_mm.toFixed(3) : "---"}</td>
                         </tr>
-                        <tr style={{ borderBottom: "1px solid #4a4d4a" }}>
+                        <tr style={{ borderBottom: "1px solid var(--border)" }}>
                           <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>|var|CODESYS Control Win V3 x64.Application.GVL.bSafetyCurtain</td>
                           <td style={{ padding: "8px 12px", fontWeight: 600 }}>bSafetyCurtain</td>
                           <td style={{ padding: "8px 12px", color: "#ef4444" }}>BOOL</td>
@@ -1536,19 +1536,19 @@ export default function Assembly() {
                     )}
                     {activeModal === "clamp" && (
                       <>
-                        <tr style={{ borderBottom: "1px solid #4a4d4a" }}>
+                        <tr style={{ borderBottom: "1px solid var(--border)" }}>
                           <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>|var|CODESYS Control Win V3 x64.Application.GVL.bViceOpen</td>
                           <td style={{ padding: "8px 12px", fontWeight: 600 }}>bViceOpen</td>
                           <td style={{ padding: "8px 12px", color: "#4ade80" }}>BOOL</td>
                           <td style={{ padding: "8px 12px", color: plantData?.vice?.open ? "#4ade80" : "var(--text-muted)" }}>{plantData?.vice?.open ? "TRUE" : "FALSE"}</td>
                         </tr>
-                        <tr style={{ borderBottom: "1px solid #4a4d4a" }}>
+                        <tr style={{ borderBottom: "1px solid var(--border)" }}>
                           <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>|var|CODESYS Control Win V3 x64.Application.GVL.bViceClose</td>
                           <td style={{ padding: "8px 12px", fontWeight: 600 }}>bViceClose</td>
                           <td style={{ padding: "8px 12px", color: "#38bdf8" }}>BOOL</td>
                           <td style={{ padding: "8px 12px", color: plantData?.vice?.close ? "#38bdf8" : "var(--text-muted)" }}>{plantData?.vice?.close ? "TRUE" : "FALSE"}</td>
                         </tr>
-                        <tr style={{ borderBottom: "1px solid #4a4d4a" }}>
+                        <tr style={{ borderBottom: "1px solid var(--border)" }}>
                           <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>|var|CODESYS Control Win V3 x64.Application.GVL.bBearingWorkpiece</td>
                           <td style={{ padding: "8px 12px", fontWeight: 600 }}>bBearingWorkpiece</td>
                           <td style={{ padding: "8px 12px", color: "#4ade80" }}>BOOL</td>

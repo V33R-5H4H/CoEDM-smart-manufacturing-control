@@ -339,7 +339,7 @@
 .asm-flange {
   width: 160px;
   height: 22px;
-  background: linear-gradient(180deg, var(--bg-hover) 0%, var(--bg-secondary) 40%, var(--bg-primary) 100%);
+  background: linear-gradient(180deg, #404340 0%, #333533 40%, #242423 100%);
   border: 1.5px solid rgba(255, 255, 255, 0.08);
   border-bottom: 3px solid rgba(0, 0, 0, 0.6);
   border-radius: 6px 6px 3px 3px;
@@ -374,12 +374,12 @@
   z-index: 2;
 }
 .asm-cylinder__wall--left {
-  background: linear-gradient(90deg, var(--bg-primary) 0%, var(--bg-elevated) 15%, var(--text-muted) 45%, #94a3b8 55%, var(--bg-secondary) 85%, var(--bg-primary) 100%);
+  background: linear-gradient(90deg, #242423 0%, #3a3d3a 15%, #8a9490 45%, #94a3b8 55%, #333533 85%, #242423 100%);
   border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: inset 1px 1px 2px rgba(255, 255, 255, 0.15), inset -2px -2px 4px rgba(0, 0, 0, 0.6);
 }
 .asm-cylinder__wall--right {
-  background: linear-gradient(270deg, var(--bg-primary) 0%, var(--bg-elevated) 15%, var(--text-muted) 45%, #94a3b8 55%, var(--bg-secondary) 85%, var(--bg-primary) 100%);
+  background: linear-gradient(270deg, #242423 0%, #3a3d3a 15%, #8a9490 45%, #94a3b8 55%, #333533 85%, #242423 100%);
   border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: inset -1px 1px 2px rgba(255, 255, 255, 0.15), inset 2px -2px 4px rgba(0, 0, 0, 0.6);
 }
@@ -429,8 +429,8 @@
     -45deg,
     #fbbf24,
     #fbbf24 4px,
-    var(--bg-pressed) 4px,
-    var(--bg-pressed) 8px
+    #1a1b1a 4px,
+    #1a1b1a 8px
   );
   border-top: 1px solid rgba(0,0,0,0.4);
   border-bottom: 1px solid rgba(0,0,0,0.4);
@@ -490,12 +490,12 @@
 }
 .asm-jaw--left {
   left: 12px;
-  background: linear-gradient(90deg, var(--bg-secondary) 0%, var(--bg-hover) 65%, var(--bg-elevated) 85%, var(--bg-secondary) 100%);
+  background: linear-gradient(90deg, #333533 0%, #404340 65%, #3a3d3a 85%, #333533 100%);
   border-right: 3px solid rgba(255, 255, 255, 0.2);
 }
 .asm-jaw--right {
   right: 12px;
-  background: linear-gradient(270deg, var(--bg-secondary) 0%, var(--bg-hover) 65%, var(--bg-elevated) 85%, var(--bg-secondary) 100%);
+  background: linear-gradient(270deg, #333533 0%, #404340 65%, #3a3d3a 85%, #333533 100%);
   border-left: 3px solid rgba(255, 255, 255, 0.2);
 }
 .asm-jaw__groove {
@@ -511,7 +511,7 @@
 .asm-pipe {
   position: absolute;
   width: 8px;
-  background: linear-gradient(90deg, var(--bg-elevated), var(--text-muted), var(--bg-secondary));
+  background: linear-gradient(90deg, #3a3d3a, #8a9490, #333533);
   border: 1px solid rgba(0,0,0,0.5);
   box-shadow: inset 1px 0 1px rgba(255,255,255,0.1);
   z-index: 1;
@@ -576,7 +576,7 @@
 .asm-ruler__tick-line {
   width: 6px;
   height: 1px;
-  background: var(--text-muted);
+  background: #8a9490;
 }
 .asm-ruler__tick-line--major {
   width: 11px;
@@ -608,7 +608,7 @@
 /* Bearing workpiece visual */
 .asm-workpiece--bearing-item {
   border-radius: 50%;
-  background: radial-gradient(circle, #4b5563 15%, var(--bg-secondary) 35%, #9ca3af 55%, #374151 75%, var(--bg-pressed) 100%);
+  background: radial-gradient(circle, #4b5563 15%, #333533 35%, #9ca3af 55%, #374151 75%, #1a1b1a 100%);
   border: 2px solid rgba(0, 0, 0, 0.85);
   box-shadow: 
     0 5px 12px rgba(0, 0, 0, 0.5), 
@@ -638,7 +638,7 @@
 
 /* Shaft workpiece visual */
 .asm-workpiece--shaft-item {
-  background: linear-gradient(90deg, var(--bg-hover) 0%, #cbd5e1 25%, #ffffff 50%, #94a3b8 75%, var(--bg-secondary) 100%);
+  background: linear-gradient(90deg, #404340 0%, #cbd5e1 25%, #ffffff 50%, #94a3b8 75%, #333533 100%);
   border: 1.5px solid rgba(0, 0, 0, 0.8);
   border-radius: 3px 3px 2px 2px;
   box-shadow: 
@@ -654,7 +654,7 @@
   left: -1px;
   right: -1px;
   height: 8px;
-  background: linear-gradient(90deg, #94a3b8, #ffffff, var(--bg-hover));
+  background: linear-gradient(90deg, #94a3b8, #ffffff, #404340);
   border-bottom: 1.5px solid rgba(0, 0, 0, 0.85);
 }
 
@@ -741,69 +741,8 @@
    Light mode overrides — Assembly / Dashboard shared CSS
    Corrects dark-only hardcoded colours in machine schematic
    ============================================================ */
-[data-theme="light"] .asm-press-area {
-  background-color: var(--bg-pressed);
-  background-image:
-    linear-gradient(rgba(26, 28, 26, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(26, 28, 26, 0.05) 1px, transparent 1px);
-  box-shadow: inset 0 0 20px rgba(26, 28, 26, 0.06);
-}
 
-[data-theme="light"] .asm-cylinder {
-  background: rgba(200, 200, 196, 0.45);
-  border-bottom: 2px dashed rgba(26, 28, 26, 0.10);
-}
 
-[data-theme="light"] .asm-cylinder__wall--left,
-[data-theme="light"] .asm-cylinder__wall--right {
-  border-color: rgba(26, 28, 26, 0.08);
-  box-shadow: none;
-}
-
-[data-theme="light"] .asm-vice {
-  background: rgba(200, 200, 196, 0.30);
-  border-color: rgba(26, 28, 26, 0.06);
-}
-
-[data-theme="light"] .asm-jaw {
-  box-shadow:
-    inset 1px 1px 2px rgba(255, 255, 255, 0.7),
-    inset -1px -1px 3px rgba(26, 28, 26, 0.08),
-    0 3px 8px rgba(26, 28, 26, 0.10);
-}
-
-[data-theme="light"] .asm-jaw--left {
-  background: linear-gradient(90deg, #e8e8e5 0%, #d8d8d4 50%, #ebebea 100%);
-  border-right-color: rgba(255, 255, 255, 0.8);
-}
-
-[data-theme="light"] .asm-jaw--right {
-  background: linear-gradient(270deg, #e8e8e5 0%, #d8d8d4 50%, #ebebea 100%);
-  border-left-color: rgba(255, 255, 255, 0.8);
-}
-
-[data-theme="light"] .asm-jaw__groove {
-  background: rgba(26, 28, 26, 0.14);
-  border-top-color: rgba(255, 255, 255, 0.5);
-  border-bottom-color: rgba(255, 255, 255, 0.5);
-}
-
-[data-theme="light"] .asm-flange {
-  background: linear-gradient(180deg, #f0f0ee 0%, #e4e4e0 40%, #d4d3d0 100%);
-  border-color: rgba(26, 28, 26, 0.12);
-  border-bottom-color: rgba(26, 28, 26, 0.18);
-  box-shadow: 0 3px 8px rgba(26, 28, 26, 0.08);
-}
-
-[data-theme="light"] .asm-press-head__hazard {
-  background: repeating-linear-gradient(
-    -45deg,
-    #fbbf24,
-    #fbbf24 4px,
-    #d4d3d0 4px,
-    #d4d3d0 8px
-  );
-}
 
 [data-theme="light"] .asm-hud-card {
   background: var(--bg-elevated);
