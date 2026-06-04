@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import PageHeader from "../components/PageHeader";
+import CobotStatusRibbon from "./asrs/components/CobotStatusRibbon";
 import "./Assembly.css";
 import "./Triac.css";
 
@@ -95,23 +96,52 @@ export default function Cobot() {
         subtitle="6-Axis Collaborative Robot Control Room"
         actions={
           <>
-            <div style={{ display: "flex", gap: "12px", alignItems: "center", marginRight: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <span className="material-symbols-outlined" style={{ fontSize: "14px", color: isConnected ? "#10b981" : "#ef4444" }}>
-                  {isConnected ? "security" : "lock_open"}
-                </span>
-                <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text-secondary)" }}>
-                  SERVO STATUS: {isConnected ? "POWERED" : "OFFLINE"}
-                </span>
-              </div>
-            </div>
+            <CobotStatusRibbon 
+              plcConnected={isConnected}
+              hwConnected={realConnected} 
+              cobotState={isConnected ? 'RUNNING' : 'IDLE'}
+            />
             {isConnected ? (
-              <button type="button" onClick={handleDisconnect} disabled={statusLoading} className="asm-btn-control asm-btn-control--disconnect" style={{ padding: "4px 16px" }}>
-                {statusLoading ? "Disconnecting…" : "Disconnect"}
+              <button
+                type="button"
+                onClick={handleDisconnect}
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: 'var(--text-primary)',
+                  background: 'var(--primary-dark)',
+                  border: 'none',
+                  padding: '4px 12px',
+                  borderRadius: '2px',
+                  cursor: 'pointer',
+                  opacity: statusLoading ? 0.7 : 1,
+                }}
+                disabled={statusLoading}
+              >
+                {statusLoading ? 'Disconnecting…' : 'Disconnect'}
               </button>
             ) : (
-              <button type="button" onClick={handleConnect} disabled={statusLoading} className="asm-btn-control asm-btn-control--connect" style={{ padding: "4px 16px" }}>
-                {statusLoading ? "Connecting…" : "Connect"}
+              <button
+                type="button"
+                onClick={handleConnect}
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: 'var(--bg-primary)',
+                  background: 'var(--primary)',
+                  border: 'none',
+                  padding: '4px 12px',
+                  borderRadius: '2px',
+                  cursor: 'pointer',
+                  opacity: statusLoading ? 0.7 : 1,
+                }}
+                disabled={statusLoading}
+              >
+                {statusLoading ? 'Connecting…' : 'Connect'}
               </button>
             )}
           </>
