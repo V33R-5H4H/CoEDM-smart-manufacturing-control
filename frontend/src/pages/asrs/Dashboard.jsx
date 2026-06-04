@@ -10,6 +10,7 @@ import { toast } from "react-toastify";
 import "../Assembly.css";
 import SafetyOverlay from "../../components/SafetyOverlay";
 import TutorialOverlay from "./components/TutorialOverlay";
+import OrderFeed from "./components/OrderFeed";
 
 const API_BASE = `${import.meta.env.VITE_API_URL || "/api"}/control/asrs`;
 
@@ -392,10 +393,26 @@ function Dashboard() {
         flex: 1,
         overflow: 'hidden',
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'row',
         position: 'relative'
       }}>
-        {tabPanels[activeTab]}
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          {tabPanels[activeTab]}
+        </div>
+
+        {/* Live E-Com Order Feed sidebar */}
+        <div style={{
+          width: 272,
+          flexShrink: 0,
+          borderLeft: '1px solid var(--border)',
+          overflowY: 'auto',
+          padding: 12,
+          background: 'var(--bg-secondary)',
+        }}>
+          <OrderFeed
+            wsUrl={`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:8000/api/control/asrs/ws/led-status`}
+          />
+        </div>
 
         {/* SAFETY INTERRUPT OVERLAY */}
         <SafetyOverlay
