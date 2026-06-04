@@ -20,7 +20,6 @@ from backend.stations.mirac.cnc_mirac_station import (
 )
 from backend.websockets.mirac_broadcaster import mirac_broadcaster
 import asyncio
-import json
 import logging
 
 logger = logging.getLogger(__name__)

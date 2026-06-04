@@ -31,7 +31,7 @@ async def connect_triac_endpoint():
         success, message = connect_triac()
         return {"success": success, "message": message}
     except Exception as e:
-        raise HTTPException(status_code=505, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/disconnect")
@@ -40,7 +40,7 @@ async def disconnect_triac_endpoint():
         success, message = disconnect_triac()
         return {"success": success, "message": message}
     except Exception as e:
-        raise HTTPException(status_code=505, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.websocket("/ws/vibit-data")

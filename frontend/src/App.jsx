@@ -2,6 +2,8 @@ import React, { Suspense, lazy, useState, useEffect } from "react";
 import { Routes, Route, NavLink } from "react-router-dom";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import ThemeToggle from "./components/ThemeToggle";
+import { useTheme } from "./theme/ThemeContext";
 
 // Lazy load page components to improve initial load performance (LCP)
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -12,10 +14,12 @@ const Assembly = lazy(() => import("./pages/Assembly"));
 const TestingStation = lazy(() => import("./pages/TestingStation"));
 const Amr = lazy(() => import("./pages/Amr"));
 const Cobot = lazy(() => import("./pages/Cobot"));
+const Inspection = lazy(() => import("./pages/Inspection"));
 
 export default function App() {
   const [sysStatus, setSysStatus] = useState("SYS_OP_NORMAL");
   const [pingMs, setPingMs] = useState(null);
+  const { resolved } = useTheme();
 
   useEffect(() => {
     const poll = async () => {
@@ -83,6 +87,7 @@ export default function App() {
           text-transform: uppercase;
           transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
           border: 1px solid transparent;
+          white-space: nowrap;
         }
 
         .bottom-nav-item:hover {
@@ -91,10 +96,9 @@ export default function App() {
         }
 
         .bottom-nav-item.active {
-          background: rgba(245, 203, 92, 0.12);
+          background: var(--color-accent-amber-bg, rgba(245, 203, 92, 0.12));
           color: var(--primary);
-          border: 1px solid rgba(245, 203, 92, 0.3);
-          box-shadow: 0 0 8px rgba(245, 203, 92, 0.08);
+          border: 1px solid var(--primary);
         }
 
         .bottom-nav-status {
@@ -112,6 +116,38 @@ export default function App() {
           border-radius: 50%;
           background: var(--status-ok);
           box-shadow: 0 0 6px var(--status-ok);
+        }
+
+        .theme-toggle {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          background: none;
+          border: 1px solid var(--border);
+          border-radius: 20px;
+          padding: 4px 10px;
+          color: var(--text-muted);
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          cursor: pointer;
+          transition: all 150ms ease-out;
+          font-family: var(--font-mono);
+        }
+
+        .theme-toggle:hover {
+          background: var(--bg-hover);
+          color: var(--text-primary);
+          border-color: var(--primary);
+        }
+
+        .theme-toggle-icon {
+          font-size: 12px;
+        }
+
+        .theme-toggle-label {
+          font-size: 10px;
         }
       `}</style>
 
@@ -132,12 +168,13 @@ export default function App() {
             <Route path="/testing-station" element={<TestingStation />} />
             <Route path="/amr" element={<Amr />} />
             <Route path="/cobot" element={<Cobot />} />
+            <Route path="/inspection" element={<Inspection />} />
           </Routes>
         </Suspense>
       </main>
 
       {/* Global Toast Notifications — single instance for all lazy-loaded pages */}
-      <ToastContainer position="bottom-right" autoClose={4000} closeOnClick pauseOnHover draggable theme="dark" />
+      <ToastContainer position="bottom-right" autoClose={4000} closeOnClick pauseOnHover draggable theme={resolved} />
 
       {/* Bottom Navigation Bar */}
       <nav className="bottom-nav">
@@ -168,12 +205,15 @@ export default function App() {
           <NavItem to="/triac" icon="precision_manufacturing" label="Smart TRIAC" />
           <NavItem to="/assembly" icon="factory" label="Assembly" />
           <NavItem to="/testing-station" icon="fact_check" label="Testing Station" />
+          <NavItem to="/inspection" icon="policy" label="Inspection" />
           <NavItem to="/amr" icon="local_shipping" label="AMR" />
           <NavItem to="/cobot" icon="smart_toy" label="Cobot" />
         </div>
 
         {/* Right Side: Status Cluster */}
         <div className="bottom-nav-status">
+          <ThemeToggle compact />
+          <div style={{ width: '1px', height: '16px', background: 'var(--border)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div className="bottom-nav-dot" style={{
               background: sysStatus === 'SYS_OP_NORMAL' ? 'var(--status-ok)' : sysStatus === 'SYS_DEGRADED' ? '#f59e0b' : '#ef4444',

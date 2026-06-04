@@ -75,11 +75,11 @@ const ShuttleRail = ({ shuttle }) => {
   const isActive = shuttleState === 'moving' || shuttleState === 'busy';
 
   const shuttleColor = {
-    idle: '#475569',
-    moving: '#00bcd4',
-    busy: '#00e5ff',
-    error: '#ef4444',
-  }[shuttleState] || '#475569';
+    idle: 'var(--rail-idle)',
+    moving: 'var(--rail-moving)',
+    busy: 'var(--rail-busy)',
+    error: 'var(--matrix-red)',
+  }[shuttleState] || 'var(--rail-idle)';
 
   return (
     <div
@@ -99,7 +99,7 @@ const ShuttleRail = ({ shuttle }) => {
           top: `${coords.top}px`,
           width: `${CARRIAGE_W}px`,
           height: `${CARRIAGE_H}px`,
-          background: `linear-gradient(135deg, ${shuttleColor} 0%, ${shuttleColor}ee 40%, ${shuttleColor}cc 60%, ${shuttleColor}aa 100%)`,
+          background: `linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 40%, rgba(0,0,0,0.15) 100%), ${shuttleColor}`,
           borderRadius: '5px',
           border: '2px solid rgba(0,0,0,0.7)',
           boxShadow: isActive
@@ -120,7 +120,7 @@ const ShuttleRail = ({ shuttle }) => {
           width: '8px',
           height: '8px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle at 30% 30%, #374151, #1a202c)',
+          background: 'var(--rail-bg)',
           border: '1.5px solid rgba(0,0,0,0.8)',
           boxShadow: 'inset -1px -1px 2px rgba(255,255,255,0.2), 0 2px 3px rgba(0,0,0,0.5)',
         }} />
@@ -131,7 +131,7 @@ const ShuttleRail = ({ shuttle }) => {
           width: '8px',
           height: '8px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle at 30% 30%, #374151, #1a202c)',
+          background: 'var(--rail-bg)',
           border: '1.5px solid rgba(0,0,0,0.8)',
           boxShadow: 'inset -1px -1px 2px rgba(255,255,255,0.2), 0 2px 3px rgba(0,0,0,0.5)',
         }} />
@@ -144,7 +144,7 @@ const ShuttleRail = ({ shuttle }) => {
           width: '8px',
           height: '8px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle at 30% 30%, #374151, #1a202c)',
+          background: 'var(--rail-bg)',
           border: '1.5px solid rgba(0,0,0,0.8)',
           boxShadow: 'inset -1px -1px 2px rgba(255,255,255,0.2), 0 2px 3px rgba(0,0,0,0.5)',
         }} />
@@ -155,7 +155,7 @@ const ShuttleRail = ({ shuttle }) => {
           width: '8px',
           height: '8px',
           borderRadius: '50%',
-          background: 'radial-gradient(circle at 30% 30%, #374151, #1a202c)',
+          background: 'var(--rail-bg)',
           border: '1.5px solid rgba(0,0,0,0.8)',
           boxShadow: 'inset -1px -1px 2px rgba(255,255,255,0.2), 0 2px 3px rgba(0,0,0,0.5)',
         }} />

@@ -21,7 +21,7 @@ def connect_triac():
         except Exception as e:
             import logging
             logging.error("[TRIAC] Connection failed: %s", e)
-            raise Exception(f"Failed to connect to Triac OPC UA server: {e}")
+            return False, f"Failed to connect to Triac OPC UA server: {e}"
     return True, "Already connected"
 
 def disconnect_triac():

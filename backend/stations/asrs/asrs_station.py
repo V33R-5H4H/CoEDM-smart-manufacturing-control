@@ -19,7 +19,7 @@ from backend.database.db import SessionLocal
 from sqlalchemy import text
 from backend.core.timezone import ist_now
 from datetime import timedelta
-import json
+import orjson
 
 # Grid constants
 LETTERS = ["A", "B", "C", "D", "E"]
@@ -115,7 +115,7 @@ def _log_asrs_event(event_type: str, severity: str, title: str, payload_data: di
                 "event_type": event_type,
                 "severity": severity,
                 "title": title,
-                "payload": json.dumps(payload_data) if payload_data else None
+                "payload": orjson.dumps(payload_data).decode("utf-8") if payload_data else None
             }
         )
         session.commit()

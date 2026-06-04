@@ -94,11 +94,11 @@ export default function Dashboard() {
                   });
                   setInventoryCount(count);
                 }
-              } catch {}
+              } catch { }
             }, 1000);
           }
           window.dispatchEvent(new Event('asrs-ws-activity'));
-        } catch {}
+        } catch { }
       };
       asrsWs.onclose = () => {
         setAsrsConnected(false);
@@ -120,7 +120,8 @@ export default function Dashboard() {
             assemblyLastData = data;
           } else if (msg.type === 'delta') {
             // Simple shallow merge for dashboard (only needs top-level fields)
-            assemblyLastData = assemblyLastData ? { ...assemblyLastData, ...msg.data,
+            assemblyLastData = assemblyLastData ? {
+              ...assemblyLastData, ...msg.data,
               position: { ...(assemblyLastData.position || {}), ...(msg.data.position || {}) },
               safety: { ...(assemblyLastData.safety || {}), ...(msg.data.safety || {}) },
             } : msg.data;
@@ -145,7 +146,7 @@ export default function Dashboard() {
           const ts = new Date().toTimeString().slice(0, 8);
           wsCache.dashboard.lastUpdated = { ...wsCache.dashboard.lastUpdated, assembly: ts };
           setLastUpdated(prev => ({ ...prev, assembly: ts }));
-        } catch {}
+        } catch { }
       };
       assemblyWs.onclose = () => {
         setAssemblyConnected(false);
@@ -166,7 +167,8 @@ export default function Dashboard() {
             data = msg.data;
             miracLastData = data;
           } else if (msg.type === 'delta') {
-            miracLastData = miracLastData ? { ...miracLastData, ...msg.data,
+            miracLastData = miracLastData ? {
+              ...miracLastData, ...msg.data,
               spindle: { ...(miracLastData.spindle || {}), ...(msg.data.spindle || {}) },
               data_sources: { ...(miracLastData.data_sources || {}), ...(msg.data.data_sources || {}) },
             } : msg.data;
@@ -187,7 +189,7 @@ export default function Dashboard() {
           const ts = new Date().toTimeString().slice(0, 8);
           wsCache.dashboard.lastUpdated = { ...wsCache.dashboard.lastUpdated, mirac: ts };
           setLastUpdated(prev => ({ ...prev, mirac: ts }));
-        } catch {}
+        } catch { }
       };
       miracWs.onclose = () => {
         setMiracConnected(false);
@@ -208,9 +210,11 @@ export default function Dashboard() {
             data = msg.data;
             triacLastData = data;
           } else if (msg.type === 'delta') {
-            triacLastData = triacLastData ? { ...triacLastData, ...msg.data,
+            triacLastData = triacLastData ? {
+              ...triacLastData, ...msg.data,
               spindle: { ...(triacLastData.spindle || {}), ...(msg.data.spindle || {}) },
-              axes: { ...(triacLastData.axes || {}), ...(msg.data.axes || {}),
+              axes: {
+                ...(triacLastData.axes || {}), ...(msg.data.axes || {}),
                 x: { ...((triacLastData.axes || {}).x || {}), ...((msg.data.axes || {}).x || {}) },
               },
               data_sources: { ...(triacLastData.data_sources || {}), ...(msg.data.data_sources || {}) },
@@ -232,7 +236,7 @@ export default function Dashboard() {
           const ts = new Date().toTimeString().slice(0, 8);
           wsCache.dashboard.lastUpdated = { ...wsCache.dashboard.lastUpdated, triac: ts };
           setLastUpdated(prev => ({ ...prev, triac: ts }));
-        } catch {}
+        } catch { }
       };
       triacWs.onclose = () => {
         setTriacConnected(false);
@@ -248,7 +252,7 @@ export default function Dashboard() {
       sockets.forEach((s) => {
         try {
           s.close();
-        } catch {}
+        } catch { }
       });
     };
   }, []);
@@ -350,6 +354,18 @@ export default function Dashboard() {
       statusText: triacConnected ? "CONNECTED" : "OFFLINE",
     },
     {
+      name: "Assembly Station",
+      to: "/assembly",
+      icon: "factory",
+      description: "Hydraulic Press Control",
+      metrics: [
+        { label: "PISTON POS", value: assemblyConnected && assemblyPosition !== null ? assemblyPosition : "---", unit: assemblyConnected && assemblyPosition !== null ? "mm" : "" },
+        { label: "SAFETY SYS", value: assemblyConnected ? assemblySafety : "---", sub: "" },
+      ],
+      statusColor: assemblyConnected ? "var(--status-ok)" : "var(--status-idle)",
+      statusText: assemblyConnected ? "CONNECTED" : "OFFLINE",
+    },
+    {
       name: "Testing Station",
       key: null,
       to: "/testing-station",
@@ -358,6 +374,18 @@ export default function Dashboard() {
       metrics: [
         { label: "STATUS", value: "---", unit: "" },
         { label: "THROUGHPUT", value: "---", unit: "u/h" },
+      ],
+      statusColor: "var(--status-idle)",
+      statusText: "OFFLINE",
+    },
+    {
+      name: "Inspection",
+      to: "/inspection",
+      icon: "policy",
+      description: "Visual Defect Inspection",
+      metrics: [
+        { label: "PASS RATE", value: "---", unit: "%" },
+        { label: "REJECTS", value: "---", unit: "" },
       ],
       statusColor: "var(--status-idle)",
       statusText: "OFFLINE",
@@ -431,12 +459,12 @@ export default function Dashboard() {
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 0 16px rgba(188, 199, 221, 0.15)';
+                e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
                 e.currentTarget.style.borderColor = 'var(--primary)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.03)';
+                e.currentTarget.style.boxShadow = 'var(--shadow)';
                 e.currentTarget.style.borderColor = 'var(--border-light)';
               }}
             >
@@ -525,7 +553,7 @@ export default function Dashboard() {
                 marginTop: '8px'
               }}>
                 {lastUpdated[s.key] ? (
-                  <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#475569' }}>
+                  <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
                     UPD: {lastUpdated[s.key]}
                   </span>
                 ) : (
@@ -544,7 +572,7 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Transaction Log */}
-        <div className="asm-viz" style={{ minHeight: 'auto', background: 'rgba(25, 28, 34, 0.85)', backdropFilter: 'blur(8px)', flex: 'none', border: '1px solid var(--border)' }}>
+        <div className="asm-viz" style={{ minHeight: 'auto', flex: 'none', border: '1px solid var(--border)' }}>
           <div className="asm-viz__bar" style={{ background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
             <span>Recent Facility Transaction Log</span>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--primary)' }}>SECURE_STREAM // ONLINE</span>
@@ -569,39 +597,39 @@ export default function Dashboard() {
                 {transactions.map((row, i) => {
                   const eventTime = new Date(row.time);
                   let timeStr = row.time;
-                  try { timeStr = eventTime.toISOString().substring(11, 23); } catch (e) {}
+                  try { timeStr = eventTime.toISOString().substring(11, 23); } catch (e) { }
                   let code = "OP_OK";
                   if (row.severity === "warning") code = "WARN";
                   if (row.severity === "critical") code = "ERR";
                   return (
-                  <tr key={i} style={{
-                    borderBottom: '1px solid var(--border-light)',
-                    transition: 'background 150ms ease-out',
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <td style={{
-                      padding: '10px 16px',
-                      color: code.startsWith('ERR') ? 'var(--status-error)' : code.startsWith('WARN') ? 'var(--status-warn)' : 'var(--text-secondary)',
-                    }}>{timeStr}</td>
-                    <td style={{
-                      padding: '10px 16px',
-                      fontWeight: 800,
-                      color: 'var(--text-primary)',
-                      textTransform: 'uppercase'
-                    }}>{row.machine_id}</td>
-                    <td style={{
-                      padding: '10px 16px',
-                      color: 'var(--text-secondary)',
-                      fontFamily: 'var(--font-sans)'
-                    }}>{row.title}</td>
-                    <td style={{
-                      padding: '10px 16px',
-                      fontWeight: 700,
-                      color: code.startsWith('ERR') ? 'var(--status-error)' : code.startsWith('WARN') ? 'var(--status-warn)' : 'var(--status-ok)',
-                    }}>{code}</td>
-                  </tr>
+                    <tr key={i} style={{
+                      borderBottom: '1px solid var(--border-light)',
+                      transition: 'background 150ms ease-out',
+                    }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{
+                        padding: '10px 16px',
+                        color: code.startsWith('ERR') ? 'var(--status-error)' : code.startsWith('WARN') ? 'var(--status-warn)' : 'var(--text-secondary)',
+                      }}>{timeStr}</td>
+                      <td style={{
+                        padding: '10px 16px',
+                        fontWeight: 800,
+                        color: 'var(--text-primary)',
+                        textTransform: 'uppercase'
+                      }}>{row.machine_id}</td>
+                      <td style={{
+                        padding: '10px 16px',
+                        color: 'var(--text-secondary)',
+                        fontFamily: 'var(--font-sans)'
+                      }}>{row.title}</td>
+                      <td style={{
+                        padding: '10px 16px',
+                        fontWeight: 700,
+                        color: code.startsWith('ERR') ? 'var(--status-error)' : code.startsWith('WARN') ? 'var(--status-warn)' : 'var(--status-ok)',
+                      }}>{code}</td>
+                    </tr>
                   );
                 })}
               </tbody>
