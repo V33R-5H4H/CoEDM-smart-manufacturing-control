@@ -79,7 +79,19 @@ export default function OrderFeed({ wsUrl }) {
   };
 
   useEffect(() => {
-    connectWS();
+    // Fetch initial history
+    fetch('/api/ecom/orders/recent/feed')
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setOrders(data);
+        }
+      })
+      .catch(e => console.error('[OrderFeed] Failed to fetch history', e))
+      .finally(() => {
+        connectWS();
+      });
+
     return () => {
       if (reconnectRef.current) clearTimeout(reconnectRef.current);
       if (wsRef.current) wsRef.current.close();

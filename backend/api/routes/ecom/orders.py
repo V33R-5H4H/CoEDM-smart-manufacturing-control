@@ -318,6 +318,50 @@ async def place_order(body: PlaceOrderRequest, user=Depends(get_current_ecom_use
     }
 
 
+@router.get("/recent/feed")
+def recent_order_feed():
+    """Return the last 10 ecom orders for the ASRS dashboard (unauthenticated)."""
+    with db_session() as session:
+        rows = session.execute(text("""
+            SELECT o.order_id, o.order_status, o.created_at,
+                   (SELECT item_id FROM order_items WHERE order_id = o.order_id ORDER BY order_item_id ASC LIMIT 1) as item_id
+            FROM orders o
+            WHERE o.ecom_user_id IS NOT NULL
+            ORDER BY o.created_at DESC
+            LIMIT 10
+        """)).fetchall()
+
+        results = []
+        for r in rows:
+            order_id, status, created_at, item_id = r
+            
+            comps = []
+            if item_id:
+                comps_rows = session.execute(text("""
+                    SELECT st.compartment_id
+                    FROM storage_transactions st
+                    JOIN retrieval_queue rq ON st.queue_id = rq.queue_id
+                    WHERE st.item_id = :iid
+                      AND rq.notes LIKE '%ecom order%'
+                      AND EXISTS (
+                          SELECT 1 FROM order_items oi2 
+                          WHERE oi2.order_id = :oid AND oi2.item_id = st.item_id
+                      )
+                """), {"iid": item_id, "oid": order_id}).fetchall()
+                comps = [c[0] for c in comps_rows]
+                
+            results.append({
+                "order_id": order_id,
+                "item_id": item_id,
+                "status": status,
+                "plc_ok": True, # Informational
+                "compartments": comps,
+                "time": created_at.isoformat() if created_at else None
+            })
+        return results
+
+
+
 @router.get("/{order_id}")
 def track_order(order_id: int, user=Depends(get_current_ecom_user)):
     """Track an order by ID. Only the owning customer can view it."""
