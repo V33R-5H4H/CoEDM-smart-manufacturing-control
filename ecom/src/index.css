@@ -47,8 +47,8 @@
 /* ── Dark mode tokens ─────────────────────────────────────── */
 [data-theme="dark"] {
   --bg-primary:   #09090b;
-  --bg-secondary: #18181b;
-  --bg-elevated:  #09090b;
+  --bg-secondary: #09090b;
+  --bg-elevated:  #18181b;
   --bg-card:      #18181b;
 
   --primary:      #ffffff;
@@ -80,7 +80,7 @@
 html { font-size: 16px; scroll-behavior: smooth; }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
@@ -94,6 +94,11 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 img { max-width: 100%; display: block; }
 
 /* ── Layout ───────────────────────────────────────────────── */
+h1, h2, h3, .page-title, .navbar-brand, .product-name {
+  font-family: 'Outfit', system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
 .container {
   max-width: 1200px;
   margin: 0 auto;
@@ -359,7 +364,60 @@ img { max-width: 100%; display: block; }
   backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
+
+/* ── Responsive Additions ─────────────────────────────────── */
+.checkout-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 32px;
+  align-items: start;
+}
+
+.responsive-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 1024px) {
+  .checkout-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 16px;
+  }
+
+  .nav-text {
+    display: none;
+  }
+
+  .navbar-actions {
+    gap: 4px;
+  }
+  
+  .nav-link {
+    padding: 8px 12px;
+  }
+
+  .page-title {
+    font-size: 2rem !important;
+  }
+
+  .responsive-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
 [data-theme="light"] .glass-panel { background: rgba(255,255,255,0.6); }
 [data-theme="dark"] .glass-panel { background: rgba(24,24,27,0.6); }
-

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { authHeaders } from '../store/cartStore';
+import { Link, useNavigate } from 'react-router-dom';
+import { authHeaders, clearAuth } from '../store/cartStore';
 import { motion } from 'framer-motion';
 import { Package, Clock, ChevronRight, ListOrdered } from 'lucide-react';
 
@@ -27,14 +27,38 @@ const itemVariants = {
 };
 
 export default function MyOrders() {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchOrders = () => {
     fetch('/api/ecom/orders', { headers: authHeaders() })
-      .then(r => r.json())
-      .then(data => { setOrders(data); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then(r => {
+        if (r.status === 401) {
+          clearAuth();
+          navigate('/login');
+          throw new Error('Unauthorized');
+        }
+        return r.json();
+      })
+      .then(data => { 
+        if (Array.isArray(data)) {
+          setOrders(data); 
+        } else {
+          setOrders([]);
+        }
+        setLoading(false); 
+      })
+      .catch(e => { 
+        if (e.message !== 'Unauthorized') setLoading(false); 
+      });
+  };
+
+  useEffect(() => {
+    fetchOrders();
+    // Poll for real-time updates every 3 seconds
+    const interval = setInterval(fetchOrders, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   if (loading) return (

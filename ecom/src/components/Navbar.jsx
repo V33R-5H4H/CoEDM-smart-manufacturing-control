@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { getUser, clearAuth } from '../store/cartStore';
-import { Sun, Moon, ShoppingBag, Package, LogOut, User } from 'lucide-react';
+import { Sun, Moon, ShoppingBag, Package, LogOut, User, ClipboardList } from 'lucide-react';
 
 export default function Navbar({ onCartOpen, cartCount }) {
   const navigate = useNavigate();
@@ -27,21 +27,21 @@ export default function Navbar({ onCartOpen, cartCount }) {
       <div className="container navbar-inner">
         <Link to="/" className="navbar-brand">
           <Package className="text-primary" size={28} />
-          <span>CoEDM Store</span>
+          <span className="nav-text">CoEDM Store</span>
         </Link>
         <div className="navbar-actions">
           {user ? (
             <>
               {user.is_admin && (
                 <Link to="/admin" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--primary)', fontWeight: 600 }}>
-                  <User size={16} /> Admin Panel
+                  <User size={16} /> <span className="nav-text">Admin Panel</span>
                 </Link>
               )}
               <Link to="/orders" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <LogOut size={16} /> My Orders
+                <ClipboardList size={16} /> <span className="nav-text">My Orders</span>
               </Link>
               <button className="nav-link" onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <LogOut size={16} /> {user.full_name} (Logout)
+                <LogOut size={16} /> <span className="nav-text">{user.full_name} (Logout)</span>
               </button>
             </>
           ) : (

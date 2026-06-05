@@ -321,7 +321,7 @@ def _process_retrievals_background(items, queue_map, plc_connected, order_id):
             new_loop.run_until_complete(
                 _broadcast_order_event(
                     order_id, ci.item_id,
-                    "processing" if plc_ok else "pending",
+                    "shipped" if plc_ok else "pending",
                     compartments_cleared, plc_ok
                 )
             )
@@ -330,7 +330,7 @@ def _process_retrievals_background(items, queue_map, plc_connected, order_id):
             logger.warning(f"[ECOM BACKGROUND] Broadcast task error: {e}")
 
     # ── Step 7: Update overall order status ──────────────────────────────────
-    final_status = "processing" if all_ok else "pending"
+    final_status = "shipped" if all_ok else "pending"
     s3 = InventorySessionLocal()
     try:
         s3.execute(text("""

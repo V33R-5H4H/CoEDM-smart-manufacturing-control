@@ -74,7 +74,7 @@ export default function Checkout({ onCartChange }) {
         <p className="page-subtitle">Review your parts and confirm dispatch.</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 32, alignItems: 'start' }}>
+      <div className="checkout-layout">
         {/* Left: Form */}
         <div className="glass-panel" style={{ padding: 32 }}>
           <div style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>

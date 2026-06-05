@@ -120,8 +120,9 @@ export default function OrderTracking() {
 
       {/* Progress steps */}
       <div className="glass-panel" style={{ marginBottom: 32, padding: '40px 20px', position: 'relative' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1, maxWidth: 800, margin: '0 auto' }}>
-          
+        <div className="table-responsive" style={{ paddingBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1, minWidth: 600, maxWidth: 800, margin: '0 auto' }}>
+            
           {/* Background Track */}
           <div style={{ position: 'absolute', top: 22, left: '12%', right: '12%', height: 4, background: 'var(--border)', borderRadius: 2, zIndex: 0 }} />
           
@@ -168,10 +169,11 @@ export default function OrderTracking() {
               </div>
             );
           })}
+          </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
+      <div className="responsive-grid-2" style={{ gap: 32 }}>
         {/* Order items */}
         <div className="card">
           <div style={{ fontWeight: 800, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
