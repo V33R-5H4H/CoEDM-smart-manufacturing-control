@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getUser } from '../store/cartStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Trash2, ShoppingBag, ArrowRight, PackageOpen } from 'lucide-react';
+import { useEffect } from 'react';
 
 function formatPrice(n) {
   return '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 });
@@ -19,6 +20,14 @@ function getProductImage(name) {
 export default function CartDrawer({ open, onClose, onCartChange }) {
   const cart = getCart();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (open && e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open, onClose]);
 
   const handleRemove = (item_id) => {
     removeFromCart(item_id);

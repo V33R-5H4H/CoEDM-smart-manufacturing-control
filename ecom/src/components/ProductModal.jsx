@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ShoppingCart, PackageOpen, Check } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { addToCart } from '../store/cartStore';
 
 function formatPrice(n) {
@@ -17,6 +17,14 @@ function getProductImage(name) {
 
 export default function ProductModal({ product, onClose, onCartChange }) {
   const [added, setAdded] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (product && e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [product, onClose]);
   
   if (!product) return null;
   
