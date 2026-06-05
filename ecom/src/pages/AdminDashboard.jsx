@@ -191,7 +191,7 @@ export default function AdminDashboard() {
                           <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>SKU: {item.sku}</span>
                         </div>
                       </div>
-                      <div style={{ background: 'var(--primary)', color: '#fff', padding: '4px 12px', borderRadius: 99, fontWeight: 700, fontSize: '0.875rem' }}>
+                      <div style={{ background: 'var(--primary)', color: '#fff', padding: '4px 12px', borderRadius: 99, fontWeight: 700, fontSize: '0.875rem', flexShrink: 0, whiteSpace: 'nowrap' }}>
                         {item.total_quantity} in stock
                       </div>
                     </div>

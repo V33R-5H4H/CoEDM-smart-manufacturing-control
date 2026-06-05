@@ -167,7 +167,7 @@ class ASRSLogic:
                     session.execute(
                         text("""
                             UPDATE storage_compartments
-                            SET item_id = :item_id, status = 'occupied'
+                            SET item_id = :item_id, status = 'occupied', quantity = 1
                             WHERE compartment_id = :place
                         """),
                         {"item_id": item_id_val, "place": subcom_place}
@@ -179,8 +179,8 @@ class ASRSLogic:
                 session.execute(
                     text("""
                         INSERT INTO storage_compartments
-                        (box_id, sub_slot, item_id, status)
-                        VALUES (:box_id, :sub_slot, :item_id, 'occupied')
+                        (box_id, sub_slot, item_id, status, quantity)
+                        VALUES (:box_id, :sub_slot, :item_id, 'occupied', 1)
                     """),
                     {
                         "box_id": box_id,
