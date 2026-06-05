@@ -517,9 +517,7 @@ CREATE TABLE IF NOT EXISTS mirac_sensor_data (
 CREATE INDEX IF NOT EXISTS idx_mirac_machine_time ON mirac_sensor_data (machine_id, time DESC);
 CREATE INDEX IF NOT EXISTS idx_mirac_sensor_time  ON mirac_sensor_data (sensor_id,  time DESC);
 CREATE INDEX IF NOT EXISTS idx_mirac_tool         ON mirac_sensor_data (tool_number, time DESC);
--- Partial index: recent data (last 7 days) — used by dashboard queries
-CREATE INDEX IF NOT EXISTS idx_mirac_recent ON mirac_sensor_data (time DESC)
-    WHERE time > NOW() - INTERVAL '7 days';
+-- Partial index removed because NOW() is not IMMUTABLE. Relies on idx_mirac_machine_time instead.
 
 COMMENT ON TABLE  mirac_sensor_data IS 'MIRAC CNC Lathe real-time PLC + VIBIT sensor data.';
 COMMENT ON COLUMN mirac_sensor_data.z_axis_value    IS 'Z-axis position (mm). Added for 3-axis completeness.';
@@ -559,8 +557,7 @@ CREATE TABLE IF NOT EXISTS vibit_readings (
 );
 
 CREATE INDEX IF NOT EXISTS idx_vibit_sensor_time ON vibit_readings (sensor_id, time DESC);
-CREATE INDEX IF NOT EXISTS idx_vibit_recent      ON vibit_readings (time DESC)
-    WHERE time > NOW() - INTERVAL '7 days';
+-- Partial index removed because NOW() is not IMMUTABLE. Relies on idx_vibit_sensor_time instead.
 
 COMMENT ON TABLE  vibit_readings                IS 'Vibration time-series (VIBIT Modbus). Resolves to machines via machine_sensors.machine_id.';
 COMMENT ON COLUMN vibit_readings.modbus_unit_id IS 'Informational copy of Modbus unit address. Not a FK — modbus_unit_id has no UNIQUE constraint in machine_sensors.';

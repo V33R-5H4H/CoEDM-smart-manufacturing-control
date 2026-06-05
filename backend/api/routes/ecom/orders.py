@@ -252,6 +252,7 @@ async def place_order(body: PlaceOrderRequest, user=Depends(get_current_ecom_use
                     WHERE sc.item_id = :iid AND sc.status = 'occupied'
                     ORDER BY b.row_label DESC, b.col_number DESC, sc.sub_slot DESC
                     LIMIT :qty
+                    FOR UPDATE SKIP LOCKED
                 """), {"iid": ci.item_id, "qty": ci.quantity}).fetchall()
 
                 for (comp_id, box_id) in compartments:
@@ -326,7 +327,7 @@ def recent_order_feed():
             SELECT o.order_id, o.order_status, o.created_at,
                    (SELECT item_id FROM order_items WHERE order_id = o.order_id ORDER BY order_item_id ASC LIMIT 1) as item_id
             FROM orders o
-            WHERE o.ecom_user_id IS NOT NULL
+            WHERE o.ecom_user_id IS NOT NULL AND o.order_status != 'cancelled'
             ORDER BY o.created_at DESC
             LIMIT 10
         """)).fetchall()

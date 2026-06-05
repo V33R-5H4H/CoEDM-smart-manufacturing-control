@@ -92,3 +92,72 @@ async def push_to_queue(payload: QueueCreate):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         session.close()
+
+@router.delete("")
+async def clear_queue():
+    """Clear all pending and processing items from the retrieval queue and restore stock if needed"""
+    session = SessionLocal()
+    try:
+        # 1. Find all offline PLC transactions that haven't been reversed
+        transactions = session.execute(
+            text("""
+                SELECT compartment_id, item_id, tran_id, queue_id 
+                FROM storage_transactions 
+                WHERE asrs_result = 'ecom_db_only_plc_offline'
+            """)
+        ).fetchall()
+        
+        queue_ids = set()
+        
+        for tx in transactions:
+            comp_id, item_id, tran_id, q_id = tx
+            if q_id:
+                queue_ids.add(q_id)
+            
+            # Restore stock
+            session.execute(
+                text("""
+                    UPDATE storage_compartments 
+                    SET status = 'occupied', item_id = :iid 
+                    WHERE compartment_id = :cid
+                """),
+                {"iid": item_id, "cid": comp_id}
+            )
+            # Mark transaction as reversed
+            session.execute(
+                text("UPDATE storage_transactions SET asrs_result = 'reversed_clear_queue' WHERE tran_id = :tid"),
+                {"tid": tran_id}
+            )
+            
+        # 2. Add any 'pending' or 'processing' queues just in case
+        pending_queues = session.execute(
+            text("SELECT queue_id FROM retrieval_queue WHERE status IN ('pending', 'processing')")
+        ).fetchall()
+        for q in pending_queues:
+            queue_ids.add(q[0])
+
+        if not queue_ids:
+            return {"success": True, "message": "Queue is already empty and no offline stock to restore"}
+
+        # 3. Cancel the queue entries
+        session.execute(
+            text("UPDATE retrieval_queue SET status = 'cancelled' WHERE queue_id = ANY(:qids)"),
+            {"qids": list(queue_ids)}
+        )
+
+        # 4. Cancel associated e-commerce orders (if they are pending or processing)
+        session.execute(
+            text("UPDATE orders SET order_status = 'cancelled' WHERE order_status IN ('pending', 'processing')")
+        )
+
+        session.commit()
+        return {
+            "success": True, 
+            "message": f"Cleared queue items and restored {len(transactions)} items to stock."
+        }
+    except Exception as e:
+        logger.error(f"Error clearing queue: {e}")
+        session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        session.close()

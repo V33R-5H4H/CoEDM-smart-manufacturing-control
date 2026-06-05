@@ -1,9 +1,19 @@
-import { getCart, removeFromCart, updateQty, cartTotal, clearCart } from '../store/cartStore';
+import { getCart, removeFromCart, updateQty, cartTotal } from '../store/cartStore';
 import { useNavigate } from 'react-router-dom';
 import { getUser } from '../store/cartStore';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Trash2, ShoppingBag, ArrowRight, PackageOpen } from 'lucide-react';
 
 function formatPrice(n) {
   return '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+}
+
+function getProductImage(name) {
+  const lower = name.toLowerCase();
+  if (lower.includes('shaft')) return '/images/shaft.png';
+  if (lower.includes('bearing')) return '/images/bearing.png';
+  if (lower.includes('casing')) return '/images/casing.png';
+  return null;
 }
 
 export default function CartDrawer({ open, onClose, onCartChange }) {
@@ -22,106 +32,150 @@ export default function CartDrawer({ open, onClose, onCartChange }) {
 
   const handleCheckout = () => {
     const user = getUser();
+    onClose();
     if (!user) {
-      onClose();
-      navigate('/login?redirect=checkout');
+      navigate('/login');
     } else {
-      onClose();
       navigate('/checkout');
     }
   };
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
-          zIndex: 200, opacity: open ? 1 : 0,
-          pointerEvents: open ? 'all' : 'none',
-          transition: 'opacity 0.2s',
-        }}
-        onClick={onClose}
-      />
+    <AnimatePresence>
+      {open && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="drawer-backdrop"
+            onClick={onClose}
+          />
 
-      {/* Drawer */}
-      <div style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0,
-        width: 400, maxWidth: '95vw',
-        background: 'var(--bg-elevated)',
-        borderLeft: '1px solid var(--border)',
-        zIndex: 201,
-        transform: open ? 'translateX(0)' : 'translateX(100%)',
-        transition: 'transform 0.3s cubic-bezier(.4,0,.2,1)',
-        display: 'flex', flexDirection: 'column',
-        boxShadow: 'var(--shadow-lg)',
-      }}>
-        {/* Header */}
-        <div style={{
-          padding: '20px 24px',
-          borderBottom: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>
-            🛒 Cart ({cart.length} items)
-          </div>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
-        </div>
-
-        {/* Items */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '0 24px' }}>
-          {cart.length === 0 ? (
-            <div className="empty-state" style={{ paddingTop: 60 }}>
-              <div className="empty-state-icon">🛒</div>
-              <div className="empty-state-title">Your cart is empty</div>
-              <div className="empty-state-desc">Add some products to get started</div>
-            </div>
-          ) : (
-            cart.map(item => (
-              <div key={item.item_id} className="cart-item">
-                <div style={{
-                  width: 48, height: 48, borderRadius: 8,
-                  background: 'var(--bg-secondary)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '1.5rem', flexShrink: 0,
-                }}>
-                  🔩
-                </div>
-                <div className="cart-item-info">
-                  <div className="cart-item-name">{item.name}</div>
-                  <div className="cart-item-price">{formatPrice(item.price)} / {item.unit}</div>
-                </div>
-                <div className="cart-item-qty">
-                  <button className="qty-btn" onClick={() => handleQty(item.item_id, item.quantity - 1)}>−</button>
-                  <span style={{ minWidth: 24, textAlign: 'center', fontWeight: 600 }}>{item.quantity}</span>
-                  <button className="qty-btn" onClick={() => handleQty(item.item_id, item.quantity + 1)}>+</button>
-                  <button className="qty-btn" onClick={() => handleRemove(item.item_id)}
-                    style={{ color: 'var(--error)', marginLeft: 4 }}>🗑</button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Footer */}
-        {cart.length > 0 && (
-          <div style={{
-            padding: '20px 24px',
-            borderTop: '1px solid var(--border)',
-          }}>
+          {/* Drawer */}
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="drawer-content"
+          >
+            {/* Header */}
             <div style={{
-              display: 'flex', justifyContent: 'space-between',
-              fontWeight: 700, fontSize: '1.1rem', marginBottom: 16,
+              padding: '24px',
+              borderBottom: '1px solid var(--border)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              background: 'rgba(var(--bg-elevated), 0.8)',
+              backdropFilter: 'blur(12px)',
             }}>
-              <span>Total</span>
-              <span style={{ color: 'var(--primary)' }}>{formatPrice(cartTotal(cart))}</span>
+              <div style={{ fontWeight: 800, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <ShoppingBag /> Cart <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>({cart.length})</span>
+              </div>
+              <button className="btn-icon" onClick={onClose}><X size={20} /></button>
             </div>
-            <button className="btn btn-primary btn-lg" style={{ width: '100%' }} onClick={handleCheckout}>
-              Proceed to Checkout →
-            </button>
-          </div>
-        )}
-      </div>
-    </>
+
+            {/* Items */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 24px' }}>
+              {cart.length === 0 ? (
+                <div className="empty-state" style={{ paddingTop: 80 }}>
+                  <PackageOpen size={64} className="text-muted" style={{ opacity: 0.5 }} />
+                  <div className="empty-state-title" style={{ marginTop: 16 }}>Your cart is empty</div>
+                  <div className="empty-state-desc">Add some precision components to get started.</div>
+                </div>
+              ) : (
+                cart.map(item => {
+                  const imageSrc = getProductImage(item.name);
+                  return (
+                    <motion.div layout key={item.item_id} style={{
+                      display: 'flex', alignItems: 'center', gap: 16,
+                      padding: '20px 0', borderBottom: '1px solid var(--border)'
+                    }}>
+                      <div style={{
+                        width: 72, height: 72, borderRadius: 12,
+                        background: 'var(--bg-secondary)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0, overflow: 'hidden', border: '1px solid var(--border)'
+                      }}>
+                        {imageSrc ? <img src={imageSrc} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/> : <PackageOpen size={28} className="text-muted" />}
+                      </div>
+                      
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {item.name}
+                        </div>
+                        <div style={{ marginTop: 4, fontWeight: 800, color: 'var(--primary)', fontSize: '0.95rem' }}>
+                          {formatPrice(item.price)}
+                        </div>
+                      </div>
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ 
+                          display: 'flex', alignItems: 'center', 
+                          background: 'var(--bg-secondary)', borderRadius: 8, padding: '4px' 
+                        }}>
+                          <button style={{ 
+                            width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: 'var(--text-primary)', fontWeight: 600, fontSize: '1rem'
+                          }} onClick={() => handleQty(item.item_id, item.quantity - 1)}>
+                            −
+                          </button>
+                          <span style={{ minWidth: 28, textAlign: 'center', fontWeight: 700, fontSize: '0.9rem' }}>
+                            {item.quantity}
+                          </span>
+                          <button style={{ 
+                            width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: 'var(--text-primary)', fontWeight: 600, fontSize: '1rem'
+                          }} onClick={() => handleQty(item.item_id, item.quantity + 1)}>
+                            +
+                          </button>
+                        </div>
+                        <button 
+                          onClick={() => handleRemove(item.item_id)}
+                          style={{ 
+                            width: 36, height: 36, borderRadius: 8, border: 'none', 
+                            background: 'rgba(220, 38, 38, 0.1)', color: '#dc2626',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', flexShrink: 0, transition: 'all 0.2s'
+                          }}
+                          onMouseOver={e => e.currentTarget.style.background = 'rgba(220, 38, 38, 0.2)'}
+                          onMouseOut={e => e.currentTarget.style.background = 'rgba(220, 38, 38, 0.1)'}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </motion.div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Footer */}
+            {cart.length > 0 && (
+              <div style={{
+                padding: '24px',
+                borderTop: '1px solid var(--border)',
+                background: 'rgba(var(--bg-elevated), 0.8)',
+                backdropFilter: 'blur(12px)',
+              }}>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between',
+                  fontWeight: 800, fontSize: '1.25rem', marginBottom: 24,
+                }}>
+                  <span>Subtotal</span>
+                  <span style={{ color: 'var(--primary)' }}>{formatPrice(cartTotal(cart))}</span>
+                </div>
+                <button className="btn btn-primary btn-lg" style={{ width: '100%' }} onClick={handleCheckout}>
+                  Checkout <ArrowRight size={18} />
+                </button>
+              </div>
+            )}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }

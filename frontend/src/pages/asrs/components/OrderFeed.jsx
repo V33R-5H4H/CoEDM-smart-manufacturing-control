@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { toast } from 'react-toastify';
 
 /**
  * OrderFeed — Live incoming e-commerce orders panel for the ASRS HMI.
@@ -25,6 +26,7 @@ function formatTime(iso) {
 export default function OrderFeed({ wsUrl }) {
   const [orders, setOrders] = useState([]);
   const [connected, setConnected] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const wsRef = useRef(null);
   const reconnectRef = useRef(null);
 
@@ -78,8 +80,7 @@ export default function OrderFeed({ wsUrl }) {
     };
   };
 
-  useEffect(() => {
-    // Fetch initial history
+  const fetchOrders = () => {
     fetch('/api/ecom/orders/recent/feed')
       .then(r => r.json())
       .then(data => {
@@ -87,10 +88,12 @@ export default function OrderFeed({ wsUrl }) {
           setOrders(data);
         }
       })
-      .catch(e => console.error('[OrderFeed] Failed to fetch history', e))
-      .finally(() => {
-        connectWS();
-      });
+      .catch(e => console.error('[OrderFeed] Failed to fetch history', e));
+  };
+
+  useEffect(() => {
+    fetchOrders();
+    connectWS();
 
     return () => {
       if (reconnectRef.current) clearTimeout(reconnectRef.current);
@@ -98,24 +101,60 @@ export default function OrderFeed({ wsUrl }) {
     };
   }, []);
 
+  const handleClearQueue = async () => {
+    if (!window.confirm('Are you sure you want to clear the retrieval queue?')) return;
+    setClearing(true);
+    try {
+      const res = await fetch('/api/asrs-data/queue', { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Order queue cleared successfully');
+        fetchOrders();
+      } else {
+        const err = await res.json();
+        toast.error('Failed to clear queue: ' + (err.detail || 'Unknown error'));
+      }
+    } catch (e) {
+      toast.error('Error clearing queue: ' + e.message);
+    } finally {
+      setClearing(false);
+    }
+  };
+
   return (
     <div className="asm-hud-card" style={{ minWidth: 260 }}>
       {/* Header */}
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginBottom: 12,
+        display: 'flex', flexDirection: 'column', gap: '10px',
+        marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border)'
       }}>
-        <div style={{ fontWeight: 700, fontSize: '0.8rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--primary)' }}>
-          🛒 Ecom Orders
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontWeight: 800, fontSize: '0.85rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            🛒 Ecom Orders
+          </div>
+          <span style={{
+            fontSize: '0.65rem', fontWeight: 700,
+            padding: '3px 8px', borderRadius: 99,
+            background: connected ? 'var(--success-bg, rgba(22,163,74,0.12))' : 'var(--error-bg, rgba(220,38,38,0.12))',
+            color: connected ? 'var(--success, #16a34a)' : 'var(--error, #dc2626)',
+            boxShadow: connected ? '0 0 8px rgba(22,163,74,0.3)' : 'none'
+          }}>
+            {connected ? 'LIVE' : 'OFFLINE'}
+          </span>
         </div>
-        <span style={{
-          fontSize: '0.65rem', fontWeight: 700,
-          padding: '2px 8px', borderRadius: 99,
-          background: connected ? 'var(--success-bg, rgba(22,163,74,0.12))' : 'var(--error-bg, rgba(220,38,38,0.12))',
-          color: connected ? 'var(--success, #16a34a)' : 'var(--error, #dc2626)',
-        }}>
-          {connected ? 'LIVE' : 'OFFLINE'}
-        </span>
+        <button 
+          onClick={handleClearQueue} 
+          disabled={clearing}
+          style={{
+            background: 'var(--bg-secondary)', border: '1px solid var(--border)', 
+            borderRadius: '6px', fontSize: '0.7rem', padding: '6px 12px',
+            cursor: clearing ? 'not-allowed' : 'pointer', fontWeight: 600, color: 'var(--text-secondary)',
+            width: '100%', transition: 'all 0.2s'
+          }}
+          onMouseOver={e => !clearing && (e.currentTarget.style.borderColor = 'var(--text-muted)')}
+          onMouseOut={e => !clearing && (e.currentTarget.style.borderColor = 'var(--border)')}
+        >
+          {clearing ? 'CLEARING QUEUE...' : 'CLEAR ASRS QUEUE'}
+        </button>
       </div>
 
       {/* Order list */}

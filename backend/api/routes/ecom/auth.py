@@ -48,6 +48,7 @@ class AuthResponse(BaseModel):
     user_id: str
     email: str
     full_name: str
+    is_admin: bool = False
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -63,10 +64,11 @@ def _verify_password(plain: str, hashed: str) -> bool:
         return False
 
 
-def _create_token(user_id: str, email: str) -> str:
+def _create_token(user_id: str, email: str, is_admin: bool = False) -> str:
     payload = {
         "sub": user_id,
         "email": email,
+        "is_admin": is_admin,
         "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
@@ -80,11 +82,29 @@ def get_current_ecom_user(
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
         payload = jwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        return {"user_id": payload["sub"], "email": payload["email"]}
+        return {
+            "user_id": payload["sub"], 
+            "email": payload["email"],
+            "is_admin": payload.get("is_admin", False)
+        }
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+
+def get_current_admin_user(
+    user: dict = Depends(get_current_ecom_user),
+) -> dict:
+    """Enforce admin privileges."""
+    with db_session() as session:
+        is_admin = session.execute(
+            text("SELECT is_admin FROM ecom_users WHERE user_id = :uid"),
+            {"uid": user["user_id"]}
+        ).scalar()
+        if not is_admin:
+            raise HTTPException(status_code=403, detail="Admin privileges required")
+    return user
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -111,9 +131,9 @@ def register(body: RegisterRequest):
              "full_name": body.full_name, "pw": pw_hash, "now": ist_now()}
         )
 
-    token = _create_token(user_id, body.email.lower())
+    token = _create_token(user_id, body.email.lower(), is_admin=False)
     return AuthResponse(token=token, user_id=user_id,
-                        email=body.email.lower(), full_name=body.full_name)
+                        email=body.email.lower(), full_name=body.full_name, is_admin=False)
 
 
 @router.post("/login", response_model=AuthResponse)
@@ -121,13 +141,13 @@ def login(body: LoginRequest):
     """Authenticate an existing customer."""
     with db_session() as session:
         row = session.execute(
-            text("SELECT user_id, full_name, password_hash FROM ecom_users WHERE email = :email AND is_active"),
+            text("SELECT user_id, full_name, password_hash, is_admin FROM ecom_users WHERE email = :email AND is_active"),
             {"email": body.email.lower()}
         ).fetchone()
         if not row:
             raise HTTPException(status_code=401, detail="Invalid email or password")
 
-        user_id, full_name, pw_hash = row
+        user_id, full_name, pw_hash, is_admin = row
         if not _verify_password(body.password, pw_hash):
             raise HTTPException(status_code=401, detail="Invalid email or password")
 
@@ -136,9 +156,9 @@ def login(body: LoginRequest):
             {"now": ist_now(), "uid": str(user_id)}
         )
 
-    token = _create_token(str(user_id), body.email.lower())
+    token = _create_token(str(user_id), body.email.lower(), is_admin=bool(is_admin))
     return AuthResponse(token=token, user_id=str(user_id),
-                        email=body.email.lower(), full_name=full_name)
+                        email=body.email.lower(), full_name=full_name, is_admin=bool(is_admin))
 
 
 @router.get("/me")

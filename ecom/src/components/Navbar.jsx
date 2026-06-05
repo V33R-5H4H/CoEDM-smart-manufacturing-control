@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getCart, getCartCount } from '../store/cartStore';
 import { getUser, clearAuth } from '../store/cartStore';
+import { Sun, Moon, ShoppingBag, Package, LogOut, User } from 'lucide-react';
 
-const EMOJI_ICONS = { '☀️': 'light', '🌙': 'dark' };
-
-export default function Navbar({ onCartOpen, cartCount: externalCount }) {
+export default function Navbar({ onCartOpen, cartCount }) {
   const navigate = useNavigate();
   const [theme, setTheme] = useState(
     localStorage.getItem('ecom_theme') || 'light'
@@ -26,36 +24,40 @@ export default function Navbar({ onCartOpen, cartCount: externalCount }) {
 
   return (
     <nav className="navbar">
-      <div className="container">
-        <div className="navbar-inner">
-          <Link to="/" className="navbar-brand">
-            🏭 <span>CoEDM</span> Store
-          </Link>
-
-          <div className="navbar-actions">
-            {user ? (
-              <>
-                <Link to="/orders" className="nav-link">My Orders</Link>
-                <button className="nav-link" onClick={handleLogout}>Logout</button>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className="nav-link">Login</Link>
-                <Link to="/register" className="btn btn-primary btn-sm">Sign Up</Link>
-              </>
-            )}
-
-            <button className="theme-toggle" onClick={toggleTheme}>
-              {theme === 'light' ? '🌙' : '☀️'}
-            </button>
-
-            <button className="btn btn-ghost btn-sm cart-btn" onClick={onCartOpen}>
-              🛒 Cart
-              {externalCount > 0 && (
-                <span className="cart-count">{externalCount}</span>
+      <div className="container navbar-inner">
+        <Link to="/" className="navbar-brand">
+          <Package className="text-primary" size={28} />
+          <span>CoEDM Store</span>
+        </Link>
+        <div className="navbar-actions">
+          {user ? (
+            <>
+              {user.is_admin && (
+                <Link to="/admin" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--primary)', fontWeight: 600 }}>
+                  <User size={16} /> Admin Panel
+                </Link>
               )}
-            </button>
-          </div>
+              <Link to="/orders" className="nav-link" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <LogOut size={16} /> My Orders
+              </Link>
+              <button className="nav-link" onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <LogOut size={16} /> {user.full_name} (Logout)
+              </button>
+            </>
+          ) : (
+            <Link to="/login" className="btn btn-ghost" style={{ padding: '8px 16px', borderRadius: 99 }}>
+              Login
+            </Link>
+          )}
+
+          <button className="btn-icon" onClick={toggleTheme} style={{ marginLeft: 8 }}>
+            {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+          </button>
+
+          <button className="btn-icon cart-btn" onClick={onCartOpen}>
+            <ShoppingBag size={20} />
+            {cartCount > 0 && <span className="cart-count">{cartCount}</span>}
+          </button>
         </div>
       </div>
     </nav>

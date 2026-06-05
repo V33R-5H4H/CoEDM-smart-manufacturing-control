@@ -9,6 +9,8 @@ import Checkout from './pages/Checkout';
 import OrderTracking from './pages/OrderTracking';
 import MyOrders from './pages/MyOrders';
 
+import AdminDashboard from './pages/AdminDashboard';
+
 import { getCartCount, getCart, getUser } from './store/cartStore';
 
 export default function App() {
@@ -25,9 +27,11 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', saved);
   }, []);
 
-  const ProtectedRoute = ({ children }) => {
+  const ProtectedRoute = ({ children, adminOnly }) => {
     const user = getUser();
-    return user ? children : <Navigate to="/login" replace />;
+    if (!user) return <Navigate to="/login" replace />;
+    if (adminOnly && !user.is_admin) return <Navigate to="/" replace />;
+    return children;
   };
 
   return (
@@ -52,6 +56,9 @@ export default function App() {
         } />
         <Route path="/orders" element={
           <ProtectedRoute><MyOrders /></ProtectedRoute>
+        } />
+        <Route path="/admin" element={
+          <ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>
         } />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

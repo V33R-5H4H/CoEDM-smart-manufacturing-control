@@ -292,6 +292,7 @@ class ASRSLogic:
                     WHERE sc.item_id = :item_id AND sc.status = 'occupied'
                     ORDER BY b.row_label, b.col_number, sc.sub_slot
                     LIMIT :quantity
+                    FOR UPDATE SKIP LOCKED
                 """),
                 {"item_id": item_id_val, "quantity": quantity}
             ).fetchall()
