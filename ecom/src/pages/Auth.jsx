@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { setAuth } from '../store/cartStore';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { LogIn, UserPlus, AlertCircle, Package } from 'lucide-react';
 
 export default function Auth({ mode = 'login', onAuthChange }) {
@@ -42,7 +42,7 @@ export default function Auth({ mode = 'login', onAuthChange }) {
       onAuthChange?.();
       navigate('/' + redirect.replace(/^\//, ''));
     } catch (err) {
-      setError(err.message);
+      setError(err.message === 'Failed to fetch' ? 'Server offline. Please try again.' : err.message);
     } finally {
       setLoading(false);
     }
@@ -51,23 +51,32 @@ export default function Auth({ mode = 'login', onAuthChange }) {
   return (
     <div className="auth-page" style={{ 
       position: 'relative', 
-      overflow: 'hidden'
+      overflow: 'hidden',
+      minHeight: 'calc(100vh - 73px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '40px 20px',
+      background: 'var(--bg-secondary)'
     }}>
       {/* Background Decor */}
       <div style={{
-        position: 'absolute', top: '-20%', left: '-10%', width: '50%', height: '50%',
+        position: 'absolute', top: '10%', left: '20%', width: '40%', height: '40%',
         background: 'radial-gradient(circle, var(--primary) 0%, transparent 70%)',
-        opacity: 0.1, filter: 'blur(100px)', zIndex: 0
+        opacity: 0.05, filter: 'blur(80px)', zIndex: 0
       }} />
       <div style={{
-        position: 'absolute', bottom: '-20%', right: '-10%', width: '60%', height: '60%',
+        position: 'absolute', bottom: '10%', right: '20%', width: '40%', height: '40%',
         background: 'radial-gradient(circle, var(--primary) 0%, transparent 70%)',
-        opacity: 0.05, filter: 'blur(120px)', zIndex: 0
+        opacity: 0.05, filter: 'blur(80px)', zIndex: 0
       }} />
 
       <motion.div 
         className="glass-panel"
-        style={{ width: '100%', maxWidth: 440, padding: 40, position: 'relative', zIndex: 1, boxShadow: 'var(--shadow-lg)' }}
+        style={{ 
+          width: '100%', maxWidth: 440, padding: 40, position: 'relative', 
+          zIndex: 1, boxShadow: 'var(--shadow-lg)', background: 'var(--bg-card)', borderRadius: 'var(--radius-xl)' 
+        }}
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.4, type: 'spring', bounce: 0.2 }}
@@ -77,8 +86,27 @@ export default function Auth({ mode = 'login', onAuthChange }) {
             <Package size={32} />
           </div>
         </div>
-        <div className="auth-title" style={{ textAlign: 'center', fontSize: '1.75rem', fontWeight: 800 }}>
-          {isRegister ? 'Create Account' : 'Welcome back'}
+        
+        {/* Toggle Tabs */}
+        <div style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: 4, marginBottom: 32 }}>
+          <Link to="/login" style={{ 
+            flex: 1, textAlign: 'center', padding: '8px 16px', borderRadius: 'var(--radius-sm)',
+            background: !isRegister ? 'var(--bg-card)' : 'transparent',
+            boxShadow: !isRegister ? 'var(--shadow-sm)' : 'none',
+            color: !isRegister ? 'var(--text-primary)' : 'var(--text-secondary)',
+            fontWeight: 600, transition: 'all 0.2s'
+          }}>Login</Link>
+          <Link to="/register" style={{ 
+            flex: 1, textAlign: 'center', padding: '8px 16px', borderRadius: 'var(--radius-sm)',
+            background: isRegister ? 'var(--bg-card)' : 'transparent',
+            boxShadow: isRegister ? 'var(--shadow-sm)' : 'none',
+            color: isRegister ? 'var(--text-primary)' : 'var(--text-secondary)',
+            fontWeight: 600, transition: 'all 0.2s'
+          }}>Sign Up</Link>
+        </div>
+
+        <div className="auth-title" style={{ textAlign: 'center', fontSize: '1.5rem', fontWeight: 800, marginBottom: 8 }}>
+          {isRegister ? 'Create an Account' : 'Welcome back'}
         </div>
         <div className="auth-sub" style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: 32 }}>
           {isRegister
@@ -117,31 +145,26 @@ export default function Auth({ mode = 'login', onAuthChange }) {
                 initial={{ opacity: 0, height: 0 }} 
                 animate={{ opacity: 1, height: 'auto' }} 
                 exit={{ opacity: 0, height: 0 }}
-                style={{
+                style={{ overflow: 'hidden' }}
+              >
+                <div style={{
                   background: 'var(--error-bg)', color: 'var(--error)',
                   padding: '12px 16px', borderRadius: 'var(--radius-sm)',
-                  fontSize: '0.875rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8
-                }}
-              >
-                <AlertCircle size={18} /> {error}
+                  fontSize: '0.875rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8,
+                  marginTop: 4
+                }}>
+                  <AlertCircle size={18} /> {error}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
 
           <button className="btn btn-primary btn-lg" type="submit" disabled={loading}
-            style={{ marginTop: 8, width: '100%', display: 'flex', justifyContent: 'center' }}>
+            style={{ marginTop: 8, width: '100%', display: 'flex', justifyContent: 'center', padding: '12px 24px' }}>
             {loading ? <span className="spinner" style={{ width: 20, height: 20, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderTopColor: '#fff' }} /> : 
-             isRegister ? <><UserPlus size={18} /> Create Account</> : <><LogIn size={18} /> Sign In</>}
+             isRegister ? <><UserPlus size={18} /> Sign Up</> : <><LogIn size={18} /> Sign In</>}
           </button>
         </form>
-
-        <div style={{ marginTop: 32, textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-          {isRegister ? (
-            <>Already have an account? <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 600 }}>Sign in</Link></>
-          ) : (
-            <>No account? <Link to="/register" style={{ color: 'var(--primary)', fontWeight: 600 }}>Sign up</Link></>
-          )}
-        </div>
       </motion.div>
     </div>
   );

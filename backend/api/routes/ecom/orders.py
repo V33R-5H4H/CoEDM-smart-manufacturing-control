@@ -137,6 +137,7 @@ async def place_order(body: PlaceOrderRequest, user=Depends(get_current_ecom_use
                 SELECT COALESCE(SUM(quantity), 0)
                 FROM storage_compartments
                 WHERE item_id = :iid AND status = 'occupied'
+                FOR UPDATE
             """), {"iid": ci.item_id}).scalar()
 
             if avail < ci.quantity:
@@ -162,6 +163,9 @@ async def place_order(body: PlaceOrderRequest, user=Depends(get_current_ecom_use
         """), {"uid": ecom_user_id}).fetchone()
         customer_email, customer_name = ecom_row
 
+        import html
+        sanitized_addr = html.escape(body.shipping_address)
+
         # ── Step 4: Create order ──────────────────────────────────────────────
         order_id = session.execute(text("""
             INSERT INTO orders
@@ -172,7 +176,7 @@ async def place_order(body: PlaceOrderRequest, user=Depends(get_current_ecom_use
             RETURNING order_id
         """), {
             "uid": ecom_user_id, "name": customer_name,
-            "email": customer_email, "addr": body.shipping_address,
+            "email": customer_email, "addr": sanitized_addr,
             "now": ist_now()
         }).fetchone()[0]
 

@@ -22,7 +22,9 @@ from backend.core.timezone import ist_now
 logger = logging.getLogger(__name__)
 
 # ── JWT Config ────────────────────────────────────────────────────────────────
-JWT_SECRET = "coedm-ecom-secret-2026"   # move to settings/.env in production
+import os
+import secrets
+JWT_SECRET = os.environ.get("JWT_SECRET", secrets.token_urlsafe(32))   # secure fallback
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = 24
 
@@ -120,6 +122,9 @@ def register(body: RegisterRequest):
         if existing:
             raise HTTPException(status_code=409, detail="Email already registered")
 
+        import html
+        sanitized_name = html.escape(body.full_name)
+        
         user_id = str(uuid.uuid4())
         pw_hash = _hash_password(body.password)
         session.execute(
@@ -128,12 +133,12 @@ def register(body: RegisterRequest):
                 VALUES (:uid, :email, :full_name, :pw, :now)
             """),
             {"uid": user_id, "email": body.email.lower(),
-             "full_name": body.full_name, "pw": pw_hash, "now": ist_now()}
+             "full_name": sanitized_name, "pw": pw_hash, "now": ist_now()}
         )
 
     token = _create_token(user_id, body.email.lower(), is_admin=False)
     return AuthResponse(token=token, user_id=user_id,
-                        email=body.email.lower(), full_name=body.full_name, is_admin=False)
+                        email=body.email.lower(), full_name=sanitized_name, is_admin=False)
 
 
 @router.post("/login", response_model=AuthResponse)
