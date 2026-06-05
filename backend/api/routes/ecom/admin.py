@@ -97,7 +97,7 @@ def get_inventory_details(admin_user: dict = Depends(get_current_admin_user)):
         rows = session.execute(
             text("""
                 SELECT i.item_id, i.sku, i.name, i.price, i.item_type,
-                       c.compartment_id, c.status, c.quantity
+                       c.compartment_id, c.status, c.quantity, i.image_url
                 FROM storage_items i
                 LEFT JOIN storage_compartments c ON c.item_id = i.item_id
                 WHERE i.item_type = 'finished'
@@ -115,6 +115,7 @@ def get_inventory_details(admin_user: dict = Depends(get_current_admin_user)):
                 "name": r[2],
                 "price": float(r[3]),
                 "item_type": r[4],
+                "image_url": r[8],
                 "total_quantity": 0,
                 "locations": []
             }

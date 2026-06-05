@@ -178,9 +178,18 @@ export default function AdminDashboard() {
                 {inventory.map(item => (
                   <div key={item.item_id} className="glass-panel" style={{ padding: 24 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                      <div>
-                        <h3 style={{ margin: '0 0 4px 0', fontSize: '1.25rem' }}>{item.name}</h3>
-                        <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>SKU: {item.sku}</span>
+                      <div style={{ display: 'flex', gap: 16 }}>
+                        {item.image_url ? (
+                          <img src={item.image_url} alt={item.name} style={{ width: 64, height: 64, objectFit: 'contain', background: '#fff', borderRadius: 8 }} />
+                        ) : (
+                          <div style={{ width: 64, height: 64, background: 'var(--surface-hover)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Package size={24} className="text-muted" />
+                          </div>
+                        )}
+                        <div>
+                          <h3 style={{ margin: '0 0 4px 0', fontSize: '1.25rem' }}>{item.name}</h3>
+                          <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>SKU: {item.sku}</span>
+                        </div>
                       </div>
                       <div style={{ background: 'var(--primary)', color: '#fff', padding: '4px 12px', borderRadius: 99, fontWeight: 700, fontSize: '0.875rem' }}>
                         {item.total_quantity} in stock

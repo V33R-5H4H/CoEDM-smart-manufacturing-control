@@ -21,8 +21,8 @@ export default function ProductModal({ product, onClose, onCartChange }) {
   if (!product) return null;
   
   const inStock = product.available_qty > 0;
-  const lowStock = inStock && product.available_qty <= 5;
-  const imageSrc = getProductImage(product.name);
+  const lowStock = product.available_qty > 0 && product.available_qty <= 5;
+  const imageSrc = product.image_url || getProductImage(product.name);
 
   const handleAdd = () => {
     if (!inStock) return;

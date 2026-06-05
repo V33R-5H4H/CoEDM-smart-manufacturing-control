@@ -20,7 +20,7 @@ export default function ProductCard({ product, onCartChange, onClick }) {
   
   const inStock = product.available_qty > 0;
   const lowStock = product.available_qty > 0 && product.available_qty <= 5;
-  const imageSrc = getProductImage(product.name);
+  const imageSrc = product.image_url || getProductImage(product.name);
 
   const handleAdd = (e) => {
     e.stopPropagation();
