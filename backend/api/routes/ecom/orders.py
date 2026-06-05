@@ -19,7 +19,7 @@ import asyncio
 from datetime import datetime
 from typing import List
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel
 from sqlalchemy import text
 
@@ -120,7 +120,7 @@ async def _broadcast_order_event(order_id: int, item_id: int, status: str,
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("")
-async def place_order(body: PlaceOrderRequest, user=Depends(get_current_ecom_user)):
+async def place_order(body: PlaceOrderRequest, background_tasks: BackgroundTasks, user=Depends(get_current_ecom_user)):
     """
     Place an order. Triggers ASRS retrieval for each item immediately.
     If the ASRS PLC is connected, the physical shuttle will move.
@@ -209,11 +209,37 @@ async def place_order(body: PlaceOrderRequest, user=Depends(get_current_ecom_use
     finally:
         session.close()
 
-    # ── Step 6: Trigger ASRS PLC retrieval for each item ─────────────────────
+    # ── Step 6: Trigger ASRS PLC retrieval in the background ─────────────────
+    background_tasks.add_task(
+        _process_retrievals_background,
+        body.items,
+        queue_map,
+        plc_connected,
+        order_id
+    )
+
+    return {
+        "order_id": order_id,
+        "status": "pending" if plc_connected else "pending",
+        "plc_connected": plc_connected,
+        "retrieval": [],  # Retrieved asynchronously
+        "message": (
+            "Order placed and ASRS retrieval queued in background."
+            if plc_connected else
+            "Order placed. ASRS is offline — stock reserved for physical pickup."
+        )
+    }
+
+
+def _process_retrievals_background(items, queue_map, plc_connected, order_id):
+    """
+    Background worker that runs the physical ASRS retrieval sequentially.
+    """
+    logger.info(f"[ECOM BACKGROUND] Starting sequential retrieval for order #{order_id}")
     retrieval_results = []
     all_ok = True
 
-    for ci in body.items:
+    for ci in items:
         queue_id = queue_map[ci.item_id]
         compartments_cleared = []
         plc_ok = False
@@ -225,7 +251,7 @@ async def place_order(body: PlaceOrderRequest, user=Depends(get_current_ecom_use
             s2.commit()
 
             if plc_connected:
-                # ── Actually run the ASRS PLC ─────────────────────────────────
+                # ── Actually run the ASRS PLC (this blocks and waits sequentially)
                 result = asrs_logic.retrieve_product_with_asrs(
                     str(ci.item_id), ci.quantity
                 )
@@ -245,7 +271,7 @@ async def place_order(body: PlaceOrderRequest, user=Depends(get_current_ecom_use
                     s2.commit()
                 else:
                     # PLC failed — keep queue as processing
-                    logger.warning(f"[ECOM] PLC retrieval failed for item {ci.item_id}")
+                    logger.warning(f"[ECOM BACKGROUND] PLC retrieval failed for item {ci.item_id}")
                     all_ok = False
 
             else:
@@ -275,7 +301,7 @@ async def place_order(body: PlaceOrderRequest, user=Depends(get_current_ecom_use
 
         except Exception as e:
             s2.rollback()
-            logger.error(f"[ECOM] Retrieval error for item {ci.item_id}: {e}")
+            logger.error(f"[ECOM BACKGROUND] Retrieval error for item {ci.item_id}: {e}")
             all_ok = False
         finally:
             s2.close()
@@ -288,15 +314,20 @@ async def place_order(body: PlaceOrderRequest, user=Depends(get_current_ecom_use
 
         # Broadcast to ASRS HMI WebSocket clients
         try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                asyncio.create_task(_broadcast_order_event(
+            # We are in a background thread, so create a new event loop
+            # and run the broadcast coroutine until complete
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            new_loop.run_until_complete(
+                _broadcast_order_event(
                     order_id, ci.item_id,
                     "processing" if plc_ok else "pending",
                     compartments_cleared, plc_ok
-                ))
+                )
+            )
+            new_loop.close()
         except Exception as e:
-            logger.warning(f"[ECOM] Broadcast task error: {e}")
+            logger.warning(f"[ECOM BACKGROUND] Broadcast task error: {e}")
 
     # ── Step 7: Update overall order status ──────────────────────────────────
     final_status = "processing" if all_ok else "pending"
@@ -306,22 +337,13 @@ async def place_order(body: PlaceOrderRequest, user=Depends(get_current_ecom_use
             UPDATE orders SET order_status=:st, updated_at=:now WHERE order_id=:oid
         """), {"st": final_status, "now": ist_now(), "oid": order_id})
         s3.commit()
-    except Exception:
+    except Exception as e:
+        logger.error(f"[ECOM BACKGROUND] Failed to update final order status: {e}")
         s3.rollback()
     finally:
         s3.close()
-
-    return {
-        "order_id": order_id,
-        "status": final_status,
-        "plc_connected": plc_connected,
-        "retrieval": retrieval_results,
-        "message": (
-            "Order placed and ASRS retrieval triggered."
-            if plc_connected else
-            "Order placed. ASRS is offline — stock reserved for physical pickup."
-        )
-    }
+    
+    logger.info(f"[ECOM BACKGROUND] Finished processing order #{order_id}")
 
 
 @router.get("/recent/feed")

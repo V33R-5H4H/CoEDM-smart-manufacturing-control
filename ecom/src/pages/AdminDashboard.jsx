@@ -63,7 +63,7 @@ export default function AdminDashboard() {
           style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 'var(--radius-md)',
             background: activeTab === 'users' ? 'var(--primary)' : 'transparent',
-            color: activeTab === 'users' ? '#fff' : 'var(--text-secondary)',
+            color: activeTab === 'users' ? 'var(--bg-primary)' : 'var(--text-secondary)',
             fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'all 0.2s'
           }}
         >
@@ -74,7 +74,7 @@ export default function AdminDashboard() {
           style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 'var(--radius-md)',
             background: activeTab === 'orders' ? 'var(--primary)' : 'transparent',
-            color: activeTab === 'orders' ? '#fff' : 'var(--text-secondary)',
+            color: activeTab === 'orders' ? 'var(--bg-primary)' : 'var(--text-secondary)',
             fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'all 0.2s'
           }}
         >
@@ -85,7 +85,7 @@ export default function AdminDashboard() {
           style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 'var(--radius-md)',
             background: activeTab === 'inventory' ? 'var(--primary)' : 'transparent',
-            color: activeTab === 'inventory' ? '#fff' : 'var(--text-secondary)',
+            color: activeTab === 'inventory' ? 'var(--bg-primary)' : 'var(--text-secondary)',
             fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'all 0.2s'
           }}
         >
@@ -191,7 +191,7 @@ export default function AdminDashboard() {
                           <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>SKU: {item.sku}</span>
                         </div>
                       </div>
-                      <div style={{ background: 'var(--primary)', color: '#fff', padding: '4px 12px', borderRadius: 99, fontWeight: 700, fontSize: '0.875rem', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                      <div style={{ background: 'var(--primary)', color: 'var(--bg-primary)', padding: '4px 12px', borderRadius: 99, fontWeight: 700, fontSize: '0.875rem', flexShrink: 0, whiteSpace: 'nowrap' }}>
                         {item.total_quantity} in stock
                       </div>
                     </div>

@@ -322,14 +322,30 @@ class ASRSLogic:
                     "row_number": row_number
                 })
 
-            # STEP 4: Send PLC commands for each box
+            # STEP 4: Send PLC commands sequentially for each box
+            import time
             plc_results = []
             plc_status = "OK"
             plc_failed = False
             for box_id in sorted(box_ids):
                 retrieval_command = box_id  # e.g., "A1" (no 'S' suffix)
                 try:
+                    logger.info(f"Issuing sequential retrieval command for box {box_id}")
                     result = self.asrs_controller.run(retrieval_command)
+                    
+                    # Wait for the physical shuttle to complete its operation (timeout 90s)
+                    timeout = 90
+                    start_t = time.time()
+                    time.sleep(1)  # Debounce: let PLC transition state
+                    
+                    while time.time() - start_t < timeout:
+                        state_snap = self.asrs_controller.get_shuttle_state()
+                        current_state = state_snap.get("state", "idle")
+                        if current_state in ("idle", "error"):
+                            logger.info(f"Shuttle returned to {current_state} after {time.time() - start_t:.1f}s")
+                            break
+                        time.sleep(1)
+                        
                     plc_results.append({
                         "command": retrieval_command,
                         "success": True,

@@ -146,7 +146,7 @@ export default function OrderTracking() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     background: isDone ? 'var(--primary)' : isActive ? 'var(--bg-elevated)' : 'var(--bg-secondary)',
                     border: `2px solid ${isDone ? 'var(--primary)' : isActive ? 'var(--primary)' : 'var(--border)'}`,
-                    color: isDone ? '#fff' : isActive ? 'var(--primary)' : 'var(--text-muted)',
+                    color: isDone ? 'var(--bg-primary)' : isActive ? 'var(--primary)' : 'var(--text-muted)',
                     boxShadow: isActive ? '0 0 15px var(--primary)' : 'none',
                     zIndex: 2,
                   }}

@@ -161,7 +161,7 @@ export default function Auth({ mode = 'login', onAuthChange }) {
 
           <button className="btn btn-primary btn-lg" type="submit" disabled={loading}
             style={{ marginTop: 8, width: '100%', display: 'flex', justifyContent: 'center', padding: '12px 24px' }}>
-            {loading ? <span className="spinner" style={{ width: 20, height: 20, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderTopColor: '#fff' }} /> : 
+            {loading ? <span className="spinner" style={{ width: 20, height: 20, borderWidth: 2, borderColor: 'transparent', borderTopColor: 'currentColor' }} /> : 
              isRegister ? <><UserPlus size={18} /> Sign Up</> : <><LogIn size={18} /> Sign In</>}
           </button>
         </form>
