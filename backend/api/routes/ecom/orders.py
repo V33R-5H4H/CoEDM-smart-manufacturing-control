@@ -133,12 +133,13 @@ async def place_order(body: PlaceOrderRequest, user=Depends(get_current_ecom_use
     session = InventorySessionLocal()
     try:
         for ci in body.items:
-            avail = session.execute(text("""
-                SELECT COALESCE(SUM(quantity), 0)
+            rows = session.execute(text("""
+                SELECT quantity
                 FROM storage_compartments
                 WHERE item_id = :iid AND status = 'occupied'
                 FOR UPDATE
-            """), {"iid": ci.item_id}).scalar()
+            """), {"iid": ci.item_id}).fetchall()
+            avail = sum(row[0] for row in rows)
 
             if avail < ci.quantity:
                 raise HTTPException(status_code=400,
