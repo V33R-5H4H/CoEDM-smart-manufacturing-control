@@ -168,7 +168,15 @@ function ItemsTab() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '24px' }}>
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      gap: '24px', 
+      height: '100%',
+      overflow: 'auto',
+      padding: '16px 24px',
+      position: 'relative'
+    }}>
       
       {/* Control Panel / Form */}
       <div style={{

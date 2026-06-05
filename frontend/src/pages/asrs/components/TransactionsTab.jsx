@@ -67,7 +67,15 @@ function TransactionsTab() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '24px' }}>
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      gap: '24px', 
+      height: '100%',
+      overflow: 'auto',
+      padding: '16px 24px',
+      position: 'relative'
+    }}>
       
       {/* Control Panel */}
       <div style={{
@@ -92,18 +100,17 @@ function TransactionsTab() {
               <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px' }} htmlFor="sortOption">
                 Sort By
               </label>
-              <select
-                style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '4px', padding: '8px 12px', color: 'var(--text-primary)', fontSize: '12px', height: '35px', minWidth: '160px', cursor: 'pointer' }}
-                id="sortOption"
+              <CustomSelect
                 value={sortOption}
                 onChange={handleSortChange}
                 disabled={loading}
-              >
-                <option value="id_asc">Transaction ID (asc)</option>
-                <option value="newest_first">Newest First</option>
-                <option value="added_only">Added Only</option>
-                <option value="retrieved_only">Retrieved Only</option>
-              </select>
+                options={[
+                  { value: 'id_asc', label: 'Transaction ID (asc)' },
+                  { value: 'newest_first', label: 'Newest First' },
+                  { value: 'added_only', label: 'Added Only' },
+                  { value: 'retrieved_only', label: 'Retrieved Only' }
+                ]}
+              />
             </div>
             
             <button
@@ -212,6 +219,98 @@ function TransactionsTab() {
           </table>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Custom Select Component for perfect theme consistency
+function CustomSelect({ value, onChange, options, disabled }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find(opt => opt.value === value) || options[0];
+
+  return (
+    <div ref={dropdownRef} style={{ position: 'relative', minWidth: '160px' }}>
+      <div 
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        style={{ 
+          background: 'var(--bg-primary)', 
+          border: isOpen ? '1px solid var(--primary)' : '1px solid var(--border)', 
+          borderRadius: '4px', 
+          padding: '0 12px', 
+          color: 'var(--text-primary)', 
+          fontSize: '12px', 
+          height: '35px', 
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          opacity: disabled ? 0.6 : 1,
+          boxShadow: isOpen ? '0 0 0 1px var(--primary)' : 'none',
+          transition: 'all 0.2s',
+          userSelect: 'none'
+        }}
+      >
+        <span>{selectedOption.label}</span>
+        <span className="material-symbols-outlined" style={{ fontSize: '16px', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', color: 'var(--text-muted)' }}>
+          expand_more
+        </span>
+      </div>
+      
+      {isOpen && (
+        <div style={{
+          position: 'absolute',
+          top: 'calc(100% + 4px)',
+          left: 0,
+          right: 0,
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border)',
+          borderRadius: '4px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+          zIndex: 50,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          {options.map((opt) => (
+            <div
+              key={opt.value}
+              onClick={() => {
+                onChange({ target: { value: opt.value } });
+                setIsOpen(false);
+              }}
+              style={{
+                padding: '10px 12px',
+                fontSize: '12px',
+                color: opt.value === value ? 'var(--primary)' : 'var(--text-primary)',
+                background: opt.value === value ? 'var(--bg-hover)' : 'transparent',
+                cursor: 'pointer',
+                transition: 'background 0.2s',
+                fontWeight: opt.value === value ? 600 : 400
+              }}
+              onMouseEnter={(e) => {
+                if (opt.value !== value) e.currentTarget.style.background = 'var(--bg-hover)';
+              }}
+              onMouseLeave={(e) => {
+                if (opt.value !== value) e.currentTarget.style.background = 'transparent';
+              }}
+            >
+              {opt.label}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -121,7 +121,7 @@ export default function OrderFeed({ wsUrl }) {
   };
 
   return (
-    <div className="asm-hud-card" style={{ minWidth: 260 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header */}
       <div style={{
         display: 'flex', flexDirection: 'column', gap: '10px',

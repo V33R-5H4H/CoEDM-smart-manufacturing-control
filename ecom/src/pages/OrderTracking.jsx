@@ -75,17 +75,20 @@ export default function OrderTracking() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
     >
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16 }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 32, marginTop: 40 }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <h1 className="page-title">Order <span style={{ color: 'var(--text-muted)' }}>#{order.order_id}</span></h1>
-            <span className={`status-badge ${order.order_status}`}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 8 }}>
+            <h1 className="page-title" style={{ margin: 0 }}>
+              Order{" "}
+              <span style={{ color: 'var(--text-muted)' }}>#{order.order_id}</span>
+            </h1>
+            <span className={`status-badge ${order.order_status}`} style={{ alignSelf: 'center' }}>
               {order.order_status}
             </span>
           </div>
-          <p className="page-subtitle">Placed on {formatDate(order.created_at)}</p>
+          <p className="page-subtitle" style={{ margin: 0 }}>Placed on {formatDate(order.created_at)}</p>
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={fetchOrder}>
+        <button className="btn btn-secondary btn-sm" onClick={fetchOrder} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <RefreshCcw size={16} /> Refresh
         </button>
       </div>
@@ -120,14 +123,14 @@ export default function OrderTracking() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1, maxWidth: 800, margin: '0 auto' }}>
           
           {/* Background Track */}
-          <div style={{ position: 'absolute', top: 24, left: '10%', right: '10%', height: 4, background: 'var(--border)', borderRadius: 2, zIndex: -1 }} />
+          <div style={{ position: 'absolute', top: 22, left: '12%', right: '12%', height: 4, background: 'var(--border)', borderRadius: 2, zIndex: 0 }} />
           
           {/* Active Track (animated) */}
           <motion.div 
             initial={{ width: 0 }}
-            animate={{ width: `${(currentStep / (STEP_LABELS.length - 1)) * 80}%` }}
+            animate={{ width: `${(currentStep / (STEP_LABELS.length - 1)) * 76}%` }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            style={{ position: 'absolute', top: 24, left: '10%', height: 4, background: 'var(--primary)', borderRadius: 2, zIndex: -1 }} 
+            style={{ position: 'absolute', top: 22, left: '12%', height: 4, background: 'var(--primary)', borderRadius: 2, zIndex: 1 }} 
           />
 
           {STEP_LABELS.map((label, i) => {
