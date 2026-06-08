@@ -597,7 +597,9 @@ export default function Dashboard() {
                 {transactions.map((row, i) => {
                   const eventTime = new Date(row.time);
                   let timeStr = row.time;
-                  try { timeStr = eventTime.toISOString().substring(11, 23); } catch (e) { }
+                  try { 
+                    timeStr = eventTime.toLocaleTimeString('en-IN', { hour12: false }) + '.' + String(eventTime.getMilliseconds()).padStart(3, '0'); 
+                  } catch (e) { }
                   let code = "OP_OK";
                   if (row.severity === "warning") code = "WARN";
                   if (row.severity === "critical") code = "ERR";
