@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, ShoppingCart, Package, CheckCircle, Clock, XCircle, Box, MapPin } from 'lucide-react';
-import { getToken } from '../store/cartStore';
+import { getToken, clearAuth } from '../store/cartStore';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('users');
@@ -26,6 +26,12 @@ export default function AdminDashboard() {
         fetch('/api/ecom/admin/orders', { headers }),
         fetch('/api/ecom/admin/inventory', { headers })
       ]);
+
+      if (uRes.status === 401 || oRes.status === 401 || iRes.status === 401) {
+        clearAuth();
+        window.location.href = '/login';
+        return;
+      }
 
       if (uRes.ok) setUsers(await uRes.json());
       if (oRes.ok) setOrders(await oRes.json());

@@ -41,6 +41,7 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
   const [boxToDelete, setBoxToDelete] = useState(null);
   const [selectedBox, setSelectedBox] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [activeOperationData, setActiveOperationData] = useState(null);
   const connected = ledConnected;
 
   // Ref to hold the latest ledStates for use in background async polling intervals
@@ -61,6 +62,7 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
     // 1. Immediately minimize the bottom sheet
     setShowDetails(false);
     setSelectedBox(null);
+    setActiveOperationData({ type: 'store', boxId, subId, itemId });
 
     try {
       const SubCompartmentService = (await import('../services/subCompartmentService')).default;
@@ -106,6 +108,7 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
           clearInterval(intervalId);
           toast.dismiss('store-wait');
           toast.error('Timeout: LED did not confirm completion');
+          setActiveOperationData(null);
         }
       }, checkIntervalMs);
 
@@ -113,6 +116,7 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
       console.error('Store operation error:', error);
       toast.dismiss('store-wait');
       toast.error(error.message || 'Failed to store item');
+      setActiveOperationData(null);
     }
   };
 
@@ -120,6 +124,7 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
     // 1. Immediately minimize the bottom sheet
     setShowDetails(false);
     setSelectedBox(null);
+    setActiveOperationData({ type: 'retrieve', boxId, subId, itemId });
 
     try {
       const SubCompartmentService = (await import('../services/subCompartmentService')).default;
@@ -166,6 +171,7 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
           clearInterval(intervalId);
           toast.dismiss('retrieve-wait');
           toast.error('Timeout: LED did not confirm completion');
+          setActiveOperationData(null);
         }
       }, checkIntervalMs);
 
@@ -173,6 +179,7 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
       console.error('Retrieve operation error:', error);
       toast.dismiss('retrieve-wait');
       toast.error(error.message || 'Failed to retrieve item');
+      setActiveOperationData(null);
     }
   };
 
@@ -254,8 +261,16 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
     getEffectiveLEDState,
     isSourceBlinking,
     visualShuttle,
-    operationPhase
+    operationPhase,
+    operationType
   } = useOperationShadowState(ledStates, shuttleState);
+
+  // Clear active operation data when shadow state goes idle
+  useEffect(() => {
+    if (operationPhase === 'IDLE') {
+      setActiveOperationData(null);
+    }
+  }, [operationPhase]);
 
   // Debug: Log when WebSocket data changes
   useEffect(() => {
@@ -348,6 +363,8 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
           }}
           shuttle={visualShuttle}
           operationPhase={operationPhase}
+          operationType={operationType}
+          activeOperationData={activeOperationData}
           selectedBoxId={selectedBox?.box_id}
           onHomeShuttle={handleHomeShuttle}
           safetyCurtainTriggered={safetyCurtainTriggered}
@@ -578,6 +595,8 @@ function RackView({
   setSelectedBox,
   shuttle,
   operationPhase,
+  operationType,
+  activeOperationData,
   selectedBoxId,
   onHomeShuttle,
   safetyCurtainTriggered = false
@@ -839,7 +858,12 @@ function RackView({
           ))}
 
           {/* Visual Shuttle Carriage Motion Overlay */}
-          <ShuttleRail shuttle={shuttle} />
+          <ShuttleRail 
+            shuttle={shuttle} 
+            operationPhase={operationPhase}
+            operationType={operationType}
+            activeOperationData={activeOperationData}
+          />
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
-import { authHeaders } from '../store/cartStore';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { authHeaders, clearAuth } from '../store/cartStore';
 import { motion } from 'framer-motion';
 import { Package, Activity, AlertTriangle, CheckCircle, RefreshCcw, MapPin, Search } from 'lucide-react';
 
@@ -23,6 +23,7 @@ function formatDate(s) {
 export default function OrderTracking() {
   const { order_id } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const fresh = location.state?.fresh;
   const plcNote = location.state?.plc_connected === false;
 
@@ -34,9 +35,22 @@ export default function OrderTracking() {
     fetch(`/api/ecom/orders/${order_id}`, {
       headers: authHeaders(),
     })
-      .then(r => { if (!r.ok) throw new Error('Order not found'); return r.json(); })
+      .then(r => { 
+        if (r.status === 401) {
+          clearAuth();
+          navigate('/login');
+          throw new Error('Unauthorized');
+        }
+        if (!r.ok) throw new Error('Order not found'); 
+        return r.json(); 
+      })
       .then(data => { setOrder(data); setLoading(false); })
-      .catch(err => { setError(err.message); setLoading(false); });
+      .catch(err => { 
+        if (err.message !== 'Unauthorized') {
+          setError(err.message); 
+          setLoading(false); 
+        }
+      });
   };
 
   useEffect(() => {

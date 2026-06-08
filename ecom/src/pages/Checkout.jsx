@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCart, cartTotal, clearCart, authHeaders, getUser } from '../store/cartStore';
+import { getCart, cartTotal, clearCart, authHeaders, getUser, clearAuth } from '../store/cartStore';
 import { motion } from 'framer-motion';
 import { MapPin, User, CheckCircle, PackageOpen, Loader2 } from 'lucide-react';
 
@@ -51,7 +51,14 @@ export default function Checkout({ onCartChange }) {
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Order placement failed');
+      if (!res.ok) {
+        if (res.status === 401) {
+          clearAuth();
+          navigate('/login');
+          return;
+        }
+        throw new Error(data.detail || 'Order placement failed');
+      }
 
       clearCart();
       onCartChange?.();

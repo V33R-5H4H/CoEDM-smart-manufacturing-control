@@ -99,6 +99,7 @@ export function useOperationShadowState(ledStates, shuttleState) {
 
   // Operation tracking
   const [operationPhase, setOperationPhase] = useState('IDLE');
+  const [operationType, setOperationType] = useState(null); // 'store' or 'retrieve'
   const pendingOperationRef = useRef(null);
   const lastKnownPositionRef = useRef(null); // Last known position for operation detection
   const prevShuttlePositionRef = useRef(null); // NEW: Track previous shuttle position
@@ -215,6 +216,7 @@ export function useOperationShadowState(ledStates, shuttleState) {
     // Store commands end with 'S' (e.g. "A1S"), retrieve commands don't (e.g. "A1").
     const currentCommand = shuttleState?.command || '';
     const isStoreOperation = currentCommand.endsWith('S');
+    setOperationType(isStoreOperation ? 'store' : 'retrieve');
 
     console.log('[ShadowState] Checking operation type...');
     console.log('[ShadowState]   command:', currentCommand);
@@ -259,6 +261,7 @@ export function useOperationShadowState(ledStates, shuttleState) {
     setVisualShuttle(null);
 
     setOperationPhase('IDLE');
+    setOperationType(null);
     pendingOperationRef.current = null;
 
     console.log('[ShadowState] Operation complete');
@@ -360,6 +363,7 @@ export function useOperationShadowState(ledStates, shuttleState) {
 
     // Diagnostic info
     operationPhase,
+    operationType,
     pendingOperation: pendingOperationRef.current
   };
 }
