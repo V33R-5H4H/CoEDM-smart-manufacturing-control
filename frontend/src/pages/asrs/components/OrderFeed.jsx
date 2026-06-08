@@ -49,10 +49,11 @@ export default function OrderFeed({ wsUrl }) {
 
         setOrders(prev => {
           // Update existing or prepend new
-          const idx = prev.findIndex(o => o.order_id === payload.order_id);
+          const idx = prev.findIndex(o => o.sub_id === payload.sub_id);
           const entry = {
             order_id:    payload.order_id,
             item_id:     payload.item_id,
+            sub_id:      payload.sub_id,
             status:      payload.status,
             plc_ok:      payload.plc_ok,
             compartments: payload.compartments_cleared || [],
@@ -63,7 +64,7 @@ export default function OrderFeed({ wsUrl }) {
             updated[idx] = entry;
             return updated;
           }
-          return [entry, ...prev].slice(0, 10); // keep last 10
+          return [entry, ...prev].slice(0, 20); // keep last 20
         });
       } catch { /* ignore non-JSON */ }
     };
@@ -167,7 +168,7 @@ export default function OrderFeed({ wsUrl }) {
           {orders.map((order, i) => {
             const sc = STATUS_COLORS[order.status] || STATUS_COLORS.pending;
             return (
-              <div key={`${order.order_id}-${i}`} style={{
+              <div key={`${order.order_id}-${order.sub_id}-${i}`} style={{
                 borderRadius: 6,
                 border: '1px solid var(--border, #e2e8f0)',
                 padding: '8px 10px',
@@ -176,7 +177,7 @@ export default function OrderFeed({ wsUrl }) {
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 700, fontFamily: 'monospace' }}>
-                    #ORD-{order.order_id}
+                    #ORD-{order.order_id}-{order.sub_id}
                   </span>
                   <span style={{
                     background: sc.bg, color: sc.color,

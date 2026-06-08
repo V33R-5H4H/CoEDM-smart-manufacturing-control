@@ -50,7 +50,7 @@ class PlaceOrderRequest(BaseModel):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _enqueue_retrieval(session, item_id: int, qty: int, ecom_user_id: str) -> int:
+def _enqueue_retrieval(session, item_id: int, ecom_user_id: str, order_id: int) -> int:
     """Insert a retrieval_queue entry and return queue_id."""
     row = session.execute(text("""
         INSERT INTO retrieval_queue
@@ -60,7 +60,7 @@ def _enqueue_retrieval(session, item_id: int, qty: int, ecom_user_id: str) -> in
     """), {
         "iid": item_id,
         "now": ist_now(),
-        "note": f"ecom order from user {ecom_user_id} — qty {qty}"
+        "note": f"Automated ecom order #{order_id} from user {ecom_user_id}"
     }).fetchone()
     return row[0]
 
@@ -96,21 +96,22 @@ def _log_transaction(session, item_id: int, compartment_id: str,
     })
 
 
-async def _broadcast_order_event(order_id: int, item_id: int, status: str,
-                                  compartments: list, plc_ok: bool):
-    """Push a typed event to all ASRS WebSocket clients."""
+async def _broadcast_order_event(order_id: int, item_id: int, sub_id: int, status: str, compartments: list, plc_ok: bool):
+    """Broadcast an ecom order status update to the ASRS dashboard."""
     try:
         from backend.websockets.asrs_broadcaster import led_ws_manager
         import orjson
+        payload = {
+            "order_id": order_id,
+            "item_id": item_id,
+            "sub_id": sub_id,
+            "status": status,
+            "plc_ok": plc_ok,
+            "compartments_cleared": compartments,
+        }
         msg = orjson.dumps({
             "type": "ecom_order",
-            "payload": {
-                "order_id": order_id,
-                "item_id": item_id,
-                "status": status,
-                "plc_ok": plc_ok,
-                "compartments_cleared": compartments,
-            }
+            "payload": payload
         }).decode()
         await led_ws_manager._send_to_all(msg)
     except Exception as e:
@@ -184,7 +185,7 @@ async def place_order(body: PlaceOrderRequest, background_tasks: BackgroundTasks
         session.flush()
 
         # ── Step 5: Create order_items + retrieval_queue entries ──────────────
-        queue_map = {}   # item_id → queue_id
+        queue_map = {}   # item_id → list of queue_ids
         for ci in body.items:
             price = prices[ci.item_id]["price"]
             session.execute(text("""
@@ -193,8 +194,10 @@ async def place_order(body: PlaceOrderRequest, background_tasks: BackgroundTasks
             """), {"oid": order_id, "iid": ci.item_id,
                    "qty": ci.quantity, "price": price})
 
-            queue_id = _enqueue_retrieval(session, ci.item_id, ci.quantity, ecom_user_id)
-            queue_map[ci.item_id] = queue_id
+            queue_map[ci.item_id] = []
+            for _ in range(ci.quantity):
+                queue_id = _enqueue_retrieval(session, ci.item_id, ecom_user_id, order_id)
+                queue_map[ci.item_id].append(queue_id)
 
         session.commit()
         logger.info(f"[ECOM] Order #{order_id} created, queue_ids={queue_map}")
@@ -240,75 +243,76 @@ def _process_retrievals_background(items, queue_map, plc_connected, order_id):
     all_ok = True
 
     for ci in items:
-        queue_id = queue_map[ci.item_id]
-        compartments_cleared = []
-        plc_ok = False
-        plc_commands = []
+        queue_ids = queue_map[ci.item_id]
+        
+        for queue_id in queue_ids:
+            compartments_cleared = []
+            plc_ok = False
+            plc_commands = []
 
-        s2 = InventorySessionLocal()
-        try:
-            _mark_queue_processing(s2, queue_id)
-            s2.commit()
-
-            if plc_connected:
-                # ── Actually run the ASRS PLC (this blocks and waits sequentially)
-                result = asrs_logic.retrieve_product_with_asrs(
-                    str(ci.item_id), ci.quantity
-                )
-                plc_ok = result.get("success", False)
-                plc_commands = result.get("plc_commands_sent", [])
-                locations = result.get("locations", [])
-
-                if plc_ok:
-                    # Log each cleared compartment into storage_transactions
-                    for loc in locations:
-                        comp_id = loc["subcom_place"]
-                        cmd_str = loc.get("box_id", "?")
-                        _log_transaction(s2, ci.item_id, comp_id,
-                                         queue_id, cmd_str, "ecom_ok")
-                        compartments_cleared.append(comp_id)
-                    _mark_queue_completed(s2, queue_id)
-                    s2.commit()
-                else:
-                    # PLC failed — keep queue as processing
-                    logger.warning(f"[ECOM BACKGROUND] PLC retrieval failed for item {ci.item_id}")
-                    all_ok = False
-
-            else:
-                # PLC offline — keep the queue as 'pending' so it can be physically retrieved later
-                s2.execute(text("UPDATE retrieval_queue SET status='pending' WHERE queue_id=:qid"), {"qid": queue_id})
+            s2 = InventorySessionLocal()
+            try:
+                _mark_queue_processing(s2, queue_id)
                 s2.commit()
-                plc_ok = False
 
-        except Exception as e:
-            s2.rollback()
-            logger.error(f"[ECOM BACKGROUND] Retrieval error for item {ci.item_id}: {e}")
-            all_ok = False
-        finally:
-            s2.close()
+                if plc_connected:
+                    # ── Actually run the ASRS PLC for 1 item (this blocks and waits sequentially)
+                    result = asrs_logic.retrieve_product_with_asrs(
+                        str(ci.item_id), 1
+                    )
+                    plc_ok = result.get("success", False)
+                    plc_commands = result.get("plc_commands_sent", [])
+                    locations = result.get("locations", [])
 
-        retrieval_results.append({
-            "item_id": ci.item_id,
-            "plc_ok": plc_ok,
-            "compartments_cleared": compartments_cleared,
-        })
+                    if plc_ok:
+                        # Log each cleared compartment into storage_transactions
+                        for loc in locations:
+                            comp_id = loc["subcom_place"]
+                            cmd_str = loc.get("box_id", "?")
+                            _log_transaction(s2, ci.item_id, comp_id,
+                                             queue_id, cmd_str, "ecom_ok")
+                            compartments_cleared.append(comp_id)
+                        _mark_queue_completed(s2, queue_id)
+                        s2.commit()
+                    else:
+                        # PLC failed — keep queue as processing
+                        logger.warning(f"[ECOM BACKGROUND] PLC retrieval failed for item {ci.item_id} sub {queue_id}")
+                        all_ok = False
 
-        # Broadcast to ASRS HMI WebSocket clients
-        try:
-            # We are in a background thread, so create a new event loop
-            # and run the broadcast coroutine until complete
-            new_loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(new_loop)
-            new_loop.run_until_complete(
-                _broadcast_order_event(
-                    order_id, ci.item_id,
-                    "shipped" if plc_ok else "pending",
-                    compartments_cleared, plc_ok
+                else:
+                    # PLC offline — keep the queue as 'pending' so it can be physically retrieved later
+                    s2.execute(text("UPDATE retrieval_queue SET status='pending' WHERE queue_id=:qid"), {"qid": queue_id})
+                    s2.commit()
+                    plc_ok = False
+
+            except Exception as e:
+                s2.rollback()
+                logger.error(f"[ECOM BACKGROUND] Retrieval error for item {ci.item_id} sub {queue_id}: {e}")
+                all_ok = False
+            finally:
+                s2.close()
+
+            retrieval_results.append({
+                "item_id": ci.item_id,
+                "sub_id": queue_id,
+                "plc_ok": plc_ok,
+                "compartments_cleared": compartments_cleared,
+            })
+
+            # Broadcast to ASRS HMI WebSocket clients
+            try:
+                new_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(new_loop)
+                new_loop.run_until_complete(
+                    _broadcast_order_event(
+                        order_id, ci.item_id, queue_id,
+                        "shipped" if plc_ok else "pending",
+                        compartments_cleared, plc_ok
+                    )
                 )
-            )
-            new_loop.close()
-        except Exception as e:
-            logger.warning(f"[ECOM BACKGROUND] Broadcast task error: {e}")
+                new_loop.close()
+            except Exception as e:
+                logger.warning(f"[ECOM BACKGROUND] Broadcast task error: {e}")
 
     # ── Step 7: Update overall order status ──────────────────────────────────
     final_status = "shipped" if all_ok else "pending"
@@ -329,39 +333,38 @@ def _process_retrievals_background(items, queue_map, plc_connected, order_id):
 
 @router.get("/recent/feed")
 def recent_order_feed():
-    """Return the last 10 ecom orders for the ASRS dashboard (unauthenticated)."""
+    """Return the last 20 individual ecom order items for the ASRS dashboard (unauthenticated)."""
     with db_session() as session:
         rows = session.execute(text("""
-            SELECT o.order_id, o.order_status, o.created_at,
-                   (SELECT item_id FROM order_items WHERE order_id = o.order_id ORDER BY order_item_id ASC LIMIT 1) as item_id
+            SELECT o.order_id, o.order_status, o.created_at, rq.item_id, rq.queue_id, rq.status
             FROM orders o
+            JOIN retrieval_queue rq ON rq.notes LIKE 'Automated ecom order #' || o.order_id || ' %'
             WHERE o.ecom_user_id IS NOT NULL AND o.order_status != 'cancelled'
-            ORDER BY o.created_at DESC
-            LIMIT 10
+            ORDER BY rq.queue_id DESC
+            LIMIT 20
         """)).fetchall()
 
         results = []
         for r in rows:
-            order_id, status, created_at, item_id = r
+            order_id, order_status, created_at, item_id, queue_id, q_status = r
             
             comps = []
             if item_id:
                 comps_rows = session.execute(text("""
                     SELECT st.compartment_id
                     FROM storage_transactions st
-                    JOIN retrieval_queue rq ON st.queue_id = rq.queue_id
                     WHERE st.item_id = :iid
-                      AND rq.notes LIKE '%ecom order%'
-                      AND EXISTS (
-                          SELECT 1 FROM order_items oi2 
-                          WHERE oi2.order_id = :oid AND oi2.item_id = st.item_id
-                      )
-                """), {"iid": item_id, "oid": order_id}).fetchall()
+                      AND st.queue_id = :qid
+                """), {"iid": item_id, "qid": queue_id}).fetchall()
                 comps = [c[0] for c in comps_rows]
                 
+            # If the queue item is completed, mark it shipped, otherwise use queue status
+            status = "shipped" if q_status == "completed" else q_status
+
             results.append({
                 "order_id": order_id,
                 "item_id": item_id,
+                "sub_id": queue_id,
                 "status": status,
                 "plc_ok": True, # Informational
                 "compartments": comps,

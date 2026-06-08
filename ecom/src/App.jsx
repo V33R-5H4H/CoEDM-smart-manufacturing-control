@@ -5,6 +5,7 @@ import Navbar from './components/Navbar';
 import CartDrawer from './components/CartDrawer';
 import Catalogue from './pages/Catalogue';
 import Auth from './pages/Auth';
+import ResetPassword from './pages/ResetPassword';
 import Checkout from './pages/Checkout';
 import OrderTracking from './pages/OrderTracking';
 import MyOrders from './pages/MyOrders';
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="/" element={<Catalogue onCartChange={refreshCart} />} />
         <Route path="/login"    element={<Auth mode="login" onAuthChange={refreshCart} />} />
         <Route path="/register" element={<Auth mode="register" onAuthChange={refreshCart} />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/checkout" element={
           <ProtectedRoute><Checkout onCartChange={refreshCart} /></ProtectedRoute>
         } />

@@ -15,4 +15,6 @@ pytest==8.1.1
 httpx==0.27.0
 pytest-asyncio==0.23.6
 bcrypt==4.1.2
+# WARNING: Do NOT install the 'jwt' package. If you did, uninstall it and reinstall PyJWT.
 PyJWT==2.8.0
+email-validator==2.1.1

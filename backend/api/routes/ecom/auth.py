@@ -170,3 +170,75 @@ def login(body: LoginRequest):
 def me(user=Depends(get_current_ecom_user)):
     """Return current authenticated user info."""
     return user
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+@router.post("/forgot-password")
+def forgot_password(body: ForgotPasswordRequest):
+    """Generate a stateless reset token and log it to the terminal."""
+    with db_session() as session:
+        row = session.execute(
+            text("SELECT user_id, full_name FROM ecom_users WHERE email = :email"),
+            {"email": body.email.lower()}
+        ).fetchone()
+
+        if not row:
+            # Return success even if not found to prevent email enumeration
+            return {"message": "If that email is registered, a reset link has been sent."}
+
+        user_id, full_name = row
+        
+        payload = {
+            "sub": str(user_id),
+            "purpose": "reset_password",
+            "exp": datetime.utcnow() + timedelta(minutes=15),
+        }
+        token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+        
+        reset_link = f"http://localhost:5174/reset-password?token={token}"
+        
+        # Simulate email sending by explicitly printing so start.py catches it
+        print("======================================================", flush=True)
+        print(f"EMAIL SIMULATION: Password Reset for {body.email}", flush=True)
+        print(f"Hi {full_name}, click the link below to reset your password:", flush=True)
+        print(f"{reset_link}", flush=True)
+        print("======================================================", flush=True)
+
+        return {
+            "message": "If that email is registered, a reset link has been sent.",
+            # For local demo convenience only, return the link to the UI
+            "demo_link": reset_link
+        }
+
+
+@router.post("/reset-password")
+def reset_password(body: ResetPasswordRequest):
+    """Validate token and update password."""
+    try:
+        payload = jwt.decode(body.token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get("purpose") != "reset_password":
+            raise HTTPException(status_code=400, detail="Invalid token purpose")
+            
+        user_id = payload["sub"]
+        
+        with db_session() as session:
+            pw_hash = _hash_password(body.new_password)
+            session.execute(
+                text("UPDATE ecom_users SET password_hash = :pw WHERE user_id = :uid"),
+                {"pw": pw_hash, "uid": user_id}
+            )
+            
+        return {"message": "Password successfully updated"}
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=400, detail="Reset token has expired")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid or corrupt reset token")
