@@ -23,7 +23,7 @@ function formatTime(iso) {
   return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 }
 
-export default function OrderFeed({ wsUrl }) {
+export default function OrderFeed({ wsUrl, onOrdersChange }) {
   const [orders, setOrders] = useState([]);
   const [connected, setConnected] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -98,9 +98,13 @@ export default function OrderFeed({ wsUrl }) {
 
     return () => {
       if (reconnectRef.current) clearTimeout(reconnectRef.current);
-      if (wsRef.current) wsRef.current.close();
+      wsRef.current?.close();
     };
-  }, []);
+  }, [wsUrl]);
+
+  useEffect(() => {
+    onOrdersChange?.(orders);
+  }, [orders, onOrdersChange]);
 
   const handleClearQueue = async () => {
     if (!window.confirm('Are you sure you want to clear the retrieval queue?')) return;

@@ -8,7 +8,7 @@ import { useLEDMonitoring } from '../hooks/useLEDMonitoring';
 import { useOperationShadowState } from '../hooks/useOperationShadowState';
 import { toast } from 'react-toastify';
 
-function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = null, ledConnected = false, safetyCurtainTriggered = false }) {
+function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = null, ledConnected = false, safetyCurtainTriggered = false, activeEcomOrders = [] }) {
 
   // Open delete modal for a box
   const openDeleteModal = (boxId) => {
@@ -402,7 +402,7 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
 }
 
 // Reusable Box Card Component - Industrial Storage Drawer Style with Capacity Visuals & Availability Highlighting
-function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking, isSelected }) {
+function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking, isSelected, activeEcomOrders = [] }) {
   if (!box) {
     return (
       <div style={{
@@ -564,20 +564,42 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
       }}>
         {subLabels.map((label) => {
           const sub = boxSubs.find(s => s.sub_id === label);
-          const isOccupied = sub?.status === 'Occupied';
-          const cellColor = isOccupied ? 'var(--matrix-green)' : 'var(--matrix-red)';
+          const isOccupied = sub?.status === 'Occupied' || sub?.status === 'reserved';
+          const cellColor = sub?.status === 'reserved' ? 'var(--status-warn)' : (isOccupied ? 'var(--matrix-green)' : 'var(--matrix-red)');
           
+          const compId = `${box.column_name}${box.row_number}${label}`;
+          const targetedOrder = activeEcomOrders.find(o => 
+             (o.status === 'pending' || o.status === 'processing') && 
+             o.compartments?.includes(compId)
+          );
+
           return (
             <div
               key={label}
-              title={`Sub ${label.toUpperCase()}: ${isOccupied ? 'Occupied' : 'Empty'}`}
+              title={`Sub ${label.toUpperCase()}: ${isOccupied ? 'Occupied' : 'Empty'}${targetedOrder ? ` (Order #${targetedOrder.sub_id})` : ''}`}
               style={{
                 borderRadius: '1px',
-                background: cellColor,
+                background: targetedOrder ? 'var(--status-warn)' : cellColor,
                 transition: 'background 250ms ease-out',
-                boxShadow: isOccupied ? '0 0 4px rgba(16,185,129,0.3)' : 'none'
+                boxShadow: isOccupied ? '0 0 4px rgba(16,185,129,0.3)' : 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden'
               }}
-            />
+            >
+              {targetedOrder && (
+                <span style={{
+                  fontSize: '8px',
+                  fontFamily: 'var(--font-mono)',
+                  color: '#fff',
+                  fontWeight: 800,
+                  textShadow: '0px 1px 2px rgba(0,0,0,0.8)'
+                }}>
+                  {targetedOrder.sub_id}
+                </span>
+              )}
+            </div>
           );
         })}
       </div>
@@ -599,7 +621,8 @@ function RackView({
   activeOperationData,
   selectedBoxId,
   onHomeShuttle,
-  safetyCurtainTriggered = false
+  safetyCurtainTriggered = false,
+  activeEcomOrders = []
 }) {
   const columns = ['A', 'B', 'C', 'D', 'E'];
   const rows = [1, 2, 3, 4, 5, 6, 7]; // Render from top to bottom (1 -> 7)
@@ -844,6 +867,7 @@ function RackView({
                       rawLED={rawLED}
                       isSourceBlinking={blinking}
                       isSelected={isSelected}
+                      activeEcomOrders={activeEcomOrders}
                       onClick={() => {
                         if (box) {
                           setSelectedBox(box);

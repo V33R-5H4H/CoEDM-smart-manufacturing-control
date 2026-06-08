@@ -50,8 +50,12 @@ class PlaceOrderRequest(BaseModel):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _enqueue_retrieval(session, item_id: int, ecom_user_id: str, order_id: int) -> int:
+def _enqueue_retrieval(session, item_id: int, ecom_user_id: str, order_id: int, comp_id: str = None) -> int:
     """Insert a retrieval_queue entry and return queue_id."""
+    note = f"Automated ecom order #{order_id}"
+    if comp_id:
+        note += f" | compartment: {comp_id}"
+        
     row = session.execute(text("""
         INSERT INTO retrieval_queue
             (machine_id, item_id, enqueue_at, status, priority, notes)
@@ -60,7 +64,7 @@ def _enqueue_retrieval(session, item_id: int, ecom_user_id: str, order_id: int) 
     """), {
         "iid": item_id,
         "now": ist_now(),
-        "note": f"Automated ecom order #{order_id} from user {ecom_user_id}"
+        "note": note
     }).fetchone()
     return row[0]
 
@@ -194,10 +198,39 @@ async def place_order(body: PlaceOrderRequest, background_tasks: BackgroundTasks
             """), {"oid": order_id, "iid": ci.item_id,
                    "qty": ci.quantity, "price": price})
 
+            # Fetch subcompartments for this item
+            available_comps = session.execute(text("""
+                SELECT compartment_id, box_id, sub_slot
+                FROM storage_compartments
+                WHERE item_id = :iid AND status = 'occupied'
+                ORDER BY box_id, sub_slot
+                FOR UPDATE SKIP LOCKED
+                LIMIT :qty
+            """), {"iid": ci.item_id, "qty": ci.quantity}).fetchall()
+
+            if len(available_comps) < ci.quantity:
+                raise HTTPException(status_code=400, detail=f"Insufficient stock for item {ci.item_id} during allocation.")
+
             queue_map[ci.item_id] = []
-            for _ in range(ci.quantity):
-                queue_id = _enqueue_retrieval(session, ci.item_id, ecom_user_id, order_id)
+            for i in range(ci.quantity):
+                comp_id = available_comps[i][0]
+                
+                # Mark as reserved immediately
+                session.execute(text("""
+                    UPDATE storage_compartments 
+                    SET status = 'reserved', updated_at = :now 
+                    WHERE compartment_id = :cid
+                """), {"cid": comp_id, "now": ist_now()})
+                
+                # Enqueue with the assigned compartment
+                queue_id = _enqueue_retrieval(session, ci.item_id, ecom_user_id, order_id, comp_id)
                 queue_map[ci.item_id].append(queue_id)
+                
+                # Broadcast immediately so frontend sees the reserved compartment
+                background_tasks.add_task(
+                    _broadcast_order_event,
+                    order_id, ci.item_id, queue_id, "pending", [comp_id], True
+                )
 
         session.commit()
         logger.info(f"[ECOM] Order #{order_id} created, queue_ids={queue_map}")
@@ -255,23 +288,26 @@ def _process_retrievals_background(items, queue_map, plc_connected, order_id):
                 _mark_queue_processing(s2, queue_id)
                 s2.commit()
 
-                if plc_connected:
+                # Extract reserved compartment from notes
+                row = s2.execute(text("SELECT notes FROM retrieval_queue WHERE queue_id = :qid"), {"qid": queue_id}).fetchone()
+                note = row[0] if row else ""
+                comp_id = ""
+                if "compartment: " in note:
+                    comp_id = note.split("compartment: ")[1].strip()
+
+                if plc_connected and comp_id:
+                    box_id = comp_id[:-1]
+                    sub_id = comp_id[-1]
+                    
                     # ── Actually run the ASRS PLC for 1 item (this blocks and waits sequentially)
-                    result = asrs_logic.retrieve_product_with_asrs(
-                        str(ci.item_id), 1
-                    )
+                    result = asrs_logic.retrieve_from_specific_location(box_id, sub_id, ci.item_id)
                     plc_ok = result.get("success", False)
-                    plc_commands = result.get("plc_commands_sent", [])
-                    locations = result.get("locations", [])
+                    plc_commands = [result.get("plc_command", "")] if plc_ok else []
 
                     if plc_ok:
-                        # Log each cleared compartment into storage_transactions
-                        for loc in locations:
-                            comp_id = loc["subcom_place"]
-                            cmd_str = loc.get("box_id", "?")
-                            _log_transaction(s2, ci.item_id, comp_id,
-                                             queue_id, cmd_str, "ecom_ok")
-                            compartments_cleared.append(comp_id)
+                        _log_transaction(s2, ci.item_id, comp_id,
+                                         queue_id, box_id, "ecom_ok")
+                        compartments_cleared.append(comp_id)
                         _mark_queue_completed(s2, queue_id)
                         s2.commit()
                     else:
@@ -336,9 +372,9 @@ def recent_order_feed():
     """Return the last 20 individual ecom order items for the ASRS dashboard (unauthenticated)."""
     with db_session() as session:
         rows = session.execute(text("""
-            SELECT o.order_id, o.order_status, o.created_at, rq.item_id, rq.queue_id, rq.status
+            SELECT o.order_id, o.order_status, o.created_at, rq.item_id, rq.queue_id, rq.status, rq.notes
             FROM orders o
-            JOIN retrieval_queue rq ON rq.notes LIKE 'Automated ecom order #' || o.order_id || ' %'
+            JOIN retrieval_queue rq ON rq.notes LIKE 'Automated ecom order #' || CAST(o.order_id AS TEXT) || '%'
             WHERE o.ecom_user_id IS NOT NULL AND o.order_status != 'cancelled'
             ORDER BY rq.queue_id DESC
             LIMIT 20
@@ -346,17 +382,11 @@ def recent_order_feed():
 
         results = []
         for r in rows:
-            order_id, order_status, created_at, item_id, queue_id, q_status = r
+            order_id, order_status, created_at, item_id, queue_id, q_status, notes = r
             
             comps = []
-            if item_id:
-                comps_rows = session.execute(text("""
-                    SELECT st.compartment_id
-                    FROM storage_transactions st
-                    WHERE st.item_id = :iid
-                      AND st.queue_id = :qid
-                """), {"iid": item_id, "qid": queue_id}).fetchall()
-                comps = [c[0] for c in comps_rows]
+            if notes and "compartment: " in notes:
+                comps = [notes.split("compartment: ")[1].strip()]
                 
             # If the queue item is completed, mark it shipped, otherwise use queue status
             status = "shipped" if q_status == "completed" else q_status

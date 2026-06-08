@@ -18,6 +18,7 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState("boxes");
   const [isConnected, setIsConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
+  const [ecomOrders, setEcomOrders] = useState([]);
   const { shuttleState, connected: ledConnected, ledStates, safetyCurtain } = useLEDMonitoring();
   const { resolved: theme } = useTheme();
 
@@ -171,6 +172,7 @@ function Dashboard() {
         shuttleState={shuttleState}
         ledConnected={ledConnected}
         safetyCurtainTriggered={isSafetyInterrupted}
+        activeEcomOrders={ecomOrders}
       />
     ),
     items: <ItemsTab isServerConnected={isConnected} />,
@@ -411,6 +413,7 @@ function Dashboard() {
         }}>
           <OrderFeed
             wsUrl={`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:8000/api/control/asrs/ws/led-status`}
+            onOrdersChange={setEcomOrders}
           />
         </div>
 

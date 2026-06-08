@@ -471,12 +471,12 @@ class ASRSLogic:
             
             current_subcom_place, actual_item_id, status = result
             
-            # Check if occupied
-            if status.lower() != 'occupied':
+            # Check if occupied or reserved
+            if status.lower() not in ['occupied', 'reserved']:
                 session.close()
                 return {
                     "success": False,
-                    "message": f"Subcompartment {subcom_place} is not occupied (status: {status})"
+                    "message": f"Subcompartment {subcom_place} is not available (status: {status})"
                 }
             
             # Verify the item matches
