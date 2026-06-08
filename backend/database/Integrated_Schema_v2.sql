@@ -6,11 +6,12 @@
 -- all other functions are (re)created with OR REPLACE.
 --
 -- Changes vs v1:
---   • Removed TimescaleDB extension, create_hypertable,
---     continuous aggregates, compression/retention policies
---   • Standard PostgreSQL partial indexes replace hypertable chunks
---   • Materialized views replace continuous aggregates
---     (refresh manually or via pg_cron)
+--   • Integrated TimescaleDB for time-series hypertables.
+--     (Materialized views will be converted to continuous aggregates later)
+--   • All CREATE TABLE now guarded with IF NOT EXISTS
+
+CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+
 --   • All CREATE TABLE now guarded with IF NOT EXISTS
 --   • update_updated_at() wrapped in DO block — skipped if owned
 --     by another role; all other functions use CREATE OR REPLACE
@@ -932,9 +933,18 @@ COMMENT ON MATERIALIZED VIEW events_daily_summary IS
 --   REFRESH MATERIALIZED VIEW CONCURRENTLY energy_1hr_agg;
 --   REFRESH MATERIALIZED VIEW CONCURRENTLY events_daily_summary;
 --
--- When TimescaleDB becomes available, convert time-series tables
--- with: SELECT create_hypertable('<table>', 'time', if_not_exists => TRUE);
--- and replace materialized views with continuous aggregates.
+-- TIMESCALEDB HYPERTABLES
+-- Convert time-series tables to hypertables for optimized performance
+-- ============================================================
+SELECT create_hypertable('mirac_sensor_data', 'time', if_not_exists => TRUE);
+SELECT create_hypertable('vibit_readings', 'time', if_not_exists => TRUE);
+SELECT create_hypertable('energy_meter_data', 'time', if_not_exists => TRUE);
+SELECT create_hypertable('assembly_station_data', 'time', if_not_exists => TRUE);
+SELECT create_hypertable('triac_sensor_data', 'time', if_not_exists => TRUE);
+SELECT create_hypertable('amr_sensor_data', 'time', if_not_exists => TRUE);
+SELECT create_hypertable('cobot_sensor_data', 'time', if_not_exists => TRUE);
+
+-- Note: Materialized views should eventually be replaced with Continuous Aggregates
 -- ============================================================
 
 -- ============================================================
