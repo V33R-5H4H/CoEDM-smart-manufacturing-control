@@ -29,6 +29,7 @@ from datetime import datetime
 ROOT      = Path(__file__).parent.resolve()
 BACKEND   = ROOT / "backend"
 FRONTEND  = ROOT / "frontend"
+ECOM      = ROOT / "ecom"
 VENV_PY   = ROOT / "backend" / "venv" / "Scripts" / "python.exe"
 UVICORN   = ROOT / "backend" / "venv" / "Scripts" / "uvicorn.exe"
 PID_FILE  = ROOT / ".pids"
@@ -67,7 +68,8 @@ def banner():
 +--------------------------------------------------+{RESET}
   {GREEN}Backend  {RESET}-> http://localhost:8000
   {GREEN}API docs {RESET}-> http://localhost:8000/docs
-  {GREEN}Frontend {RESET}-> http://localhost:5173
+  {GREEN}ASRS UI  {RESET}-> http://localhost:5173
+  {GREEN}Ecom UI  {RESET}-> http://localhost:5174
   {DIM}Press Ctrl+C to stop all services{RESET}
 """)
 
@@ -116,13 +118,28 @@ def start_frontend() -> subprocess.Popen:
     npm = "npm.cmd" if sys.platform == "win32" else "npm"
 
     proc = subprocess.Popen(
-        [npm, "run", "dev"],
+        [npm, "run", "dev", "--", "--port", "5173"],
         cwd=str(FRONTEND),
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         env={**os.environ},
     )
     log("FRONTEND", CYAN, f"PID {proc.pid} — npm run dev started")
+    return proc
+
+def start_ecom() -> subprocess.Popen:
+    log("BOOT", MAGENTA, "Starting E-Commerce frontend …")
+
+    npm = "npm.cmd" if sys.platform == "win32" else "npm"
+
+    proc = subprocess.Popen(
+        [npm, "run", "dev", "--", "--port", "5174"],
+        cwd=str(ECOM),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        env={**os.environ},
+    )
+    log("ECOM", YELLOW, f"PID {proc.pid} — npm run dev started")
     return proc
 
 
@@ -164,11 +181,16 @@ def main():
 
     parser = argparse.ArgumentParser(description="Start CoEDM services")
     parser.add_argument("--backend",  action="store_true", help="Backend only")
-    parser.add_argument("--frontend", action="store_true", help="Frontend only")
+    parser.add_argument("--frontend", action="store_true", help="Frontend only (both UI)")
+    parser.add_argument("--ecom", action="store_true", help="E-Commerce frontend only")
     args = parser.parse_args()
 
-    run_backend  = args.backend  or (not args.backend and not args.frontend)
-    run_frontend = args.frontend or (not args.backend and not args.frontend)
+    # Default logic: run all if no specific arg provided
+    run_all = not args.backend and not args.frontend and not args.ecom
+    
+    run_backend  = args.backend  or run_all
+    run_frontend = args.frontend or run_all
+    run_ecom     = args.ecom or args.frontend or run_all
 
     banner()
 
@@ -191,6 +213,16 @@ def main():
         procs.append(fp)
         pid_map["frontend"] = fp.pid
         t = threading.Thread(target=stream, args=(fp, "FRONTEND", CYAN), daemon=True)
+        t.start()
+        threads.append(t)
+
+    if run_ecom:
+        if run_backend and not run_frontend: # wait if backend is run, but frontend didn't wait
+            wait_for_backend()
+        ep = start_ecom()
+        procs.append(ep)
+        pid_map["ecom"] = ep.pid
+        t = threading.Thread(target=stream, args=(ep, "ECOM", YELLOW), daemon=True)
         t.start()
         threads.append(t)
 
@@ -221,7 +253,12 @@ def main():
         for p in list(procs):
             code = p.poll()
             if code is not None:
-                name = "BACKEND" if (run_backend and p.pid == pid_map.get("backend")) else "FRONTEND"
+                if run_backend and p.pid == pid_map.get("backend"):
+                    name = "BACKEND"
+                elif run_ecom and p.pid == pid_map.get("ecom"):
+                    name = "ECOM"
+                else:
+                    name = "FRONTEND"
                 log(name, RED, f"Process exited with code {code}")
                 procs.remove(p)
         if not procs:

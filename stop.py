@@ -12,7 +12,8 @@ Strategy (in order):
 Usage:
     python stop.py              # stop backend + frontend
     python stop.py --backend    # backend only
-    python stop.py --frontend   # frontend only
+    python stop.py --frontend   # frontend only (both UI)
+    python stop.py --ecom       # ecom frontend only
 """
 
 import os
@@ -194,10 +195,14 @@ def main():
     parser = argparse.ArgumentParser(description="Stop CoEDM services")
     parser.add_argument("--backend",  action="store_true", help="Backend only")
     parser.add_argument("--frontend", action="store_true", help="Frontend only")
+    parser.add_argument("--ecom", action="store_true", help="E-Commerce frontend only")
     args = parser.parse_args()
 
-    stop_backend  = args.backend  or (not args.backend and not args.frontend)
-    stop_frontend = args.frontend or (not args.backend and not args.frontend)
+    stop_all = not args.backend and not args.frontend and not args.ecom
+
+    stop_backend  = args.backend  or stop_all
+    stop_frontend = args.frontend or stop_all
+    stop_ecom     = args.ecom or args.frontend or stop_all
 
     print(f"""
 {CYAN}{BOLD}+--------------------------------------------------+
@@ -232,8 +237,16 @@ def main():
             fallback_names=["node.exe"],
         )
 
+    if stop_ecom:
+        results["ecom"] = stop_service(
+            label="ECOM",
+            port=5174,
+            saved_pid=pids.get("ecom"),
+            fallback_names=["node.exe"],
+        )
+
     # Clean up .pids
-    if PID_FILE.exists() and stop_backend and stop_frontend:
+    if PID_FILE.exists() and stop_backend and stop_frontend and stop_ecom:
         PID_FILE.unlink()
         log("INFO", DIM, ".pids removed")
 

@@ -275,29 +275,10 @@ def _process_retrievals_background(items, queue_map, plc_connected, order_id):
                     all_ok = False
 
             else:
-                # PLC offline — do DB-only retrieval (dequeue when PLC reconnects)
-                compartments = s2.execute(text("""
-                    SELECT sc.compartment_id, sc.box_id
-                    FROM storage_compartments sc
-                    JOIN storage_boxes b ON sc.box_id = b.box_id
-                    WHERE sc.item_id = :iid AND sc.status = 'occupied'
-                    ORDER BY b.row_label DESC, b.col_number DESC, sc.sub_slot DESC
-                    LIMIT :qty
-                    FOR UPDATE SKIP LOCKED
-                """), {"iid": ci.item_id, "qty": ci.quantity}).fetchall()
-
-                for (comp_id, box_id) in compartments:
-                    s2.execute(text("""
-                        UPDATE storage_compartments
-                        SET status='empty', item_id=NULL WHERE compartment_id=:comp
-                    """), {"comp": comp_id})
-                    _log_transaction(s2, ci.item_id, comp_id,
-                                     queue_id, box_id, "ecom_db_only_plc_offline")
-                    compartments_cleared.append(comp_id)
-
-                _mark_queue_completed(s2, queue_id)
+                # PLC offline — keep the queue as 'pending' so it can be physically retrieved later
+                s2.execute(text("UPDATE retrieval_queue SET status='pending' WHERE queue_id=:qid"), {"qid": queue_id})
                 s2.commit()
-                plc_ok = True  # DB side succeeded
+                plc_ok = False
 
         except Exception as e:
             s2.rollback()

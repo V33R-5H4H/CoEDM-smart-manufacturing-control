@@ -137,9 +137,8 @@ async def clear_queue():
             queue_ids.add(q[0])
 
         if not queue_ids:
-            # 4. Cancel associated e-commerce orders even if queue is empty
             session.execute(
-                text("UPDATE orders SET order_status = 'cancelled' WHERE order_status IN ('pending', 'processing')")
+                text("UPDATE orders SET order_status = 'cancelled' WHERE order_status IN ('pending', 'processing', 'shipped')")
             )
             session.commit()
             return {"success": True, "message": "Queue is already empty and no offline stock to restore"}
@@ -150,9 +149,9 @@ async def clear_queue():
             {"qids": list(queue_ids)}
         )
 
-        # 4. Cancel associated e-commerce orders (if they are pending or processing)
+        # 4. Cancel associated e-commerce orders
         session.execute(
-            text("UPDATE orders SET order_status = 'cancelled' WHERE order_status IN ('pending', 'processing')")
+            text("UPDATE orders SET order_status = 'cancelled' WHERE order_status IN ('pending', 'processing', 'shipped')")
         )
 
         session.commit()

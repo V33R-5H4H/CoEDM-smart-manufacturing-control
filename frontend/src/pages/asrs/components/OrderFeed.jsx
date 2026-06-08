@@ -81,7 +81,7 @@ export default function OrderFeed({ wsUrl }) {
   };
 
   const fetchOrders = () => {
-    fetch('/api/ecom/orders/recent/feed')
+    fetch('/api/ecom/orders/recent/feed', { cache: 'no-store' })
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data)) {
