@@ -98,7 +98,33 @@ async def clear_queue():
     """Clear all pending and processing items from the retrieval queue and restore stock if needed"""
     session = SessionLocal()
     try:
-        # 1. Find all offline PLC transactions that haven't been reversed
+        queue_ids = set()
+        restored_count = 0
+        
+        # 1. Find all pending and processing queues to restore reserved compartments
+        pending_queues = session.execute(
+            text("SELECT queue_id, notes FROM retrieval_queue WHERE status IN ('pending', 'processing')")
+        ).fetchall()
+        
+        for q in pending_queues:
+            q_id, notes = q
+            queue_ids.add(q_id)
+            
+            if notes and "compartment: " in notes:
+                comp_id = notes.split("compartment: ")[1].strip()
+                
+                # Restore stock: change status back from reserved to occupied
+                session.execute(
+                    text("""
+                        UPDATE storage_compartments 
+                        SET status = 'occupied', updated_at = :now
+                        WHERE compartment_id = :cid AND status = 'reserved'
+                    """),
+                    {"cid": comp_id, "now": ist_now()}
+                )
+                restored_count += 1
+
+        # 2. Also handle legacy offline PLC transactions that haven't been reversed
         transactions = session.execute(
             text("""
                 SELECT compartment_id, item_id, tran_id, queue_id 
@@ -106,8 +132,6 @@ async def clear_queue():
                 WHERE asrs_result = 'ecom_db_only_plc_offline'
             """)
         ).fetchall()
-        
-        queue_ids = set()
         
         for tx in transactions:
             comp_id, item_id, tran_id, q_id = tx
@@ -128,20 +152,14 @@ async def clear_queue():
                 text("UPDATE storage_transactions SET asrs_result = 'reversed_clear_queue' WHERE tran_id = :tid"),
                 {"tid": tran_id}
             )
+            restored_count += 1
             
-        # 2. Add any 'pending' or 'processing' queues just in case
-        pending_queues = session.execute(
-            text("SELECT queue_id FROM retrieval_queue WHERE status IN ('pending', 'processing')")
-        ).fetchall()
-        for q in pending_queues:
-            queue_ids.add(q[0])
-
         if not queue_ids:
             session.execute(
                 text("UPDATE orders SET order_status = 'cancelled' WHERE order_status IN ('pending', 'processing', 'shipped')")
             )
             session.commit()
-            return {"success": True, "message": "Queue is already empty and no offline stock to restore"}
+            return {"success": True, "message": "Queue is already empty and no stock to restore"}
 
         # 3. Cancel the queue entries
         session.execute(
@@ -157,7 +175,7 @@ async def clear_queue():
         session.commit()
         return {
             "success": True, 
-            "message": f"Cleared queue items and restored {len(transactions)} items to stock."
+            "message": f"Cleared queue items and restored {restored_count} items to stock."
         }
     except Exception as e:
         logger.error(f"Error clearing queue: {e}")

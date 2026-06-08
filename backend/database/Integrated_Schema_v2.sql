@@ -902,3 +902,6 @@ COMMENT ON MATERIALIZED VIEW events_daily_summary IS
 ALTER TABLE assembly_station_data
     ADD COLUMN IF NOT EXISTS vice_status TEXT NOT NULL DEFAULT 'unknown'
         CHECK (vice_status IN ('open','closed','unknown'));
+
+ALTER TABLE vibit_readings
+    ADD COLUMN IF NOT EXISTS machine_id TEXT;
