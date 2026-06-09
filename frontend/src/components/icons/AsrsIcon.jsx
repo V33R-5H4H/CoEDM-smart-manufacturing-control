@@ -13,8 +13,8 @@ export default function AsrsIcon({ state = "offline", size = 60 }) {
   const totalHeight = rows * cellSize + (rows - 1) * gap;
 
   // Add padding for the glass effect container
-  const paddingX = 8;
-  const paddingY = 8;
+  const paddingX = 16;
+  const paddingY = 16;
 
   const viewBoxWidth = totalWidth + paddingX * 2;
   const viewBoxHeight = totalHeight + paddingY * 2;

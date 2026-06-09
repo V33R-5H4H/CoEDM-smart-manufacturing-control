@@ -39,7 +39,7 @@
 
 /* Base Rack Styles */
 .asrs-rack {
-  fill: var(--bg-secondary);
+  fill: var(--bg-hover);
   stroke: var(--border);
   stroke-width: 1;
   transition: all 0.3s ease;

@@ -36,19 +36,19 @@
 
 /* Colors */
 .mirac-headstock, .mirac-carriage-base, .mirac-cross-slide {
-  fill: var(--bg-secondary);
-  stroke: var(--border-dark);
+  fill: var(--bg-hover);
+  stroke: var(--text-muted);
   stroke-width: 1;
 }
 
 .mirac-chuck {
   fill: var(--bg-hover);
-  stroke: var(--border-dark);
+  stroke: var(--text-muted);
   stroke-width: 1;
 }
 
 .mirac-workpiece {
-  stroke: var(--border-dark);
+  stroke: var(--text-muted);
   stroke-width: 0.5;
 }
 

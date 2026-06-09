@@ -36,20 +36,20 @@
 
 /* Colors */
 .cobot-base, .cobot-shoulder-mount, .cobot-arm {
-  fill: var(--bg-secondary);
-  stroke: var(--border-dark);
+  fill: var(--bg-hover);
+  stroke: var(--text-muted);
   stroke-width: 1;
 }
 
 .cobot-joint, .cobot-joint-secondary, .cobot-effector-base {
   fill: var(--bg-hover);
-  stroke: var(--border-dark);
+  stroke: var(--text-muted);
   stroke-width: 1;
 }
 
 .cobot-jaw {
   fill: var(--text-disabled);
-  stroke: var(--border-dark);
+  stroke: var(--text-muted);
   stroke-width: 0.5;
 }
 

@@ -12,6 +12,8 @@ export default function Dashboard() {
   const [asrsShuttle, setAsrsShuttle] = useState(wsCache.dashboard.asrsShuttle);
   const [inventoryCount, setInventoryCount] = useState(0);
 
+  const [forceAnimations, setForceAnimations] = useState(false);
+
   const [assemblyConnected, setAssemblyConnected] = useState(false);
   const [assemblyPosition, setAssemblyPosition] = useState(wsCache.dashboard.assemblyPosition);
   const [assemblySafety, setAssemblySafety] = useState(wsCache.dashboard.assemblySafety);
@@ -191,9 +193,9 @@ export default function Dashboard() {
           } else {
             return; // heartbeat
           }
-          const anyConnected = Object.values(data.data_sources || {}).some(v => v === true);
-          console.log("[MIRAC WS] Received data:", data.data_sources, "anyConnected:", anyConnected);
-          setMiracConnected(anyConnected);
+          const isPlcConnected = data.data_sources?.plc === true;
+          console.log("[MIRAC WS] Received data:", data.data_sources, "plcConnected:", isPlcConnected);
+          setMiracConnected(isPlcConnected);
           if (data.spindle?.speed !== undefined && data.spindle?.speed !== null) {
             wsCache.dashboard.miracSpindle = data.spindle.speed;
             setMiracSpindle(data.spindle.speed);
@@ -242,8 +244,8 @@ export default function Dashboard() {
           } else {
             return; // heartbeat
           }
-          const anyConnected = Object.values(data.data_sources || {}).some(v => v === true);
-          setTriacConnected(anyConnected);
+          const isPlcConnected = data.data_sources?.plc === true;
+          setTriacConnected(isPlcConnected);
           if (data.spindle?.speed !== undefined && data.spindle?.speed !== null) {
             wsCache.dashboard.triacSpindle = data.spindle.speed;
             setTriacSpindle(data.spindle.speed);
@@ -341,18 +343,21 @@ export default function Dashboard() {
   const ACTIVITY_TIMEOUT = 3000; // 3 seconds of no data changes = idle
 
   const getMiracState = () => {
+    if (forceAnimations) return "running";
     if (!miracConnected) return "offline";
     if (miracSpindle != null && miracSpindle > 0) return "running";
     return "idle";
   };
 
   const getTriacState = () => {
+    if (forceAnimations) return "running";
     if (!triacConnected) return "offline";
     if ((triacSpindle != null && triacSpindle > 0) || (triacFeed != null && triacFeed > 0)) return "running";
     return "idle";
   };
 
   const getAssemblyState = () => {
+    if (forceAnimations) return "running";
     if (!assemblyConnected) return "offline";
     if (assemblySafety === "BREACH") return "error";
     if (assemblyPosition != null && assemblyPosition > 7) return "running";
@@ -360,6 +365,7 @@ export default function Dashboard() {
   };
 
   const getAsrsState = () => {
+    if (forceAnimations) return "running";
     // If either the websocket is dead OR the PLC is disconnected, it's offline
     if (!asrsConnected || !asrsPlcConnected) return "offline";
     if (now - activity.asrs < ACTIVITY_TIMEOUT) return "running";
@@ -411,7 +417,7 @@ export default function Dashboard() {
       name: "Testing",
       key: "testing",
       to: "/testing-station",
-      emoticonState: "offline",
+      emoticonState: forceAnimations ? "running" : "offline",
       metrics: [
         { label: "STAT", value: "---" },
         { label: "RATE", value: "---", unit: "u/h" },
@@ -421,7 +427,7 @@ export default function Dashboard() {
       name: "Inspection",
       key: "inspection",
       to: "/inspection",
-      emoticonState: "offline",
+      emoticonState: forceAnimations ? "running" : "offline",
       metrics: [
         { label: "PASS", value: "---", unit: "%" },
         { label: "FAIL", value: "---" },
@@ -431,7 +437,7 @@ export default function Dashboard() {
       name: "AMR",
       key: "amr",
       to: "/amr",
-      emoticonState: "offline",
+      emoticonState: forceAnimations ? "running" : "offline",
       metrics: [
         { label: "FLEET", value: "---" },
         { label: "BATT", value: "---", unit: "%" },
@@ -441,7 +447,7 @@ export default function Dashboard() {
       name: "Cobot",
       key: "cobot",
       to: "/cobot",
-      emoticonState: "offline",
+      emoticonState: forceAnimations ? "running" : "offline",
       metrics: [
         { label: "STATE", value: "---" },
         { label: "LOAD", value: "---", unit: "kg" },
@@ -463,16 +469,16 @@ export default function Dashboard() {
         <div className="asm-viz" style={{ minHeight: 'auto', flex: 'none', border: '1px solid var(--border)' }}>
           <div className="asm-viz__bar" style={{ background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
             <span>Recent Facility Transaction Log</span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--primary)' }}>SECURE_STREAM // ONLINE</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--primary)', fontWeight: 'bold' }}>SECURE_STREAM // ONLINE</span>
           </div>
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', textAlign: 'left', fontFamily: 'var(--font-mono)' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', textAlign: 'left', fontFamily: 'var(--font-mono)' }}>
               <thead>
                 <tr style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}>
                   {['TIMESTAMP', 'STATION NODE', 'ACTION / EVENT', 'STATUS CODE'].map((h) => (
                     <th key={h} style={{
-                      padding: '10px 16px',
-                      fontSize: '9px',
+                      padding: '12px 16px',
+                      fontSize: '12px',
                       fontWeight: 800,
                       color: 'var(--text-muted)',
                       textTransform: 'uppercase',
@@ -500,22 +506,22 @@ export default function Dashboard() {
                       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     >
                       <td style={{
-                        padding: '10px 16px',
+                        padding: '14px 16px',
                         color: code.startsWith('ERR') ? 'var(--status-error)' : code.startsWith('WARN') ? 'var(--status-warn)' : 'var(--text-secondary)',
                       }}>{timeStr}</td>
                       <td style={{
-                        padding: '10px 16px',
+                        padding: '14px 16px',
                         fontWeight: 800,
                         color: 'var(--text-primary)',
                         textTransform: 'uppercase'
                       }}>{row.machine_id}</td>
                       <td style={{
-                        padding: '10px 16px',
+                        padding: '14px 16px',
                         color: 'var(--text-secondary)',
                         fontFamily: 'var(--font-sans)'
                       }}>{row.title}</td>
                       <td style={{
-                        padding: '10px 16px',
+                        padding: '14px 16px',
                         fontWeight: 700,
                         color: code.startsWith('ERR') ? 'var(--status-error)' : code.startsWith('WARN') ? 'var(--status-warn)' : 'var(--status-ok)',
                       }}>{code}</td>
@@ -527,6 +533,26 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      
+      <button 
+        style={{ 
+          position: 'fixed', 
+          bottom: '24px', 
+          right: '24px', 
+          zIndex: 9999, 
+          padding: '12px 24px', 
+          background: forceAnimations ? 'var(--status-error)' : 'var(--primary)', 
+          color: 'var(--bg-primary)', 
+          borderRadius: 'var(--radius-xl)', 
+          fontWeight: 700, 
+          border: 'none', 
+          cursor: 'pointer', 
+          boxShadow: 'var(--shadow-lg)' 
+        }}
+        onClick={() => setForceAnimations(prev => !prev)}
+      >
+        {forceAnimations ? "🛑 Stop Force Animations" : "✨ Force Animations ON"}
+      </button>
     </div>
   );
 }

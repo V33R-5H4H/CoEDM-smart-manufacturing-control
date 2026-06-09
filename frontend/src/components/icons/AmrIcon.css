@@ -36,14 +36,14 @@
 
 /* Colors */
 .amr-chassis, .amr-plate {
-  fill: var(--bg-secondary);
-  stroke: var(--border-dark);
+  fill: var(--bg-hover);
+  stroke: var(--text-muted);
   stroke-width: 1;
 }
 
 .amr-lidar {
   fill: var(--bg-hover);
-  stroke: var(--border-dark);
+  stroke: var(--text-muted);
   stroke-width: 1;
 }
 
@@ -53,12 +53,12 @@
 
 .amr-payload {
   fill: var(--info);
-  stroke: var(--border-dark);
+  stroke: var(--text-muted);
   stroke-width: 1;
 }
 
 .amr-payload-line {
-  stroke: var(--border-dark);
+  stroke: var(--text-muted);
   stroke-width: 1;
   opacity: 0.5;
 }

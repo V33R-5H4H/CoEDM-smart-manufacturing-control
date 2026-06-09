@@ -36,20 +36,20 @@
 
 /* Colors */
 .asm-icon-base, .asm-icon-jaw, .asm-icon-cylinder {
-  fill: var(--bg-secondary);
-  stroke: var(--border-dark);
+  fill: var(--bg-hover);
+  stroke: var(--text-muted);
   stroke-width: 1;
 }
 
 .asm-icon-rod {
   fill: var(--bg-hover);
-  stroke: var(--border-dark);
+  stroke: var(--text-muted);
   stroke-width: 1;
 }
 
 .asm-icon-head {
   fill: var(--text-disabled);
-  stroke: var(--border-dark);
+  stroke: var(--text-muted);
   stroke-width: 1;
 }
 
@@ -60,7 +60,7 @@
 
 .asm-icon-workpiece {
   fill: var(--info);
-  stroke: var(--border-dark);
+  stroke: var(--text-muted);
   stroke-width: 0.5;
   transition: all 0.3s ease;
 }

@@ -8,12 +8,12 @@ export default function FactoryLayout({ stations }) {
   const coordinates = {
     asrs: { x: 15, y: 15 },
     amr: { x: 35, y: 50 },
-    assembly: { x: 55, y: 15 },
-    mirac: { x: 85, y: 25 },
-    triac: { x: 85, y: 75 },
+    mirac: { x: 55, y: 15 },
+    triac: { x: 85, y: 15 },
+    cobot: { x: 55, y: 50 },
+    assembly: { x: 85, y: 85 },
     testing: { x: 55, y: 85 },
     inspection: { x: 15, y: 85 },
-    cobot: { x: 55, y: 50 },
   };
 
   return (
@@ -26,7 +26,7 @@ export default function FactoryLayout({ stations }) {
         {/* Vertical connections */}
         <line x1="15%" y1="15%" x2="15%" y2="85%" className="path-line active" />
         <line x1="55%" y1="15%" x2="55%" y2="85%" className="path-line active" />
-        <line x1="85%" y1="25%" x2="85%" y2="75%" className="path-line active" />
+        <line x1="85%" y1="15%" x2="85%" y2="85%" className="path-line active" />
       </svg>
 
       {/* Place each station node */}
@@ -39,7 +39,7 @@ export default function FactoryLayout({ stations }) {
             className="factory-node"
             style={{ left: `${coords.x}%`, top: `${coords.y}%` }}
           >
-            <StationEmoticon machineType={s.key} state={s.emoticonState} size={50} />
+            <StationEmoticon machineType={s.key} state={s.emoticonState} size={110} />
             <h4>{s.name}</h4>
             
             <div className="factory-node-metrics">

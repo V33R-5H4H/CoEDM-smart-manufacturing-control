@@ -36,26 +36,26 @@
 
 /* Colors */
 .triac-frame, .triac-base, .triac-table {
-  fill: var(--bg-secondary);
-  stroke: var(--border-dark);
+  fill: var(--bg-hover);
+  stroke: var(--text-muted);
   stroke-width: 1;
 }
 
 .triac-spindle-arm, .triac-spindle-head {
   fill: var(--bg-hover);
-  stroke: var(--border-dark);
+  stroke: var(--text-muted);
   stroke-width: 1;
 }
 
 .triac-tool-bit {
   fill: var(--text-disabled);
-  stroke: var(--border-dark);
+  stroke: var(--text-muted);
   stroke-width: 0.5;
   transform-origin: 50px 33px; /* Center of the tool bit */
 }
 
 .triac-workpiece {
-  stroke: var(--border-dark);
+  stroke: var(--text-muted);
   stroke-width: 0.5;
 }
 

@@ -22,27 +22,27 @@ export default function StationEmoticon({ machineType, state = "offline", size =
   };
 
   if (machineType === "asrs") {
-    return <AsrsIcon state={state} size={110} />;
+    return <AsrsIcon state={state} size={size * 1.2} />;
   }
 
   if (machineType === "mirac") {
-    return <MiracIcon state={state} size={80} />;
+    return <MiracIcon state={state} size={size} />;
   }
 
   if (machineType === "triac") {
-    return <TriacIcon state={state} size={80} />;
+    return <TriacIcon state={state} size={size} />;
   }
 
   if (machineType === "assembly") {
-    return <AssemblyIcon state={state} size={80} />;
+    return <AssemblyIcon state={state} size={size} />;
   }
 
   if (machineType === "amr") {
-    return <AmrIcon state={state} size={80} />;
+    return <AmrIcon state={state} size={size} />;
   }
 
   if (machineType === "cobot") {
-    return <CobotIcon state={state} size={80} />;
+    return <CobotIcon state={state} size={size} />;
   }
 
   return (
