@@ -1,0 +1,120 @@
+.cobot-icon-container {
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Glass and Glow Effects by State */
+.cobot-icon-container.state-running {
+  border-color: var(--status-ok);
+  box-shadow: inset 0 0 15px color-mix(in srgb, var(--status-ok) 15%, transparent);
+}
+
+.cobot-icon-container.state-idle {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 15px color-mix(in srgb, var(--primary) 15%, transparent);
+  animation: cobot-breathe 4s ease-in-out infinite alternate;
+}
+
+.cobot-icon-container.state-error {
+  border-color: var(--status-error);
+  box-shadow: inset 0 0 20px color-mix(in srgb, var(--status-error) 30%, transparent), 0 0 15px color-mix(in srgb, var(--status-error) 40%, transparent);
+  animation: cobot-shake 0.5s infinite ease-in-out;
+}
+
+.cobot-icon-container.state-offline {
+  filter: grayscale(100%);
+  opacity: 0.5;
+}
+
+/* Colors */
+.cobot-base, .cobot-shoulder-mount, .cobot-arm {
+  fill: var(--bg-secondary);
+  stroke: var(--border-dark);
+  stroke-width: 1;
+}
+
+.cobot-joint, .cobot-joint-secondary, .cobot-effector-base {
+  fill: var(--bg-hover);
+  stroke: var(--border-dark);
+  stroke-width: 1;
+}
+
+.cobot-jaw {
+  fill: var(--text-disabled);
+  stroke: var(--border-dark);
+  stroke-width: 0.5;
+}
+
+.cobot-workpiece {
+  fill: var(--info);
+  opacity: 0;
+}
+
+.state-idle .cobot-status-light { fill: var(--primary); filter: drop-shadow(0 0 2px var(--primary)); }
+.state-running .cobot-status-light { fill: var(--status-ok); filter: drop-shadow(0 0 2px var(--status-ok)); }
+.state-error .cobot-status-light { fill: var(--status-error); filter: drop-shadow(0 0 2px var(--status-error)); }
+.state-offline .cobot-status-light { fill: var(--border-dark); }
+
+/* Animations */
+@keyframes cobot-breathe {
+  0% { box-shadow: inset 0 0 10px color-mix(in srgb, var(--primary) 5%, transparent); }
+  100% { box-shadow: inset 0 0 25px color-mix(in srgb, var(--primary) 25%, transparent), 0 0 15px color-mix(in srgb, var(--primary) 15%, transparent); }
+}
+
+@keyframes cobot-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+/* Base Rest Positions (Z-shape pointing up) */
+.cobot-shoulder-group { transform: rotate(30deg); }
+.cobot-elbow-group { transform: rotate(-100deg); }
+.cobot-wrist-group { transform: rotate(70deg); }
+
+/* Running Pick and Place Animations */
+@keyframes cobot-shoulder {
+  0%, 100% { transform: rotate(45deg); }
+  50% { transform: rotate(-25deg); }
+}
+
+@keyframes cobot-elbow {
+  0%, 100% { transform: rotate(-110deg); }
+  50% { transform: rotate(-50deg); }
+}
+
+@keyframes cobot-wrist {
+  0%, 100% { transform: rotate(65deg); }
+  50% { transform: rotate(75deg); }
+}
+
+@keyframes cobot-jaw-left {
+  0%, 10%, 90%, 100% { transform: translateX(-2px); } /* open */
+  25%, 75% { transform: translateX(0); } /* closed */
+}
+
+@keyframes cobot-jaw-right {
+  0%, 10%, 90%, 100% { transform: translateX(2px); } /* open */
+  25%, 75% { transform: translateX(0); } /* closed */
+}
+
+@keyframes cobot-workpiece-pulse {
+  0%, 20% { opacity: 0; }
+  25%, 75% { opacity: 1; }
+  80%, 100% { opacity: 0; }
+}
+
+.state-running .cobot-shoulder-group { animation: cobot-shoulder 3s ease-in-out infinite; }
+.state-running .cobot-elbow-group { animation: cobot-elbow 3s ease-in-out infinite; }
+.state-running .cobot-wrist-group { animation: cobot-wrist 3s ease-in-out infinite; }
+.state-running .cobot-jaw-left { animation: cobot-jaw-left 3s ease-in-out infinite; }
+.state-running .cobot-jaw-right { animation: cobot-jaw-right 3s ease-in-out infinite; }
+.state-running .cobot-workpiece { animation: cobot-workpiece-pulse 3s ease-in-out infinite; }

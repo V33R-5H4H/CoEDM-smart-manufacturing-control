@@ -4,9 +4,11 @@ import PageHeader from "../components/PageHeader";
 import BoxService from "./asrs/services/boxService";
 import "./Assembly.css";
 import { wsCache } from "../utils/wsCache";
+import FactoryLayout from "../components/FactoryLayout";
 
 export default function Dashboard() {
-  const [asrsConnected, setAsrsConnected] = useState(false);
+  const [asrsConnected, setAsrsConnected] = useState(false); // WebSocket status
+  const [asrsPlcConnected, setAsrsPlcConnected] = useState(false); // PLC connection status
   const [asrsShuttle, setAsrsShuttle] = useState(wsCache.dashboard.asrsShuttle);
   const [inventoryCount, setInventoryCount] = useState(0);
 
@@ -24,6 +26,16 @@ export default function Dashboard() {
 
   const [transactions, setTransactions] = useState(wsCache.dashboard.transactions);
   const [lastUpdated, setLastUpdated] = useState(wsCache.dashboard.lastUpdated);
+
+  // Track the exact timestamp of the last actual data change (delta)
+  const [activity, setActivity] = useState({ asrs: 0, assembly: 0, mirac: 0, triac: 0 });
+  
+  // Force a re-render every second to smoothly transition from "running" to "idle"
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Fetch initial ASRS inventory count
   useEffect(() => {
@@ -53,9 +65,8 @@ export default function Dashboard() {
 
   // WebSockets Connection Effect
   useEffect(() => {
-    const apiBase = import.meta.env.VITE_API_URL || '/api';
-    const httpBase = apiBase.startsWith('http') ? apiBase : `${window.location.origin}${apiBase}`;
-    const wsBase = import.meta.env.VITE_WS_URL || httpBase.replace(/^http/, 'ws');
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsBase = import.meta.env.VITE_WS_URL || `${protocol}//${window.location.host}`;
 
     // Helper: clean WS close on cleanup
     const sockets = [];
@@ -79,6 +90,7 @@ export default function Dashboard() {
             const ts = new Date().toTimeString().slice(0, 8);
             wsCache.dashboard.lastUpdated = { ...wsCache.dashboard.lastUpdated, asrs: ts };
             setLastUpdated(prev => ({ ...prev, asrs: ts }));
+            setActivity(prev => ({ ...prev, asrs: Date.now() }));
           } else if (data.type === "led") {
             setTimeout(async () => {
               try {
@@ -146,6 +158,9 @@ export default function Dashboard() {
           const ts = new Date().toTimeString().slice(0, 8);
           wsCache.dashboard.lastUpdated = { ...wsCache.dashboard.lastUpdated, assembly: ts };
           setLastUpdated(prev => ({ ...prev, assembly: ts }));
+          if (msg.type === 'delta' || msg.type === 'snapshot') {
+            setActivity(prev => ({ ...prev, assembly: Date.now() }));
+          }
         } catch { }
       };
       assemblyWs.onclose = () => {
@@ -176,8 +191,9 @@ export default function Dashboard() {
           } else {
             return; // heartbeat
           }
-          const plcOn = data.data_sources?.plc ?? false;
-          setMiracConnected(plcOn);
+          const anyConnected = Object.values(data.data_sources || {}).some(v => v === true);
+          console.log("[MIRAC WS] Received data:", data.data_sources, "anyConnected:", anyConnected);
+          setMiracConnected(anyConnected);
           if (data.spindle?.speed !== undefined && data.spindle?.speed !== null) {
             wsCache.dashboard.miracSpindle = data.spindle.speed;
             setMiracSpindle(data.spindle.speed);
@@ -189,6 +205,9 @@ export default function Dashboard() {
           const ts = new Date().toTimeString().slice(0, 8);
           wsCache.dashboard.lastUpdated = { ...wsCache.dashboard.lastUpdated, mirac: ts };
           setLastUpdated(prev => ({ ...prev, mirac: ts }));
+          if (msg.type === 'delta' || msg.type === 'snapshot') {
+            setActivity(prev => ({ ...prev, mirac: Date.now() }));
+          }
         } catch { }
       };
       miracWs.onclose = () => {
@@ -223,8 +242,8 @@ export default function Dashboard() {
           } else {
             return; // heartbeat
           }
-          const plcOn = data.data_sources?.plc ?? false;
-          setTriacConnected(plcOn);
+          const anyConnected = Object.values(data.data_sources || {}).some(v => v === true);
+          setTriacConnected(anyConnected);
           if (data.spindle?.speed !== undefined && data.spindle?.speed !== null) {
             wsCache.dashboard.triacSpindle = data.spindle.speed;
             setTriacSpindle(data.spindle.speed);
@@ -236,6 +255,9 @@ export default function Dashboard() {
           const ts = new Date().toTimeString().slice(0, 8);
           wsCache.dashboard.lastUpdated = { ...wsCache.dashboard.lastUpdated, triac: ts };
           setLastUpdated(prev => ({ ...prev, triac: ts }));
+          if (msg.type === 'delta' || msg.type === 'snapshot') {
+            setActivity(prev => ({ ...prev, triac: Date.now() }));
+          }
         } catch { }
       };
       triacWs.onclose = () => {
@@ -293,141 +315,137 @@ export default function Dashboard() {
     const handleWsActivity = () => scheduleRefresh();
     window.addEventListener('asrs-ws-activity', handleWsActivity);
 
+    // Periodically fetch PLC connection statuses
+    const fetchStatuses = async () => {
+      if (!isMounted) return;
+      try {
+        const asrsRes = await fetch(`${httpBase}/control/asrs/connection-status`);
+        if (asrsRes.ok) {
+          const asrsJson = await asrsRes.json();
+          setAsrsPlcConnected(asrsJson.connected);
+        }
+      } catch (e) {}
+    };
+    
+    fetchStatuses();
+    const statusTimer = setInterval(fetchStatuses, 3000);
+
     return () => {
       isMounted = false;
       if (refreshTimer) clearTimeout(refreshTimer);
+      clearInterval(statusTimer);
       window.removeEventListener('asrs-ws-activity', handleWsActivity);
     };
   }, []);
+
+  const ACTIVITY_TIMEOUT = 3000; // 3 seconds of no data changes = idle
+
+  const getMiracState = () => {
+    if (!miracConnected) return "offline";
+    if (miracSpindle != null && miracSpindle > 0) return "running";
+    return "idle";
+  };
+
+  const getTriacState = () => {
+    if (!triacConnected) return "offline";
+    if ((triacSpindle != null && triacSpindle > 0) || (triacFeed != null && triacFeed > 0)) return "running";
+    return "idle";
+  };
+
+  const getAssemblyState = () => {
+    if (!assemblyConnected) return "offline";
+    if (assemblySafety === "BREACH") return "error";
+    if (assemblyPosition != null && assemblyPosition > 7) return "running";
+    return "idle";
+  };
+
+  const getAsrsState = () => {
+    // If either the websocket is dead OR the PLC is disconnected, it's offline
+    if (!asrsConnected || !asrsPlcConnected) return "offline";
+    if (now - activity.asrs < ACTIVITY_TIMEOUT) return "running";
+    return "idle";
+  };
 
   const stations = [
     {
       name: "AS/RS",
       key: "asrs",
       to: "/asrs",
-      icon: "inventory_2",
-      description: "Automated Storage & Retrieval System",
+      emoticonState: getAsrsState(),
       metrics: [
-        { label: "INVENTORY", value: inventoryCount, unit: "items" },
-        { label: "SHUTTLE", value: asrsConnected ? asrsShuttle.state.toUpperCase() : "OFFLINE", sub: asrsConnected ? `@ ${asrsShuttle.col}${asrsShuttle.row}` : "" },
-      ],
-      statusColor: asrsConnected ? "var(--status-ok)" : "var(--status-idle)",
-      statusText: asrsConnected ? "CONNECTED" : "OFFLINE",
-    },
-    {
-      name: "Assembly Station",
-      key: "assembly",
-      to: "/assembly",
-      icon: "factory",
-      description: "Hydraulic Press Control",
-      metrics: [
-        { label: "PISTON POS", value: assemblyConnected && assemblyPosition !== null ? assemblyPosition : "---", unit: assemblyConnected && assemblyPosition !== null ? "mm" : "" },
-        { label: "SAFETY SYS", value: assemblyConnected ? assemblySafety : "---", sub: "" },
-      ],
-      statusColor: assemblyConnected ? "var(--status-ok)" : "var(--status-idle)",
-      statusText: assemblyConnected ? "CONNECTED" : "OFFLINE",
+        { label: "INV", value: inventoryCount, unit: "pcs" },
+        { label: "SHUTTLE", value: asrsConnected && asrsShuttle?.state ? asrsShuttle.state.substring(0, 3).toUpperCase() : "OFF" },
+      ]
     },
     {
       name: "Smart MIRAC",
       key: "mirac",
       to: "/mirac",
-      icon: "settings_input_component",
-      description: "CNC Lathe Monitoring",
+      emoticonState: getMiracState(),
       metrics: [
-        { label: "SPINDLE", value: miracConnected && miracSpindle !== null ? Math.round(miracSpindle).toLocaleString() : "---", unit: miracConnected && miracSpindle !== null ? "RPM" : "" },
-        { label: "CORE TEMP", value: miracConnected && miracTemp !== null ? Math.round(miracTemp) : "---", unit: miracConnected && miracTemp !== null ? "°C" : "" },
-      ],
-      statusColor: miracConnected ? "var(--status-ok)" : "var(--status-idle)",
-      statusText: miracConnected ? "CONNECTED" : "OFFLINE",
+        { label: "RPM", value: miracConnected && miracSpindle !== null ? Math.round(miracSpindle) : "---" },
+        { label: "TEMP", value: miracConnected && miracTemp !== null ? Math.round(miracTemp) : "---", unit: "°C" },
+      ]
     },
     {
       name: "Smart TRIAC",
       key: "triac",
       to: "/triac",
-      icon: "precision_manufacturing",
-      description: "Process Control",
+      emoticonState: getTriacState(),
       metrics: [
-        { label: "STATUS", value: triacConnected ? (triacSpindle > 0 ? "RUNNING" : "READY") : "---", unit: "" },
-        { label: "FEED RATE", value: triacConnected && triacFeed !== null ? Math.round(triacFeed) : "---", unit: triacConnected && triacFeed !== null ? "mm/min" : "" },
-      ],
-      statusColor: triacConnected ? "var(--status-ok)" : "var(--status-idle)",
-      statusText: triacConnected ? "CONNECTED" : "OFFLINE",
+        { label: "FEED", value: triacConnected && triacFeed !== null ? Math.round(triacFeed) : "---" },
+        { label: "STATUS", value: triacConnected ? (triacSpindle > 0 ? "RUN" : "RDY") : "---" },
+      ]
     },
     {
-      name: "Assembly Station",
+      name: "Assembly",
+      key: "assembly",
       to: "/assembly",
-      icon: "factory",
-      description: "Hydraulic Press Control",
+      emoticonState: getAssemblyState(),
       metrics: [
-        { label: "PISTON POS", value: assemblyConnected && assemblyPosition !== null ? assemblyPosition : "---", unit: assemblyConnected && assemblyPosition !== null ? "mm" : "" },
-        { label: "SAFETY SYS", value: assemblyConnected ? assemblySafety : "---", sub: "" },
-      ],
-      statusColor: assemblyConnected ? "var(--status-ok)" : "var(--status-idle)",
-      statusText: assemblyConnected ? "CONNECTED" : "OFFLINE",
+        { label: "POS", value: assemblyConnected && assemblyPosition !== null ? assemblyPosition : "---", unit: "mm" },
+        { label: "SYS", value: assemblyConnected ? assemblySafety : "---" },
+      ]
     },
     {
-      name: "Testing Station",
-      key: null,
+      name: "Testing",
+      key: "testing",
       to: "/testing-station",
-      icon: "fact_check",
-      description: "Quality Assurance",
+      emoticonState: "offline",
       metrics: [
-        { label: "STATUS", value: "---", unit: "" },
-        { label: "THROUGHPUT", value: "---", unit: "u/h" },
-      ],
-      statusColor: "var(--status-idle)",
-      statusText: "OFFLINE",
+        { label: "STAT", value: "---" },
+        { label: "RATE", value: "---", unit: "u/h" },
+      ]
     },
     {
       name: "Inspection",
+      key: "inspection",
       to: "/inspection",
-      icon: "policy",
-      description: "Visual Defect Inspection",
+      emoticonState: "offline",
       metrics: [
-        { label: "PASS RATE", value: "---", unit: "%" },
-        { label: "REJECTS", value: "---", unit: "" },
-      ],
-      statusColor: "var(--status-idle)",
-      statusText: "OFFLINE",
+        { label: "PASS", value: "---", unit: "%" },
+        { label: "FAIL", value: "---" },
+      ]
     },
     {
       name: "AMR",
-      key: null,
+      key: "amr",
       to: "/amr",
-      icon: "local_shipping",
-      description: "Autonomous Mobile Robots",
+      emoticonState: "offline",
       metrics: [
-        { label: "FLEET", value: "---", unit: "" },
-        { label: "BATTERY", value: "---", unit: "%" },
-      ],
-      statusColor: "var(--status-idle)",
-      statusText: "OFFLINE",
+        { label: "FLEET", value: "---" },
+        { label: "BATT", value: "---", unit: "%" },
+      ]
     },
     {
       name: "Cobot",
-      key: null,
+      key: "cobot",
       to: "/cobot",
-      icon: "smart_toy",
-      description: "Collaborative Robot Arm",
+      emoticonState: "offline",
       metrics: [
-        { label: "STATE", value: "---", unit: "" },
-        { label: "PAYLOAD", value: "---", unit: "kg" },
-      ],
-      statusColor: "var(--status-idle)",
-      statusText: "OFFLINE",
-    },
-    {
-      name: "Inspection",
-      key: null,
-      to: "/inspection",
-      icon: "policy",
-      description: "Visual Defect Inspection",
-      metrics: [
-        { label: "PASS RATE", value: "---", unit: "%" },
-        { label: "REJECTS", value: "---", unit: "" },
-      ],
-      statusColor: "var(--status-idle)",
-      statusText: "OFFLINE",
+        { label: "STATE", value: "---" },
+        { label: "LOAD", value: "---", unit: "kg" },
+      ]
     }
   ];
 
@@ -439,137 +457,7 @@ export default function Dashboard() {
 
       <div className="asm-main" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
         {/* Station Cards Grid (Top Half) */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gridAutoRows: '1fr',
-          gap: '16px',
-          alignContent: 'start',
-        }}>
-          {stations.map((s) => (
-            <Link
-              key={s.to}
-              to={s.to}
-              className="asm-hud-card asm-hud-card--clickable"
-              style={{
-                textDecoration: 'none',
-                color: 'inherit',
-                transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                cursor: 'pointer',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
-                e.currentTarget.style.borderColor = 'var(--primary)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = 'var(--shadow)';
-                e.currentTarget.style.borderColor = 'var(--border-light)';
-              }}
-            >
-              {/* Card Header */}
-              <div className="asm-hud-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 'none', paddingBottom: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span className="material-symbols-outlined" style={{
-                    fontSize: '20px',
-                    color: s.statusText === 'CONNECTED' ? 'var(--primary)' : 'var(--text-disabled)',
-                    textShadow: s.statusText === 'CONNECTED' ? '0 0 8px var(--primary)' : 'none'
-                  }}>{s.icon}</span>
-                  <div>
-                    <div style={{
-                      fontSize: '13px',
-                      fontWeight: 800,
-                      color: 'var(--text-primary)',
-                    }}>{s.name}</div>
-                    <div style={{
-                      fontSize: '10px',
-                      color: 'var(--text-muted)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.04em',
-                      marginTop: '1px'
-                    }}>{s.description}</div>
-                  </div>
-                </div>
-                {/* Status Badge */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  padding: '2px 8px',
-                  borderRadius: '3px',
-                  border: `1px solid color-mix(in srgb, ${s.statusColor} 40%, transparent)`,
-                  background: `color-mix(in srgb, ${s.statusColor} 10%, transparent)`,
-                  boxShadow: `0 0 6px color-mix(in srgb, ${s.statusColor} 20%, transparent)`
-                }}>
-                  <div style={{
-                    width: '5px', height: '5px', borderRadius: '50%',
-                    background: s.statusColor,
-                    boxShadow: `0 0 4px ${s.statusColor}`
-                  }} />
-                  <span style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '9px',
-                    fontWeight: 700,
-                    color: s.statusColor,
-                  }}>{s.statusText}</span>
-                </div>
-              </div>
-
-              {/* Metrics Row */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '12px',
-                borderTop: '1px solid var(--border-light)',
-                paddingTop: '12px',
-                marginTop: '4px'
-              }}>
-                {s.metrics.map((m, i) => (
-                  <div key={i} className="asm-val">
-                    <div className="asm-val__label">{m.label}</div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                      <span className={`asm-val__num ${s.statusText === 'CONNECTED' ? 'asm-val__num--glowing-blue' : ''}`} style={{ fontSize: '15px' }}>
-                        {m.value}
-                      </span>
-                      {m.unit && (
-                        <span className="asm-val__unit" style={{ fontSize: '10px' }}>{m.unit}</span>
-                      )}
-                      {m.sub && (
-                        <span className="asm-val__unit" style={{ fontFamily: 'var(--font-mono)', fontSize: '10px' }}>{m.sub}</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Details link footer */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                borderTop: '1px solid var(--border-light)',
-                paddingTop: '8px',
-                marginTop: '8px'
-              }}>
-                {lastUpdated[s.key] ? (
-                  <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-                    UPD: {lastUpdated[s.key]}
-                  </span>
-                ) : (
-                  <span style={{ fontSize: '9px', color: 'transparent' }}>—</span>
-                )}
-                <span style={{
-                  fontSize: '9px',
-                  fontWeight: 800,
-                  color: s.statusText === 'CONNECTED' ? 'var(--primary)' : 'var(--text-muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                }}>Details & Control ➔</span>
-              </div>
-            </Link>
-          ))}
-        </div>
+        <FactoryLayout stations={stations} />
 
         {/* Recent Transaction Log */}
         <div className="asm-viz" style={{ minHeight: 'auto', flex: 'none', border: '1px solid var(--border)' }}>

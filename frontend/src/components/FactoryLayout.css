@@ -1,0 +1,103 @@
+.factory-floor {
+  position: relative;
+  width: 100%;
+  height: 800px;
+  min-height: 800px;
+  flex-shrink: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
+}
+
+.factory-paths {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.path-line {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 4;
+  stroke-dasharray: 10 10;
+  opacity: 0.3;
+}
+
+.path-line.active {
+  opacity: 0.8;
+  animation: dash-flow 1s linear infinite;
+}
+
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+.factory-node {
+  position: absolute;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 180px;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s;
+  background: var(--bg-elevated);
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow);
+}
+
+.factory-node:hover {
+  transform: translate(-50%, -50%) scale(1.05);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary);
+  z-index: 10;
+}
+
+.factory-node h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.factory-node-metrics {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border-light);
+  padding-top: 8px;
+}
+
+.factory-node-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+}
+
+.factory-node-metric .label {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.factory-node-metric .value {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}

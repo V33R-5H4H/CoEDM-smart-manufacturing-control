@@ -1,0 +1,152 @@
+.amr-icon-container {
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Glass and Glow Effects by State */
+.amr-icon-container.state-running {
+  border-color: var(--status-ok);
+  box-shadow: inset 0 0 15px color-mix(in srgb, var(--status-ok) 15%, transparent);
+}
+
+.amr-icon-container.state-idle {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 15px color-mix(in srgb, var(--primary) 15%, transparent);
+  animation: amr-breathe 4s ease-in-out infinite alternate;
+}
+
+.amr-icon-container.state-error {
+  border-color: var(--status-error);
+  box-shadow: inset 0 0 20px color-mix(in srgb, var(--status-error) 30%, transparent), 0 0 15px color-mix(in srgb, var(--status-error) 40%, transparent);
+  animation: amr-shake 0.5s infinite ease-in-out;
+}
+
+.amr-icon-container.state-offline {
+  filter: grayscale(100%);
+  opacity: 0.5;
+}
+
+/* Colors */
+.amr-chassis, .amr-plate {
+  fill: var(--bg-secondary);
+  stroke: var(--border-dark);
+  stroke-width: 1;
+}
+
+.amr-lidar {
+  fill: var(--bg-hover);
+  stroke: var(--border-dark);
+  stroke-width: 1;
+}
+
+.amr-lidar-spinner {
+  fill: var(--primary-dark);
+}
+
+.amr-payload {
+  fill: var(--info);
+  stroke: var(--border-dark);
+  stroke-width: 1;
+}
+
+.amr-payload-line {
+  stroke: var(--border-dark);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+
+.amr-wheel {
+  fill: var(--bg-primary);
+  stroke: var(--text-disabled);
+  stroke-width: 2.5;
+  stroke-dasharray: 4;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+.amr-led-strip {
+  fill: var(--text-disabled);
+  transition: fill 0.3s ease;
+}
+
+.amr-scanner-beam {
+  opacity: 0;
+  transform-origin: 24px 25px;
+}
+
+/* State-specific Colors */
+.state-idle .amr-led-strip {
+  fill: var(--primary);
+  filter: drop-shadow(0 0 3px var(--primary));
+}
+
+.state-running .amr-led-strip {
+  fill: var(--status-ok);
+  filter: drop-shadow(0 0 3px var(--status-ok));
+}
+
+.state-error .amr-led-strip {
+  fill: var(--status-error);
+  filter: drop-shadow(0 0 3px var(--status-error));
+}
+
+/* Animations */
+@keyframes amr-breathe {
+  0% { box-shadow: inset 0 0 10px color-mix(in srgb, var(--primary) 5%, transparent); }
+  100% { box-shadow: inset 0 0 25px color-mix(in srgb, var(--primary) 25%, transparent), 0 0 15px color-mix(in srgb, var(--primary) 15%, transparent); }
+}
+
+@keyframes amr-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+@keyframes amr-drive {
+  0%, 100% { transform: translateX(0) translateY(0); }
+  25% { transform: translateX(-2px) translateY(-1px); }
+  75% { transform: translateX(2px) translateY(0px); }
+}
+
+@keyframes amr-wheel-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-360deg); } /* Negative because it's driving left */
+}
+
+@keyframes amr-lidar-spin {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(4px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes amr-scanner-sweep {
+  0% { opacity: 0; transform: rotate(-15deg); }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(15deg); }
+}
+
+/* Running State Animations */
+.state-running .amr-robot-group {
+  animation: amr-drive 2s ease-in-out infinite;
+}
+
+.state-running .amr-wheel {
+  animation: amr-wheel-spin 1.5s linear infinite;
+}
+
+.state-running .amr-lidar-spinner {
+  animation: amr-lidar-spin 0.5s linear infinite;
+}
+
+.state-running .amr-scanner-beam {
+  animation: amr-scanner-sweep 2s ease-in-out infinite alternate;
+}
