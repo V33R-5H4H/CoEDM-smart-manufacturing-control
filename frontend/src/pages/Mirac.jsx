@@ -1123,7 +1123,7 @@ const Mirac = () => {
               <h4 style={{ margin: "0 0 8px 0", fontSize: "14px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, fontFamily: "Inter" }}>
                 {activeModal === "axis" ? "OPC-UA Tag Namespace Binding" : "Modbus Telemetry Register Table (16-bit word representation)"}
               </h4>
-              <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: "4px" }}>
+              <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: "4px", background: "var(--bg-secondary)" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", textAlign: "left", fontFamily: "JetBrains Mono" }}>
                   <thead>
                     <tr style={{ background: "var(--bg-900)", borderBottom: "1px solid var(--border)" }}>
