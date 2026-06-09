@@ -459,6 +459,24 @@ export default function Dashboard() {
     <div className="asm-page">
       <PageHeader
         title="Smart Manufacturing Control Portal"
+        actions={
+          <button 
+            style={{ 
+              padding: '6px 16px', 
+              background: forceAnimations ? 'var(--status-error)' : 'var(--primary)', 
+              color: 'var(--bg-primary)', 
+              borderRadius: 'var(--radius-sm)', 
+              fontWeight: 700,
+              fontSize: '14px', 
+              border: 'none', 
+              cursor: 'pointer', 
+              boxShadow: 'var(--shadow-sm)' 
+            }}
+            onClick={() => setForceAnimations(prev => !prev)}
+          >
+            {forceAnimations ? "Stop Force Animations" : "Force Animations ON"}
+          </button>
+        }
       />
 
       <div className="asm-main" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
@@ -534,25 +552,6 @@ export default function Dashboard() {
         </div>
       </div>
       
-      <button 
-        style={{ 
-          position: 'fixed', 
-          bottom: '24px', 
-          right: '24px', 
-          zIndex: 9999, 
-          padding: '12px 24px', 
-          background: forceAnimations ? 'var(--status-error)' : 'var(--primary)', 
-          color: 'var(--bg-primary)', 
-          borderRadius: 'var(--radius-xl)', 
-          fontWeight: 700, 
-          border: 'none', 
-          cursor: 'pointer', 
-          boxShadow: 'var(--shadow-lg)' 
-        }}
-        onClick={() => setForceAnimations(prev => !prev)}
-      >
-        {forceAnimations ? "🛑 Stop Force Animations" : "✨ Force Animations ON"}
-      </button>
     </div>
   );
 }
