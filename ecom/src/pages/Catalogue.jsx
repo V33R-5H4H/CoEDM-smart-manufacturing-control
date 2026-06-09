@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import ProductCard from '../components/ProductCard';
 import ProductModal from '../components/ProductModal';
 import { Search, PackageOpen } from 'lucide-react';
@@ -17,6 +17,7 @@ export default function Catalogue({ onCartChange }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const searchInputRef = useRef(null);
 
   const fetch_products = () => {
     fetch('/api/ecom/products')
@@ -29,6 +30,17 @@ export default function Catalogue({ onCartChange }) {
     fetch_products();
     const id = setInterval(fetch_products, 30000); // refresh every 30s
     return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const filtered = products
@@ -74,12 +86,21 @@ export default function Catalogue({ onCartChange }) {
         <div style={{ position: 'relative', width: '100%', maxWidth: 540 }}>
           <Search size={20} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
           <input
+            ref={searchInputRef}
             className="form-input"
             placeholder="Search products by name or SKU..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            style={{ paddingLeft: 48, paddingRight: 24, fontSize: '1.1rem', height: 56, borderRadius: 99, boxShadow: 'var(--shadow-sm)' }}
+            style={{ paddingLeft: 48, paddingRight: 72, fontSize: '1.1rem', height: 56, borderRadius: 99, boxShadow: 'var(--shadow-sm)' }}
           />
+          <div style={{ 
+            position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', 
+            fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', 
+            border: '1px solid var(--border)', padding: '2px 6px', borderRadius: 4,
+            pointerEvents: 'none'
+          }}>
+            Ctrl+K
+          </div>
         </div>
       </motion.div>
 
