@@ -32,7 +32,7 @@ export default function SafetyOverlay({ isVisible, title, message, badgeText }) 
                 <>SAFETY<br />INTERRUPT</>
               )}
             </div>
-            <div className="asm-safety-overlay__sub" style={{ maxWidth: "420px", fontSize: "0.85rem", margin: 0 }}>
+            <div className="asm-safety-overlay__sub" style={{ maxWidth: "420px", fontSize: "1.05rem", margin: 0 }}>
               {message}
             </div>
             <div className="asm-safety-overlay__badge">

@@ -19,19 +19,19 @@
   align-items: center;
 }
 .asm-header h1 {
-  font-size: 0.9rem;
+  font-size: 1.1rem;
   font-weight: 600;
   display: flex;
   align-items: baseline;
   gap: 8px;
 }
 .asm-header h1 .accent { color: var(--primary); }
-.asm-header h1 span { font-size: 0.72rem; font-weight: 500; color: var(--text-muted); }
+.asm-header h1 span { font-size: 0.92rem; font-weight: 500; color: var(--text-muted); }
 
 /* Buttons */
 .asm-btn {
   height: 44px;
-  font-size: 0.95rem;
+  font-size: 1.15rem;
   font-weight: 700;
   padding: 0 16px;
   border: 1px solid var(--border);
@@ -68,7 +68,7 @@
 /* Vice toggle button — single button that reflects current state */
 .asm-btn--vice-toggle {
   height: 44px;
-  font-size: 0.95rem;
+  font-size: 1.15rem;
   min-width: 130px;
   border-color: rgba(167, 139, 250, 0.4);
   background: rgba(167, 139, 250, 0.05);
@@ -94,7 +94,7 @@
 }
 .asm-btn--clear {
   color: var(--text-muted);
-  font-size: 0.6rem;
+  font-size: 0.8rem;
   height: 24px;
   padding: 0 8px;
 }
@@ -121,7 +121,7 @@
 }
 .asm-side__section h3 {
   font-family: 'Inter', sans-serif;
-  font-size: 13px !important;
+  font-size: 16px !important;
   font-weight: 600 !important;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -142,7 +142,7 @@
 .asm-led__dot--green { background: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
 .asm-led__dot--orange { background: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.6); }
 .asm-led__dot--red { background: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.6); }
-.asm-led__label { font-size: 0.62rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+.asm-led__label { font-size: 0.82rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
 
 /* Safety items */
 .asm-safety-item {
@@ -151,7 +151,7 @@
   justify-content: space-between;
   padding: 6px 10px;
   border-radius: var(--radius-sm);
-  font-size: 0.72rem;
+  font-size: 0.92rem;
   font-weight: 600;
   color: var(--text-muted);
   border: 1px solid var(--border);
@@ -203,7 +203,7 @@
 }
 .asm-hud-header {
   font-family: 'Inter', sans-serif;
-  font-size: 13px !important;
+  font-size: 16px !important;
   font-weight: 600 !important;
   color: var(--text-primary);
   text-transform: uppercase;
@@ -219,7 +219,7 @@
 }
 .asm-val__label {
   font-family: 'Inter', sans-serif;
-  font-size: 13px !important;
+  font-size: 16px !important;
   font-weight: 600 !important;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -227,14 +227,14 @@
 }
 .asm-val__num {
   font-family: 'JetBrains Mono', monospace !important;
-  font-size: 22px !important;
+  font-size: 25px !important;
   font-weight: 500 !important;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
   text-shadow: none !important;
 }
 .asm-val__num--sm {
-  font-size: 16px !important;
+  font-size: 19px !important;
 }
 .asm-val__num--glowing-blue {
   color: #38bdf8 !important;
@@ -245,7 +245,7 @@
   text-shadow: none !important;
 }
 .asm-val__unit {
-  font-size: 12px !important;
+  font-size: 15px !important;
   font-weight: 600 !important;
   font-family: 'Inter', sans-serif !important;
   color: var(--text-muted);
@@ -284,7 +284,7 @@
 }
 .asm-viz__bar span {
   font-family: 'Inter', sans-serif;
-  font-size: 13px !important;
+  font-size: 16px !important;
   font-weight: 600 !important;
   color: var(--text-primary);
   text-transform: uppercase;
@@ -292,7 +292,7 @@
 }
 .asm-workpiece-badge {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.82rem;
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 3px;
@@ -672,7 +672,7 @@
 }
 .asm-cmd__label {
   font-family: 'Inter', sans-serif;
-  font-size: 13px !important;
+  font-size: 16px !important;
   font-weight: 600 !important;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -705,14 +705,14 @@
   line-height: 1.2;
 }
 .asm-safety-overlay__sub {
-  font-size: 0.8rem;
+  font-size: 1rem;
   font-weight: 500;
   color: #fca5a5;
   font-family: var(--font-mono);
   margin-top: 4px;
 }
 .asm-safety-overlay__badge {
-  font-size: 0.68rem;
+  font-size: 0.88rem;
   font-weight: 700;
   color: #ef4444;
   text-transform: uppercase;

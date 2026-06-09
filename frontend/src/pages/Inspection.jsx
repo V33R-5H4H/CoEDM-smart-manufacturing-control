@@ -9,7 +9,7 @@ export default function Inspection() {
         subtitle="Visual Defect Inspection"
       />
       <div className="asm-body" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-        <div style={{ color: 'var(--text-muted)', fontSize: '1.2rem', fontFamily: 'var(--font-mono)' }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: '1.4rem', fontFamily: 'var(--font-mono)' }}>
           Inspection module placeholder.
         </div>
       </div>

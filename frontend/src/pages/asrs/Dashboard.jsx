@@ -305,7 +305,7 @@ function Dashboard() {
               type="button"
               onClick={() => setActiveTab(tab)}
               style={{
-                fontSize: '14px',
+                fontSize: '16px',
                 fontWeight: activeTab === tab ? 700 : 600,
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',

@@ -106,7 +106,7 @@ export default function Cobot() {
                 type="button"
                 onClick={handleDisconnect}
                 style={{
-                  fontSize: '11px',
+                  fontSize: '14px',
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
@@ -127,7 +127,7 @@ export default function Cobot() {
                 type="button"
                 onClick={handleConnect}
                 style={{
-                  fontSize: '11px',
+                  fontSize: '14px',
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
@@ -172,7 +172,7 @@ export default function Cobot() {
                   color: realConnected ? "#10b981" : "#ef4444",
                 }}
               >
-                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>send_and_archive</span>
+                <span className="material-symbols-outlined" style={{ fontSize: "21px" }}>send_and_archive</span>
                 {triggering ? "TRANSMITTING..." : "TRIGGER PHYSICAL COBOT"}
               </button>
             </div>
@@ -180,7 +180,7 @@ export default function Cobot() {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flex: 1 }}>
-          <div style={{ color: 'var(--text-muted)', fontSize: '1.2rem', fontFamily: 'var(--font-mono)' }}>
+          <div style={{ color: 'var(--text-muted)', fontSize: '1.4rem', fontFamily: 'var(--font-mono)' }}>
             Cobot module placeholder.
           </div>
         </div>

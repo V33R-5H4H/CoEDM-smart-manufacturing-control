@@ -39,7 +39,7 @@ export default function Amr() {
                 type="button"
                 onClick={handleDisconnect}
                 style={{
-                  fontSize: '11px',
+                  fontSize: '14px',
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
@@ -60,7 +60,7 @@ export default function Amr() {
                 type="button"
                 onClick={handleConnect}
                 style={{
-                  fontSize: '11px',
+                  fontSize: '14px',
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
@@ -109,12 +109,12 @@ export default function Amr() {
               <div style={{ flex: 1, paddingRight: '24px', display: 'flex', flexDirection: 'column' }}>
                 <div className="asm-hud-card" style={{ padding: '20px', height: '100%', position: 'relative' }}>
                   <div className="asm-hud-header" style={{ marginBottom: '8px' }}>
-                    <span style={{ fontSize: '14px', letterSpacing: '0.05em' }}>{pair[0].name}</span>
+                    <span style={{ fontSize: '17px', letterSpacing: '0.05em' }}>{pair[0].name}</span>
                     <span className="asm-hud-badge" style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}>
                       STATION {String(pair[0].id).padStart(2, '0')}
                     </span>
                   </div>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '11px', fontFamily: 'var(--font-mono)', flex: 1, marginTop: '4px' }}>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '14px', fontFamily: 'var(--font-mono)', flex: 1, marginTop: '4px' }}>
                     {pair[0].desc}
                   </div>
                   <div style={{ marginTop: '16px' }}>
@@ -129,7 +129,7 @@ export default function Amr() {
                       }}
                       disabled={!isConnected}
                     >
-                      <span className="material-symbols-outlined" style={{ fontSize: '16px', marginRight: '6px' }}>route</span>
+                      <span className="material-symbols-outlined" style={{ fontSize: '19px', marginRight: '6px' }}>route</span>
                       DISPATCH AMR
                     </button>
                   </div>
@@ -186,7 +186,7 @@ export default function Amr() {
                     boxShadow: '0 0 10px var(--primary-light)',
                     zIndex: 2
                   }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: '20px', color: 'var(--primary)' }}>precision_manufacturing</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: '23px', color: 'var(--primary)' }}>precision_manufacturing</span>
                   </div>
                 )}
                 {/* Track Node Dots for other intersections */}
@@ -209,12 +209,12 @@ export default function Amr() {
               <div style={{ flex: 1, paddingLeft: '24px', display: 'flex', flexDirection: 'column' }}>
                 <div className="asm-hud-card" style={{ padding: '20px', height: '100%', position: 'relative' }}>
                   <div className="asm-hud-header" style={{ marginBottom: '8px' }}>
-                    <span style={{ fontSize: '14px', letterSpacing: '0.05em' }}>{pair[1].name}</span>
+                    <span style={{ fontSize: '17px', letterSpacing: '0.05em' }}>{pair[1].name}</span>
                     <span className="asm-hud-badge" style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}>
                       STATION {String(pair[1].id).padStart(2, '0')}
                     </span>
                   </div>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '11px', fontFamily: 'var(--font-mono)', flex: 1, marginTop: '4px' }}>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '14px', fontFamily: 'var(--font-mono)', flex: 1, marginTop: '4px' }}>
                     {pair[1].desc}
                   </div>
                   <div style={{ marginTop: '16px' }}>
@@ -229,7 +229,7 @@ export default function Amr() {
                       }}
                       disabled={!isConnected}
                     >
-                      <span className="material-symbols-outlined" style={{ fontSize: '16px', marginRight: '6px' }}>route</span>
+                      <span className="material-symbols-outlined" style={{ fontSize: '19px', marginRight: '6px' }}>route</span>
                       DISPATCH AMR
                     </button>
                   </div>

@@ -609,7 +609,7 @@ export default function Assembly() {
                 {plantData?.safety?.buzzer ? (
                   <div className="asm-pulse-dot" />
                 ) : (
-                  <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>OFF</span>
+                  <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>OFF</span>
                 )}
               </div>
               <div className={`asm-safety-item ${plantData?.safety?.curtain ? 'asm-safety-item--danger' : ''}`}>
@@ -617,7 +617,7 @@ export default function Assembly() {
                 {plantData?.safety?.curtain ? (
                   <div className="asm-pulse-dot" />
                 ) : (
-                  <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>CLEAR</span>
+                  <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>CLEAR</span>
                 )}
               </div>
             </div>
@@ -692,7 +692,7 @@ export default function Assembly() {
                   </div>
                   <div className="asm-val">
                     <div className="asm-val__label">Travel Limit</div>
-                    <div className="asm-val__num asm-val__num--sm" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
+                    <div className="asm-val__num asm-val__num--sm" style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
                       Max: {plantData?.assembly?.bearing ? '185' : plantData?.assembly?.shaft ? '135' : '--'} mm
                     </div>
                   </div>
@@ -878,7 +878,7 @@ export default function Assembly() {
                   </div>
                   <div className="asm-val">
                     <div className="asm-val__label">Telemetry Feed</div>
-                    <div className="asm-val__num asm-val__num--sm" style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
+                    <div className="asm-val__num asm-val__num--sm" style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
                       WS: {isWsConnected ? 'LIVE' : 'DISCONNECTED'}
                     </div>
                   </div>
@@ -927,7 +927,7 @@ export default function Assembly() {
             {/* Timestamp row — always present as a placeholder to prevent layout shift */}
             <div style={{ display: 'flex', justifyContent: 'center', minHeight: '16px' }}>
               <span style={{
-                fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)',
+                fontSize: '14px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)',
                 fontWeight: 600, visibility: lastCommandTime ? 'visible' : 'hidden'
               }}>
                 LAST CMD: {lastCommandTime || '00:00:00'}
@@ -970,27 +970,27 @@ export default function Assembly() {
                     background: 'var(--bg-elevated)'
                   }}
                 />
-                <div style={{ position: 'absolute', top: '4px', left: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                <div style={{ position: 'absolute', top: '4px', left: '6px', fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
                   {rawDataPoints[rawDataPoints.length - 1]?.workpiece === 'bearing' ? '185' : '135'}mm
                 </div>
-                <div style={{ position: 'absolute', bottom: '4px', left: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>0mm</div>
+                <div style={{ position: 'absolute', bottom: '4px', left: '6px', fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>0mm</div>
 
 
                 {rawDataPoints.length > 1 && (() => {
                   const totalTime = (rawDataPoints[rawDataPoints.length - 1].timestamp - rawDataPoints[0].timestamp) / 1000;
                   return (
-                    <div style={{ position: 'absolute', bottom: '4px', right: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>
+                    <div style={{ position: 'absolute', bottom: '4px', right: '6px', fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>
                       {totalTime.toFixed(1)}s span
                     </div>
                   );
                 })()}
 
 
-                <div style={{ position: 'absolute', top: '4px', right: '6px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--primary-light)', background: 'var(--bg-elevated)', padding: '2px 6px', borderRadius: '2px', border: '1px solid var(--border)' }}>
+                <div style={{ position: 'absolute', top: '4px', right: '6px', fontSize: '13px', fontFamily: 'var(--font-mono)', color: 'var(--primary-light)', background: 'var(--bg-elevated)', padding: '2px 6px', borderRadius: '2px', border: '1px solid var(--border)' }}>
                   {rawDataPoints[rawDataPoints.length - 1]?.value != null ? `${rawDataPoints[rawDataPoints.length - 1].value.toFixed(1)} mm` : '--'}
                 </div>
               </div>
-              <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginTop: '8px', display: 'flex', gap: '12px' }}>
+              <div style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginTop: '8px', display: 'flex', gap: '12px' }}>
                 <span><span style={{ color: '#ff6b6b' }}>●</span> Bearing (0-185mm)</span>
                 <span><span style={{ color: '#4dabf7' }}>●</span> Shaft (0-135mm)</span>
               </div>
@@ -1020,27 +1020,27 @@ export default function Assembly() {
                     background: 'var(--bg-elevated)'
                   }}
                 />
-                <div style={{ position: 'absolute', top: '4px', left: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                <div style={{ position: 'absolute', top: '4px', left: '6px', fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
                   {smoothedDataPoints[smoothedDataPoints.length - 1]?.workpiece === 'bearing' ? '185' : '135'}mm
                 </div>
-                <div style={{ position: 'absolute', bottom: '4px', left: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>0mm</div>
+                <div style={{ position: 'absolute', bottom: '4px', left: '6px', fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>0mm</div>
 
 
                 {smoothedDataPoints.length > 1 && (() => {
                   const totalTime = (smoothedDataPoints[smoothedDataPoints.length - 1].timestamp - smoothedDataPoints[0].timestamp) / 1000;
                   return (
-                    <div style={{ position: 'absolute', bottom: '4px', right: '6px', fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>
+                    <div style={{ position: 'absolute', bottom: '4px', right: '6px', fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-disabled)' }}>
                       {totalTime.toFixed(1)}s span
                     </div>
                   );
                 })()}
 
 
-                <div style={{ position: 'absolute', top: '4px', right: '6px', fontSize: '10px', fontFamily: 'var(--font-mono)', color: '#4ade80', background: 'var(--bg-elevated)', padding: '2px 6px', borderRadius: '2px', border: '1px solid var(--border)' }}>
+                <div style={{ position: 'absolute', top: '4px', right: '6px', fontSize: '13px', fontFamily: 'var(--font-mono)', color: '#4ade80', background: 'var(--bg-elevated)', padding: '2px 6px', borderRadius: '2px', border: '1px solid var(--border)' }}>
                   {smoothedDataPoints[smoothedDataPoints.length - 1]?.value != null ? `${smoothedDataPoints[smoothedDataPoints.length - 1].value.toFixed(1)} mm` : '--'}
                 </div>
               </div>
-              <div style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginTop: '8px', display: 'flex', gap: '12px' }}>
+              <div style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginTop: '8px', display: 'flex', gap: '12px' }}>
                 <span><span style={{ color: '#ff6b6b' }}>●</span> Bearing (0-185mm)</span>
                 <span><span style={{ color: '#4dabf7' }}>●</span> Shaft (0-135mm)</span>
               </div>
@@ -1086,7 +1086,7 @@ export default function Assembly() {
                       border: '1px solid var(--border)',
                       borderRadius: '4px',
                       color: 'var(--text-primary)',
-                      fontSize: '11px',
+                      fontSize: '14px',
                       fontFamily: 'var(--font-sans)'
                     }}
                     cursor={{ stroke: 'var(--border)' }}
@@ -1110,7 +1110,7 @@ export default function Assembly() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: 'var(--text-muted)',
-                fontSize: '11px',
+                fontSize: '14px',
                 fontFamily: 'var(--font-mono)'
               }}>
                 NO TELEMETRY DATA IN BUFFER. AWAITING OPERATION START...
@@ -1158,7 +1158,7 @@ export default function Assembly() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                fontSize: '11px',
+                fontSize: '14px',
                 fontWeight: 700,
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
@@ -1173,7 +1173,7 @@ export default function Assembly() {
               onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(56, 189, 248, 0.2)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(56, 189, 248, 0.1)'; }}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>school</span>
+              <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>school</span>
               Start Tutorial
             </button>
             {isConnected ? (
@@ -1182,7 +1182,7 @@ export default function Assembly() {
                 type="button"
                 onClick={handleDisconnect}
                 style={{
-                  fontSize: '11px',
+                  fontSize: '14px',
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
@@ -1204,7 +1204,7 @@ export default function Assembly() {
                 type="button"
                 onClick={handleConnect}
                 style={{
-                  fontSize: '11px',
+                  fontSize: '14px',
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
@@ -1245,7 +1245,7 @@ export default function Assembly() {
               type="button"
               onClick={() => setActiveTab(tab)}
               style={{
-                fontSize: '11px',
+                fontSize: '14px',
                 fontWeight: activeTab === tab ? 700 : 600,
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
@@ -1274,7 +1274,7 @@ export default function Assembly() {
           height: '28px'
         }}>
           <span style={{
-            fontSize: '9px',
+            fontSize: '12px',
             fontFamily: 'var(--font-mono)',
             fontWeight: 700,
             color: 'var(--text-muted)',
@@ -1299,7 +1299,7 @@ export default function Assembly() {
                 : 'inset 0 1px 2px rgba(0,0,0,0.5)',
               transition: 'all 0.3s ease'
             }} />
-            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: greenActive ? '#4ade80' : 'var(--text-disabled)' }}>RUN</span>
+            <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: greenActive ? '#4ade80' : 'var(--text-disabled)' }}>RUN</span>
           </div>
 
           {/* BUSY LED */}
@@ -1317,7 +1317,7 @@ export default function Assembly() {
                 : 'inset 0 1px 2px rgba(0,0,0,0.5)',
               transition: 'all 0.3s ease'
             }} />
-            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: orangeActive ? '#fbbf24' : 'var(--text-disabled)' }}>BUSY</span>
+            <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: orangeActive ? '#fbbf24' : 'var(--text-disabled)' }}>BUSY</span>
           </div>
 
           {/* FLT LED */}
@@ -1335,7 +1335,7 @@ export default function Assembly() {
                 : 'inset 0 1px 2px rgba(0,0,0,0.5)',
               transition: 'all 0.3s ease'
             }} />
-            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: redActive ? '#ef4444' : 'var(--text-disabled)' }}>FLT</span>
+            <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: redActive ? '#ef4444' : 'var(--text-disabled)' }}>FLT</span>
           </div>
         </div>
       </div>
@@ -1431,12 +1431,12 @@ export default function Assembly() {
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
                 <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "50%", background: isWsConnected ? "#4ade80" : "#ef4444", boxShadow: `0 0 8px ${isWsConnected ? "#4ade80" : "#ef4444"}` }} />
-                <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, color: "var(--text-primary)" }}>
+                <h3 style={{ margin: 0, fontSize: "1.3rem", fontWeight: 800, color: "var(--text-primary)" }}>
                   {activeModal === "piston" && "Piston Displacement Diagnostics"}
                   {activeModal === "clamp" && "Vice Clamp & Workpiece Proximity Diagnostics"}
                 </h3>
               </div>
-              <p style={{ margin: 0, fontSize: "0.68rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>
+              <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>
                 {activeModal === "piston" && "Sensor Model: Assembly-LDS-H01 • Linear Displacement Sensor"}
                 {activeModal === "clamp" && "Sensor Model: Assembly-PROX-V02 • Vice Proximity Sensors"}
               </p>
@@ -1444,10 +1444,10 @@ export default function Assembly() {
 
             {/* Hardware Specifications */}
             <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "12px" }}>
-              <h4 style={{ margin: "0 0 8px 0", fontSize: "0.68rem", color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>
+              <h4 style={{ margin: "0 0 8px 0", fontSize: "0.88rem", color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>
                 Hardware Specifications
               </h4>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "11px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "14px" }}>
                 <div><span style={{ color: "var(--text-muted)" }}>Target Host:</span> <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-secondary)" }}>192.168.1.58</span></div>
                 <div><span style={{ color: "var(--text-muted)" }}>OPC-UA Port:</span> <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-secondary)" }}>4840</span></div>
                 <div><span style={{ color: "var(--text-muted)" }}>Protocol:</span> <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-secondary)" }}>OPC-UA (TCP)</span></div>
@@ -1457,39 +1457,39 @@ export default function Assembly() {
 
             {/* Live Metrics */}
             <div>
-              <h4 style={{ margin: "0 0 8px 0", fontSize: "0.68rem", color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>
+              <h4 style={{ margin: "0 0 8px 0", fontSize: "0.88rem", color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>
                 Decoded Process Variables
               </h4>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
                 {activeModal === "piston" && (
                   <>
                     <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Linear Displacement</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#38bdf8", marginTop: "4px" }}>{displacement != null ? displacement : "---"} <span style={{ fontSize: "10px", fontWeight: 600 }}>mm</span></div>
+                      <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Linear Displacement</div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#38bdf8", marginTop: "4px" }}>{displacement != null ? displacement : "---"} <span style={{ fontSize: "13px", fontWeight: 600 }}>mm</span></div>
                     </div>
                     <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Raw Analog Position</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--text-primary)", marginTop: "4px" }}>{plantData?.position?.displacement_mm != null ? plantData.position.displacement_mm.toFixed(2) : "---"} <span style={{ fontSize: "10px", fontWeight: 600 }}>mm</span></div>
+                      <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Raw Analog Position</div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--text-primary)", marginTop: "4px" }}>{plantData?.position?.displacement_mm != null ? plantData.position.displacement_mm.toFixed(2) : "---"} <span style={{ fontSize: "13px", fontWeight: 600 }}>mm</span></div>
                     </div>
                     <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Piston State</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--text-primary)", marginTop: "4px" }}>{displacement != null ? (displacement > 5 ? "EXTENDING" : "RETRACTED") : "---"}</div>
+                      <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Piston State</div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--text-primary)", marginTop: "4px" }}>{displacement != null ? (displacement > 5 ? "EXTENDING" : "RETRACTED") : "---"}</div>
                     </div>
                   </>
                 )}
                 {activeModal === "clamp" && (
                   <>
                     <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Clamp Status</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: plantData?.vice?.close ? "#38bdf8" : "#4ade80", marginTop: "4px" }}>{plantData?.vice?.close ? "CLOSED" : plantData?.vice?.open ? "OPEN" : "---"}</div>
+                      <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Clamp Status</div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 800, color: plantData?.vice?.close ? "#38bdf8" : "#4ade80", marginTop: "4px" }}>{plantData?.vice?.close ? "CLOSED" : plantData?.vice?.open ? "OPEN" : "---"}</div>
                     </div>
                     <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Bearing Detected</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: plantData?.assembly?.bearing ? "#ff6b6b" : "var(--text-primary)", marginTop: "4px" }}>{plantData?.assembly?.bearing ? "YES" : "NO"}</div>
+                      <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Bearing Detected</div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 800, color: plantData?.assembly?.bearing ? "#ff6b6b" : "var(--text-primary)", marginTop: "4px" }}>{plantData?.assembly?.bearing ? "YES" : "NO"}</div>
                     </div>
                     <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "9px", color: "var(--text-muted)" }}>Shaft Detected</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: plantData?.assembly?.shaft ? "#38bdf8" : "var(--text-primary)", marginTop: "4px" }}>{plantData?.assembly?.shaft ? "YES" : "NO"}</div>
+                      <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Shaft Detected</div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 800, color: plantData?.assembly?.shaft ? "#38bdf8" : "var(--text-primary)", marginTop: "4px" }}>{plantData?.assembly?.shaft ? "YES" : "NO"}</div>
                     </div>
                   </>
                 )}
@@ -1498,17 +1498,17 @@ export default function Assembly() {
 
             {/* OPC-UA Direct Nodes Table */}
             <div>
-              <h4 style={{ margin: "0 0 8px 0", fontSize: "0.68rem", color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>
+              <h4 style={{ margin: "0 0 8px 0", fontSize: "0.88rem", color: "var(--primary)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>
                 OPC-UA Telemetry Node Table
               </h4>
               <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: "4px" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", textAlign: "left", fontFamily: "var(--font-mono)" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", textAlign: "left", fontFamily: "var(--font-mono)" }}>
                   <thead>
                     <tr style={{ background: "var(--bg-900)", borderBottom: "1px solid var(--border)" }}>
-                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "9px" }}>NODE ID (ns=4;s=...)</th>
-                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "9px" }}>VARIABLE / SYMBOL</th>
-                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "9px" }}>TYPE</th>
-                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "9px" }}>LIVE VALUE</th>
+                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "12px" }}>NODE ID (ns=4;s=...)</th>
+                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "12px" }}>VARIABLE / SYMBOL</th>
+                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "12px" }}>TYPE</th>
+                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "12px" }}>LIVE VALUE</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1582,12 +1582,12 @@ export default function Assembly() {
         width: '600px',
         zIndex: 9999
       }}>
-        <div style={{ color: '#fff', fontSize: '14px', fontWeight: 'bold', marginBottom: '12px' }}>
+        <div style={{ color: '#fff', fontSize: '17px', fontWeight: 'bold', marginBottom: '12px' }}>
           DEBUG: Real-Time Position Data (Development Only)
         </div>
         
         <div style={{ marginBottom: '16px' }}>
-          <div style={{ color: '#aaa', fontSize: '11px', marginBottom: '4px' }}>Raw Data (displacement_mm - 43) vs Time</div>
+          <div style={{ color: '#aaa', fontSize: '14px', marginBottom: '4px' }}>Raw Data (displacement_mm - 43) vs Time</div>
           <div style={{ position: 'relative' }}>
             <canvas 
               ref={rawCanvasRef}
@@ -1598,32 +1598,32 @@ export default function Assembly() {
                 display: 'block'
               }}
             />
-            <div style={{ position: 'absolute', top: '2px', left: '4px', fontSize: '9px', color: '#aaa' }}>
+            <div style={{ position: 'absolute', top: '2px', left: '4px', fontSize: '12px', color: '#aaa' }}>
               {rawDataPoints[rawDataPoints.length - 1]?.workpiece === 'bearing' ? '185' : '135'}mm
             </div>
-            <div style={{ position: 'absolute', bottom: '2px', left: '4px', fontSize: '9px', color: '#666' }}>0mm</div>
+            <div style={{ position: 'absolute', bottom: '2px', left: '4px', fontSize: '12px', color: '#666' }}>0mm</div>
             
             {rawDataPoints.length > 1 && (() => {
               const totalTime = (rawDataPoints[rawDataPoints.length - 1].timestamp - rawDataPoints[0].timestamp) / 1000;
               return (
                 <>
-                  <div style={{ position: 'absolute', bottom: '2px', left: '4px', fontSize: '9px', color: '#666' }}>0s</div>
-                  <div style={{ position: 'absolute', bottom: '2px', right: '4px', fontSize: '9px', color: '#666' }}>{totalTime.toFixed(1)}s</div>
+                  <div style={{ position: 'absolute', bottom: '2px', left: '4px', fontSize: '12px', color: '#666' }}>0s</div>
+                  <div style={{ position: 'absolute', bottom: '2px', right: '4px', fontSize: '12px', color: '#666' }}>{totalTime.toFixed(1)}s</div>
                 </>
               );
             })()}
             
-            <div style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '10px', color: '#fff', background: 'rgba(0,0,0,0.7)', padding: '2px 4px', borderRadius: '2px' }}>
+            <div style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '13px', color: '#fff', background: 'rgba(0,0,0,0.7)', padding: '2px 4px', borderRadius: '2px' }}>
               {rawDataPoints[rawDataPoints.length - 1]?.value.toFixed(1)}mm
             </div>
           </div>
-          <div style={{ fontSize: '9px', color: '#888', marginTop: '2px' }}>
+          <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
             <span style={{ color: '#ff6b6b' }}>● Bearing (0-185mm)</span> | <span style={{ color: '#4dabf7' }}>● Shaft (0-135mm)</span>
           </div>
         </div>
         
         <div>
-          <div style={{ color: '#aaa', fontSize: '11px', marginBottom: '4px' }}>Smoothed Data (exponential filter) vs Time</div>
+          <div style={{ color: '#aaa', fontSize: '14px', marginBottom: '4px' }}>Smoothed Data (exponential filter) vs Time</div>
           <div style={{ position: 'relative' }}>
             <canvas 
               ref={smoothedCanvasRef}
@@ -1634,26 +1634,26 @@ export default function Assembly() {
                 display: 'block'
               }}
             />
-            <div style={{ position: 'absolute', top: '2px', left: '4px', fontSize: '9px', color: '#aaa' }}>
+            <div style={{ position: 'absolute', top: '2px', left: '4px', fontSize: '12px', color: '#aaa' }}>
               {smoothedDataPoints[smoothedDataPoints.length - 1]?.workpiece === 'bearing' ? '185' : '135'}mm
             </div>
-            <div style={{ position: 'absolute', bottom: '2px', left: '4px', fontSize: '9px', color: '#666' }}>0mm</div>
+            <div style={{ position: 'absolute', bottom: '2px', left: '4px', fontSize: '12px', color: '#666' }}>0mm</div>
             
             {smoothedDataPoints.length > 1 && (() => {
               const totalTime = (smoothedDataPoints[smoothedDataPoints.length - 1].timestamp - smoothedDataPoints[0].timestamp) / 1000;
               return (
                 <>
-                  <div style={{ position: 'absolute', bottom: '2px', left: '4px', fontSize: '9px', color: '#666' }}>0s</div>
-                  <div style={{ position: 'absolute', bottom: '2px', right: '4px', fontSize: '9px', color: '#666' }}>{totalTime.toFixed(1)}s</div>
+                  <div style={{ position: 'absolute', bottom: '2px', left: '4px', fontSize: '12px', color: '#666' }}>0s</div>
+                  <div style={{ position: 'absolute', bottom: '2px', right: '4px', fontSize: '12px', color: '#666' }}>{totalTime.toFixed(1)}s</div>
                 </>
               );
             })()}
             
-            <div style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '10px', color: '#fff', background: 'rgba(0,0,0,0.7)', padding: '2px 4px', borderRadius: '2px' }}>
+            <div style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '13px', color: '#fff', background: 'rgba(0,0,0,0.7)', padding: '2px 4px', borderRadius: '2px' }}>
               {smoothedDataPoints[smoothedDataPoints.length - 1]?.value.toFixed(1)}mm
             </div>
           </div>
-          <div style={{ fontSize: '9px', color: '#888', marginTop: '2px' }}>
+          <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
             <span style={{ color: '#ff6b6b' }}>● Bearing (0-185mm)</span> | <span style={{ color: '#4dabf7' }}>● Shaft (0-135mm)</span>
           </div>
         </div>

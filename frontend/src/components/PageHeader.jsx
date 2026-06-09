@@ -15,7 +15,7 @@ export default function PageHeader({ title, subtitle, status, actions, children 
       {/* Left: Brand + Context breadcrumb */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         <span style={{
-          fontSize: '15px',
+          fontSize: '18px',
           fontWeight: 700,
           color: 'var(--text-primary)',
           letterSpacing: '-0.01em',
@@ -25,7 +25,7 @@ export default function PageHeader({ title, subtitle, status, actions, children 
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{
-            fontSize: '11px',
+            fontSize: '14px',
             fontWeight: 600,
             color: 'var(--text-muted)',
             textTransform: 'uppercase',
@@ -33,9 +33,9 @@ export default function PageHeader({ title, subtitle, status, actions, children 
           }}>{title}</span>
           {subtitle && (
             <>
-              <span style={{ color: 'var(--text-disabled)', fontSize: '11px' }}>/</span>
+              <span style={{ color: 'var(--text-disabled)', fontSize: '14px' }}>/</span>
               <span style={{
-                fontSize: '11px',
+                fontSize: '14px',
                 fontWeight: 600,
                 color: 'var(--text-primary)',
                 textTransform: 'uppercase',
@@ -62,7 +62,7 @@ export default function PageHeader({ title, subtitle, status, actions, children 
             }} />
             <span style={{
               fontFamily: 'var(--font-mono)',
-              fontSize: '11px',
+              fontSize: '14px',
               fontWeight: 500,
               color: isActive ? 'var(--status-ok)' : 'var(--text-muted)',
               textTransform: 'uppercase',
