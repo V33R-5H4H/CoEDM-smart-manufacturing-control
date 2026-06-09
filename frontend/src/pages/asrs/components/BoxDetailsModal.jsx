@@ -87,7 +87,7 @@ function RetrieveProductDialog({ open, onClose, onRetrieve, boxId, subId, itemDe
             <strong>Item:</strong> {itemDetail?.name || 'Unknown'} <br />
             <strong>Quantity:</strong> 1
           </div>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: 16 }}>
+          <p style={{ fontSize: '1.075rem', color: 'var(--text-muted)', marginBottom: 16 }}>
             Click confirm to retrieve this product from storage.
           </p>
           <div style={{ display: 'flex', gap: '0.5rem' }}>

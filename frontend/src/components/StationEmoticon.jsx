@@ -5,6 +5,8 @@ import TriacIcon from "./icons/TriacIcon";
 import AssemblyIcon from "./icons/AssemblyIcon";
 import AmrIcon from "./icons/AmrIcon";
 import CobotIcon from "./icons/CobotIcon";
+import InspectionIcon from "./icons/InspectionIcon";
+import TestingIcon from "./icons/TestingIcon";
 import "./StationEmoticon.css";
 
 export default function StationEmoticon({ machineType, state = "offline", size = 60 }) {
@@ -43,6 +45,14 @@ export default function StationEmoticon({ machineType, state = "offline", size =
 
   if (machineType === "cobot") {
     return <CobotIcon state={state} size={size} />;
+  }
+
+  if (machineType === "inspection") {
+    return <InspectionIcon state={state} size={size} />;
+  }
+
+  if (machineType === "testing") {
+    return <TestingIcon state={state} size={size} />;
   }
 
   return (

@@ -415,7 +415,7 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
         justifyContent: 'center',
         opacity: 0.5
       }}>
-        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>EMPTY</span>
+        <span style={{ fontSize: '15px', color: 'var(--text-muted)' }}>EMPTY</span>
       </div>
     );
   }
@@ -498,7 +498,7 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '4px' }}>
           <span style={{
             fontFamily: 'var(--font-mono)',
-            fontSize: '13px',
+            fontSize: '16px',
             fontWeight: 700,
             color: isSelected ? 'var(--primary-light)' : 'var(--text-primary)',
             whiteSpace: 'nowrap',
@@ -509,7 +509,7 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
             {isBlinking && (
-              <span style={{ fontSize: '7px', color: 'var(--matrix-green)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>ACC</span>
+              <span style={{ fontSize: '10px', color: 'var(--matrix-green)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>ACC</span>
             )}
             <div style={{
               width: '7px',
@@ -525,7 +525,7 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
         {/* Row 2: numeric representation */}
         <div style={{
           fontFamily: 'var(--font-mono)',
-          fontSize: '11px',
+          fontSize: '14px',
           color: isEmpty ? 'var(--text-disabled)' : 'var(--text-secondary)',
           fontWeight: 600,
           lineHeight: 1.1
@@ -536,7 +536,7 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
         {/* Row 3: status badge */}
         <div>
           <span style={{
-            fontSize: '10px',
+            fontSize: '13px',
             fontFamily: 'var(--font-mono)',
             padding: '2px 5px',
             borderRadius: '2px',
@@ -590,7 +590,7 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
             >
               {targetedOrder && (
                 <span style={{
-                  fontSize: '8px',
+                  fontSize: '11px',
                   fontFamily: 'var(--font-mono)',
                   color: '#fff',
                   fontWeight: 800,
@@ -658,13 +658,13 @@ function RackView({
         flexShrink: 0
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '16px', color: 'var(--text-muted)' }}>grid_view</span>
-          <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <span className="material-symbols-outlined" style={{ fontSize: '19px', color: 'var(--text-muted)' }}>grid_view</span>
+          <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Primary Storage Matrix [Z-BAY 01]
           </span>
           {Object.values(ledStates || {}).every(v => !v) && (
             <span style={{
-              fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700,
+              fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700,
               color: '#3a9d6e', border: '1px solid rgba(58,157,110,0.4)',
               padding: '1px 6px', borderRadius: '3px', background: 'rgba(58,157,110,0.08)'
             }}>ALL CLEAR</span>
@@ -683,7 +683,7 @@ function RackView({
               background: safetyCurtainTriggered ? 'var(--bg-disabled)' : 'var(--primary-dark)',
               border: `1px solid ${safetyCurtainTriggered ? 'var(--border)' : 'var(--primary)'}`,
               color: safetyCurtainTriggered ? 'var(--text-disabled)' : 'var(--primary-light)',
-              fontSize: '10px',
+              fontSize: '13px',
               fontFamily: 'var(--font-mono)',
               fontWeight: 700,
               padding: '2px 8px',
@@ -706,20 +706,20 @@ function RackView({
             }}
             title={safetyCurtainTriggered ? "Homing locked due to safety curtain alert" : "Dispatch shuttle to Home A7"}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>home</span>
+            <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>home</span>
             Home Shuttle
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--matrix-green)' }} />
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Full</span>
+            <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Full</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--matrix-red)' }} />
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Empty</span>
+            <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Empty</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--matrix-green)' }} />
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Shuttle</span>
+            <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Shuttle</span>
           </div>
         </div>
       </div>
@@ -755,7 +755,7 @@ function RackView({
             <div key={col} style={{
               textAlign: 'center',
               fontFamily: 'var(--font-mono)',
-              fontSize: '12px',
+              fontSize: '15px',
               fontWeight: 700,
               color: 'var(--text-muted)',
               borderBottom: '1px solid var(--border)',
@@ -770,7 +770,7 @@ function RackView({
             justifyContent: 'flex-end',
             paddingRight: '8px',
             fontFamily: 'var(--font-mono)',
-            fontSize: '11px',
+            fontSize: '14px',
             fontWeight: 700,
             color: 'var(--matrix-info)',
             borderRight: '1px solid var(--border)',
@@ -804,16 +804,16 @@ function RackView({
               height: '4px',
               background: 'repeating-linear-gradient(45deg, #06b6d4, #06b6d4 10px, transparent 10px, transparent 20px)'
             }} />
-            <span className="material-symbols-outlined" style={{ color: 'var(--matrix-info)', fontSize: '20px', marginBottom: '2px' }}>swap_horiz</span>
+            <span className="material-symbols-outlined" style={{ color: 'var(--matrix-info)', fontSize: '23px', marginBottom: '2px' }}>swap_horiz</span>
             <span style={{
-              fontSize: '9px',
+              fontSize: '12px',
               fontFamily: 'var(--font-mono)',
               fontWeight: 700,
               color: 'var(--matrix-info)',
               letterSpacing: '0.05em'
             }}>HANDOFF ZONE</span>
             <span style={{
-              fontSize: '7px',
+              fontSize: '10px',
               fontFamily: 'var(--font-mono)',
               color: 'var(--text-disabled)',
               marginTop: '1px'
@@ -840,7 +840,7 @@ function RackView({
                 justifyContent: 'flex-end',
                 paddingRight: '8px',
                 fontFamily: 'var(--font-mono)',
-                fontSize: '12px',
+                fontSize: '15px',
                 fontWeight: 700,
                 color: 'var(--text-muted)',
                 borderRight: '1px solid var(--border)'
@@ -1031,10 +1031,10 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>inventory_2</span>
+          <span className="material-symbols-outlined" style={{ fontSize: '21px' }}>inventory_2</span>
           <span style={{
             fontFamily: 'var(--font-mono)',
-            fontSize: '14px',
+            fontSize: '17px',
             fontWeight: 700,
             letterSpacing: '0.05em'
           }}>
@@ -1059,7 +1059,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
           onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.15)'}
           onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.08)'}
         >
-          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+          <span className="material-symbols-outlined" style={{ fontSize: '21px' }}>close</span>
         </button>
       </div>
 
@@ -1081,7 +1081,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
           overflowY: 'auto'
         }}>
           <h4 style={{
-            fontSize: '11px',
+            fontSize: '14px',
             color: 'var(--text-muted)',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
@@ -1141,7 +1141,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                     <span style={{
                       fontFamily: 'var(--font-mono)',
-                      fontSize: '11px',
+                      fontSize: '14px',
                       color: isSelected ? 'var(--primary-light)' : 'var(--text-secondary)',
                       fontWeight: 700
                     }}>
@@ -1158,7 +1158,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                   </div>
                   
                   <div style={{
-                    fontSize: '10px',
+                    fontSize: '13px',
                     color: isOccupied ? 'var(--text-primary)' : 'var(--text-disabled)',
                     fontWeight: isOccupied ? 600 : 400,
                     whiteSpace: 'nowrap',
@@ -1195,11 +1195,11 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
               height: '100%',
               gap: '8px'
             }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '36px', opacity: 0.4 }}>click_to_select</span>
-              <p style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0, fontWeight: 700 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '39px', opacity: 0.4 }}>click_to_select</span>
+              <p style={{ fontSize: '15px', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0, fontWeight: 700 }}>
                 SELECT A SLOT TO OPERATE
               </p>
-              <p style={{ fontSize: '11px', margin: 0, maxWidth: '260px' }}>
+              <p style={{ fontSize: '14px', margin: 0, maxWidth: '260px' }}>
                 Binary subcompartment logic determines actions automatically: empty slots allow storing, occupied slots allow retrieving.
               </p>
             </div>
@@ -1222,7 +1222,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                   marginBottom: '16px'
                 }}>
                   <span style={{
-                    fontSize: '11px',
+                    fontSize: '14px',
                     fontWeight: 700,
                     color: 'var(--text-primary)',
                     fontFamily: 'var(--font-mono)'
@@ -1231,7 +1231,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                   </span>
                   
                   <span style={{
-                    fontSize: '9px',
+                    fontSize: '12px',
                     fontFamily: 'var(--font-mono)',
                     padding: '2px 6px',
                     borderRadius: '3px',
@@ -1248,12 +1248,12 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                 {!isSelectedOccupied ? (
                   /* Store Tab Panel */
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
+                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
                       Slot is empty. Select an inventory item below to dispatch the shuttle for a <strong>Store</strong> operation.
                     </p>
                     
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <label style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                         Inventory Product
                       </label>
                       <select
@@ -1266,7 +1266,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                           borderRadius: '4px',
                           padding: '10px',
                           color: 'var(--text-primary)',
-                          fontSize: '12px',
+                          fontSize: '15px',
                           width: '100%',
                           outline: 'none',
                           fontFamily: 'var(--font-mono)'
@@ -1284,7 +1284,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                 ) : (
                   /* Retrieve Tab Panel */
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
+                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
                       Slot is occupied. Click retrieve to dispatch the shuttle to execute a <strong>Retrieve</strong> operation.
                     </p>
                     
@@ -1297,13 +1297,13 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                       flexDirection: 'column',
                       gap: '4px'
                     }}>
-                      <span style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
                         Current Contents
                       </span>
-                      <span style={{ fontSize: '14px', color: 'var(--text-primary)', fontWeight: 700 }}>
+                      <span style={{ fontSize: '17px', color: 'var(--text-primary)', fontWeight: 700 }}>
                         {selectedSub?.item_name || 'Unknown Item'}
                       </span>
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                      <span style={{ fontSize: '14px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                         ITEM ID: #{selectedSub?.item_id}
                       </span>
                     </div>
@@ -1324,7 +1324,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                         border: 'none',
                         borderRadius: '4px',
                         padding: '12px',
-                        fontSize: '11px',
+                        fontSize: '14px',
                         fontWeight: 700,
                         textTransform: 'uppercase',
                         width: '100%',
@@ -1345,7 +1345,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                         border: '1px solid var(--border)',
                         borderRadius: '4px',
                         padding: '10px',
-                        fontSize: '11px',
+                        fontSize: '14px',
                         fontWeight: 700,
                         textTransform: 'uppercase',
                         width: '100%',
@@ -1367,7 +1367,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                       border: 'none',
                       borderRadius: '4px',
                       padding: '12px',
-                      fontSize: '11px',
+                      fontSize: '14px',
                       fontWeight: 700,
                       textTransform: 'uppercase',
                       width: '100%',

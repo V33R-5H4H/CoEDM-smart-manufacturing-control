@@ -166,7 +166,7 @@ function TutorialOverlay({ steps, onFinish, advanceRef }) {
         {/* Header row: step counter + skip */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
           <span style={{
-            fontSize: '10px', fontWeight: 700, textTransform: 'uppercase',
+            fontSize: '13px', fontWeight: 700, textTransform: 'uppercase',
             letterSpacing: '0.08em', color: 'var(--primary)',
             fontFamily: 'var(--font-mono, monospace)',
           }}>
@@ -174,7 +174,7 @@ function TutorialOverlay({ steps, onFinish, advanceRef }) {
           </span>
           <button
             onClick={handleSkip}
-            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '11px', cursor: 'pointer', fontWeight: 600, padding: '2px 6px', borderRadius: '3px' }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '14px', cursor: 'pointer', fontWeight: 600, padding: '2px 6px', borderRadius: '3px' }}
             onMouseEnter={e => e.currentTarget.style.color = 'var(--error)'}
             onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
           >
@@ -184,13 +184,13 @@ function TutorialOverlay({ steps, onFinish, advanceRef }) {
 
         {/* Title */}
         {step.title && (
-          <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
+          <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
             {step.title}
           </div>
         )}
 
         {/* Body */}
-        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: '14px' }}>
+        <div style={{ fontSize: '16px', color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: '14px' }}>
           {step.content}
         </div>
 
@@ -203,11 +203,11 @@ function TutorialOverlay({ steps, onFinish, advanceRef }) {
           }}>
             <span
               className="material-symbols-outlined"
-              style={{ fontSize: '18px', color: 'var(--primary)', animation: 'tut-pulse 1.4s ease-in-out infinite' }}
+              style={{ fontSize: '21px', color: 'var(--primary)', animation: 'tut-pulse 1.4s ease-in-out infinite' }}
             >
               touch_app
             </span>
-            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--primary)', fontFamily: 'var(--font-mono, monospace)', letterSpacing: '0.05em' }}>
+            <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--primary)', fontFamily: 'var(--font-mono, monospace)', letterSpacing: '0.05em' }}>
               CLICK ANY BOX TO CONTINUE
             </span>
           </div>
@@ -218,7 +218,7 @@ function TutorialOverlay({ steps, onFinish, advanceRef }) {
               style={{
                 background: 'var(--primary)', color: 'var(--bg-elevated)', border: 'none',
                 borderRadius: '5px', padding: '8px 20px',
-                fontSize: '11px', fontWeight: 700, textTransform: 'uppercase',
+                fontSize: '14px', fontWeight: 700, textTransform: 'uppercase',
                 letterSpacing: '0.05em', cursor: 'pointer',
               }}
               onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}

@@ -82,7 +82,7 @@ export default function App() {
           color: var(--text-secondary);
           font-weight: 700;
           text-decoration: none;
-          font-size: 10px;
+          font-size: 13px;
           letter-spacing: 0.05em;
           text-transform: uppercase;
           transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -106,7 +106,7 @@ export default function App() {
           align-items: center;
           gap: 16px;
           font-family: var(--font-mono);
-          font-size: 10px;
+          font-size: 13px;
           color: var(--text-muted);
         }
 
@@ -127,7 +127,7 @@ export default function App() {
           border-radius: 20px;
           padding: 4px 10px;
           color: var(--text-muted);
-          font-size: 10px;
+          font-size: 13px;
           font-weight: 700;
           letter-spacing: 0.05em;
           text-transform: uppercase;
@@ -143,11 +143,11 @@ export default function App() {
         }
 
         .theme-toggle-icon {
-          font-size: 12px;
+          font-size: 15px;
         }
 
         .theme-toggle-label {
-          font-size: 10px;
+          font-size: 13px;
         }
       `}</style>
 
@@ -180,10 +180,10 @@ export default function App() {
       <nav className="bottom-nav">
         {/* Left Side: Brand Logo */}
         <div className="bottom-nav-brand">
-          <span className="material-symbols-outlined" style={{ color: 'var(--primary)', fontSize: '20px' }}>factory</span>
+          <span className="material-symbols-outlined" style={{ color: 'var(--primary)', fontSize: '24px' }}>factory</span>
           <div>
             <span style={{
-              fontSize: '13px',
+              fontSize: '16px',
               fontWeight: 700,
               color: 'var(--text-primary)',
               letterSpacing: '-0.01em',
@@ -191,7 +191,7 @@ export default function App() {
             }}>CoEDM</span>
             <span style={{
               fontFamily: 'var(--font-mono)',
-              fontSize: '9px',
+              fontSize: '12px',
               color: 'var(--text-muted)'
             }}>v4.2.0-STABLE</span>
           </div>
@@ -237,7 +237,7 @@ function NavItem({ to, icon, label }) {
       className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
     >
       <span className="material-symbols-outlined" style={{
-        fontSize: '18px',
+        fontSize: '22px',
         marginRight: '6px',
         display: 'inline-block',
         verticalAlign: 'middle'

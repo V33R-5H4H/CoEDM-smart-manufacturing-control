@@ -86,7 +86,7 @@ function TransactionsTab() {
         boxShadow: 'var(--shadow-sm)'
       }}>
         <div style={{
-          fontSize: '11px',
+          fontSize: '14px',
           fontWeight: 600,
           color: 'var(--text-muted)',
           textTransform: 'uppercase',
@@ -97,7 +97,7 @@ function TransactionsTab() {
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: '16px' }}>
           <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px' }} htmlFor="sortOption">
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px' }} htmlFor="sortOption">
                 Sort By
               </label>
               <CustomSelect
@@ -117,9 +117,9 @@ function TransactionsTab() {
               className="btn btn-primary"
               onClick={fetchTransactions}
               disabled={loading}
-              style={{ height: '35px', padding: '0 16px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              style={{ height: '35px', padding: '0 16px', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>sync</span>
+              <span className="material-symbols-outlined" style={{ fontSize: '19px' }}>sync</span>
               {loading ? 'REFRESHING...' : 'REFRESH'}
             </button>
           </div>
@@ -131,7 +131,7 @@ function TransactionsTab() {
               onChange={toggleAutoRefresh}
               style={{ cursor: 'pointer' }}
             />
-            <span style={{ fontSize: '11px', fontWeight: 600, color: autoRefresh ? 'var(--status-ok)' : 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <span style={{ fontSize: '14px', fontWeight: 600, color: autoRefresh ? 'var(--status-ok)' : 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Auto Refresh (5s)
             </span>
           </label>
@@ -141,7 +141,7 @@ function TransactionsTab() {
       {/* Transactions Table */}
       <div>
         <div style={{
-          fontSize: '11px',
+          fontSize: '14px',
           fontWeight: 600,
           color: 'var(--text-muted)',
           textTransform: 'uppercase',
@@ -160,7 +160,7 @@ function TransactionsTab() {
                 {['ID', 'ITEM', 'LOCATION', 'ACTION', 'TIMESTAMP'].map((h) => (
                   <th key={h} style={{
                     padding: '10px 16px',
-                    fontSize: '10px',
+                    fontSize: '13px',
                     fontWeight: 600,
                     color: 'var(--text-muted)',
                     textTransform: 'uppercase',
@@ -173,30 +173,30 @@ function TransactionsTab() {
             <tbody>
               {loading && (!transactions || transactions.length === 0) ? (
                 <tr>
-                  <td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-                    <span className="material-symbols-outlined" style={{ animation: 'spin 1s linear infinite', fontSize: '20px', verticalAlign: 'middle', marginRight: '8px' }}>sync</span>
+                  <td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '16px' }}>
+                    <span className="material-symbols-outlined" style={{ animation: 'spin 1s linear infinite', fontSize: '23px', verticalAlign: 'middle', marginRight: '8px' }}>sync</span>
                     Loading transactions...
                   </td>
                 </tr>
               ) : !transactions || transactions.length === 0 ? (
                 <tr>
-                  <td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>No transactions recorded.</td>
+                  <td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '16px' }}>No transactions recorded.</td>
                 </tr>
               ) : (
                 transactions.map((transaction) => (
                   <tr key={transaction.tran_id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-                    <td style={{ padding: '12px 16px', fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--primary)', fontWeight: 500 }}>
+                    <td style={{ padding: '12px 16px', fontFamily: 'var(--font-mono)', fontSize: '16px', color: 'var(--primary)', fontWeight: 500 }}>
                       #{transaction.tran_id}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500 }}>
+                    <td style={{ padding: '12px 16px', fontSize: '16px', color: 'var(--text-primary)', fontWeight: 500 }}>
                       {transaction.item_name || <span style={{ color: 'var(--text-muted)' }}>Unknown</span>}
                     </td>
-                    <td style={{ padding: '12px 16px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                    <td style={{ padding: '12px 16px', fontFamily: 'var(--font-mono)', fontSize: '15px', color: 'var(--text-secondary)' }}>
                       {transaction.subcom_place || '---'}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       <span style={{
-                        fontSize: '10px',
+                        fontSize: '13px',
                         fontWeight: 700,
                         padding: '2px 8px',
                         borderRadius: '12px',
@@ -209,7 +209,7 @@ function TransactionsTab() {
                         {transaction.action}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 16px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>
+                    <td style={{ padding: '12px 16px', fontFamily: 'var(--font-mono)', fontSize: '15px', color: 'var(--text-muted)' }}>
                       {formatDateTime(transaction.time)}
                     </td>
                   </tr>
@@ -250,7 +250,7 @@ function CustomSelect({ value, onChange, options, disabled }) {
           borderRadius: '4px', 
           padding: '0 12px', 
           color: 'var(--text-primary)', 
-          fontSize: '12px', 
+          fontSize: '15px', 
           height: '35px', 
           cursor: disabled ? 'not-allowed' : 'pointer',
           display: 'flex',
@@ -263,7 +263,7 @@ function CustomSelect({ value, onChange, options, disabled }) {
         }}
       >
         <span>{selectedOption.label}</span>
-        <span className="material-symbols-outlined" style={{ fontSize: '16px', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', color: 'var(--text-muted)' }}>
+        <span className="material-symbols-outlined" style={{ fontSize: '19px', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', color: 'var(--text-muted)' }}>
           expand_more
         </span>
       </div>
@@ -292,7 +292,7 @@ function CustomSelect({ value, onChange, options, disabled }) {
               }}
               style={{
                 padding: '10px 12px',
-                fontSize: '12px',
+                fontSize: '15px',
                 color: opt.value === value ? 'var(--primary)' : 'var(--text-primary)',
                 background: opt.value === value ? 'var(--bg-hover)' : 'transparent',
                 cursor: 'pointer',

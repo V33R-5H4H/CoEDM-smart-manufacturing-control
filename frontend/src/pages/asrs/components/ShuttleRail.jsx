@@ -266,7 +266,7 @@ const ShuttleRail = ({ shuttle, operationPhase, operationType, activeOperationDa
           transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
           zIndex: 30
         }}>
-          <span style={{ fontSize: '8px', fontWeight: 800, color: 'var(--matrix-green)', fontFamily: 'var(--font-mono)' }}>
+          <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--matrix-green)', fontFamily: 'var(--font-mono)' }}>
             #{sprite.itemId}
           </span>
         </div>
@@ -279,7 +279,7 @@ const ShuttleRail = ({ shuttle, operationPhase, operationType, activeOperationDa
             position: 'absolute',
             left: `${coords.left + CARRIAGE_W + 8}px`,
             top: `${coords.top + (CARRIAGE_H / 2) - 10}px`,
-            fontSize: '0.6875rem',
+            fontSize: '0.887rem',
             color: shuttleColor,
             fontWeight: 800,
             letterSpacing: '0.075em',

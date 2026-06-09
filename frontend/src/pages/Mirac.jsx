@@ -404,7 +404,7 @@ const Mirac = () => {
                 type="button"
                 onClick={handleDisconnect}
                 style={{
-                  fontSize: '11px',
+                  fontSize: '14px',
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
@@ -425,7 +425,7 @@ const Mirac = () => {
                 type="button"
                 onClick={handleConnect}
                 style={{
-                  fontSize: '11px',
+                  fontSize: '14px',
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
@@ -464,7 +464,7 @@ const Mirac = () => {
               type="button"
               onClick={() => setActiveTab(tab)}
               style={{
-                fontSize: '11px',
+                fontSize: '14px',
                 fontWeight: activeTab === tab ? 700 : 600,
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
@@ -493,7 +493,7 @@ const Mirac = () => {
           height: '28px'
         }}>
           <span style={{
-            fontSize: '9px',
+            fontSize: '12px',
             fontFamily: 'var(--font-mono)',
             fontWeight: 700,
             color: 'var(--text-muted)',
@@ -517,7 +517,7 @@ const Mirac = () => {
                 : 'inset 0 1px 2px rgba(0,0,0,0.5)',
               transition: 'all 0.3s ease'
             }} />
-            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: greenActive ? '#4ade80' : 'var(--text-disabled)' }}>RUN</span>
+            <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: greenActive ? '#4ade80' : 'var(--text-disabled)' }}>RUN</span>
           </div>
 
           {/* BUSY LED */}
@@ -535,7 +535,7 @@ const Mirac = () => {
                 : 'inset 0 1px 2px rgba(0,0,0,0.5)',
               transition: 'all 0.3s ease'
             }} />
-            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: orangeActive ? '#fbbf24' : 'var(--text-disabled)' }}>BUSY</span>
+            <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: orangeActive ? '#fbbf24' : 'var(--text-disabled)' }}>BUSY</span>
           </div>
 
           {/* FLT LED */}
@@ -553,7 +553,7 @@ const Mirac = () => {
                 : 'inset 0 1px 2px rgba(0,0,0,0.5)',
               transition: 'all 0.3s ease'
             }} />
-            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: redActive ? '#ef4444' : 'var(--text-disabled)' }}>FLT</span>
+            <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: redActive ? '#ef4444' : 'var(--text-disabled)' }}>FLT</span>
           </div>
         </div>
       </div>
@@ -599,7 +599,7 @@ const Mirac = () => {
                     {!vibit1Online ? "OFFLINE" : data?.spindle?.speed > 0 ? "SPINNING" : "IDLE"}
                   </span>
                   {!vibit1Online && vibit1LastSeen && (
-                    <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#475569', fontWeight: 600 }}>
+                    <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: '#475569', fontWeight: 600 }}>
                       LAST: {vibit1LastSeen}
                     </span>
                   )}
@@ -636,7 +636,7 @@ const Mirac = () => {
                     {vibit2Online ? "ACTIVE" : "OFFLINE"}
                   </span>
                   {!vibit2Online && vibit2LastSeen && (
-                    <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#475569', fontWeight: 600 }}>
+                    <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: '#475569', fontWeight: 600 }}>
                       LAST: {vibit2LastSeen}
                     </span>
                   )}
@@ -679,7 +679,7 @@ const Mirac = () => {
                     {vibit3Online ? "LIVE" : "OFFLINE"}
                   </span>
                   {!vibit3Online && vibit3LastSeen && (
-                    <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', color: '#475569', fontWeight: 600 }}>
+                    <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: '#475569', fontWeight: 600 }}>
                       LAST: {vibit3LastSeen}
                     </span>
                   )}
@@ -744,7 +744,7 @@ const Mirac = () => {
                   <span className="material-symbols-outlined" style={{ fontSize: 22, color: "#475569" }}>
                     power_off
                   </span>
-                  <span style={{ fontSize: "0.62rem", fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                     No Energy Meter Connected
                   </span>
                 </div>
@@ -790,13 +790,13 @@ const Mirac = () => {
                 </div>
                 <div className="asm-footer-stats-card">
                   <div className="asm-val__label">Speed Feed</div>
-                  <div className="asm-val__num" style={{ fontSize: "1.1rem" }}>
+                  <div className="asm-val__num" style={{ fontSize: "1.3rem" }}>
                     {data?.spindle?.speed != null ? Math.round(data.spindle.speed) : "---"} <span className="asm-val__unit">RPM</span>
                   </div>
                 </div>
                 <div className="asm-footer-stats-card">
                   <div className="asm-val__label">Active Tool</div>
-                  <div className="asm-val__num" style={{ fontSize: "1.1rem" }}>
+                  <div className="asm-val__num" style={{ fontSize: "1.3rem" }}>
                     {data?.tool?.number != null ? `#${data.tool.number}` : "---"}
                   </div>
                 </div>
@@ -821,9 +821,9 @@ const Mirac = () => {
               {/* X Axis */}
               <div className="asm-axis-section">
                 <div className="asm-axis-header">
-                  <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: "0.8rem", fontWeight: 800, color: "#38bdf8" }}>X</span>
+                  <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: "1rem", fontWeight: 800, color: "#38bdf8" }}>X</span>
                   <div className="asm-axis-line" />
-                  <span style={{ fontSize: "0.6rem", color: "#64748b", fontWeight: 600 }}>TRANSVERSE</span>
+                  <span style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 600 }}>TRANSVERSE</span>
                 </div>
                 <div className="asm-val-grid">
                   <div className="asm-val">
@@ -859,7 +859,7 @@ const Mirac = () => {
                       transition: 'width 0.2s ease'
                     }} />
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8px', color: '#475569', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#475569', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
                     <span>0</span><span>300mm</span>
                   </div>
                 </div>
@@ -868,9 +868,9 @@ const Mirac = () => {
               {/* Z Axis */}
               <div className="asm-axis-section" style={{ marginTop: "8px" }}>
                 <div className="asm-axis-header">
-                  <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: "0.8rem", fontWeight: 800, color: "#ff7b00" }}>Z</span>
+                  <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: "1rem", fontWeight: 800, color: "#ff7b00" }}>Z</span>
                   <div className="asm-axis-line" />
-                  <span style={{ fontSize: "0.6rem", color: "#64748b", fontWeight: 600 }}>LONGITUDINAL</span>
+                  <span style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 600 }}>LONGITUDINAL</span>
                 </div>
                 <div className="asm-val-grid">
                   <div className="asm-val">
@@ -906,7 +906,7 @@ const Mirac = () => {
                       transition: 'width 0.2s ease'
                     }} />
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8px', color: '#475569', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#475569', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
                     <span>0</span><span>200mm</span>
                   </div>
                 </div>
@@ -967,7 +967,7 @@ const Mirac = () => {
                 cursor: "pointer",
                 transition: "background 0.2s",
                 fontWeight: 600,
-                fontSize: "13px",
+                fontSize: "16px",
               }}
               onMouseEnter={(e) => {
                 e.target.style.background = "var(--border)";
@@ -1006,14 +1006,14 @@ const Mirac = () => {
                         : (plcOnline ? "none" : "1px solid var(--status-error)"),
                   }}
                 />
-                <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, color: "var(--text-primary)", fontFamily: "Inter" }}>
+                <h3 style={{ margin: 0, fontSize: "1.3rem", fontWeight: 800, color: "var(--text-primary)", fontFamily: "Inter" }}>
                   {activeModal === "spindle" && "Spindle Diagnostics Panel"}
                   {activeModal === "tool" && "Tool Diagnostics Panel"}
                   {activeModal === "energy" && "Energy Meter Diagnostics Panel"}
                   {activeModal === "axis" && "Axis Kinematics Panel"}
                 </h3>
               </div>
-              <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, fontFamily: "Inter" }}>
+              <p style={{ margin: 0, fontSize: "14px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, fontFamily: "Inter" }}>
                 {activeModal === "spindle" && "Sensor Model: VibIT-VIB-S01 • Device ID 1"}
                 {activeModal === "tool" && "Sensor Model: VibIT-VIB-S01 • Device ID 2"}
                 {activeModal === "energy" && "Sensor Model: VibIT-PEM-E02 • Device ID 3"}
@@ -1023,10 +1023,10 @@ const Mirac = () => {
 
             {/* Hardware Specifications */}
             <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "12px" }}>
-              <h4 style={{ margin: "0 0 8px 0", fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, fontFamily: "Inter" }}>
+              <h4 style={{ margin: "0 0 8px 0", fontSize: "14px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, fontFamily: "Inter" }}>
                 Hardware Specifications
               </h4>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "11px", fontFamily: "Inter" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "14px", fontFamily: "Inter" }}>
                 {activeModal === "axis" ? (
                   <>
                     <div><span style={{ color: "var(--text-muted)" }}>Target Host:</span> <span style={{ fontFamily: "JetBrains Mono", color: "var(--text-primary)" }}>10.10.14.103</span></div>
@@ -1051,67 +1051,67 @@ const Mirac = () => {
 
             {/* Live Metrics */}
             <div>
-              <h4 style={{ margin: "0 0 8px 0", fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, fontFamily: "Inter" }}>
+              <h4 style={{ margin: "0 0 8px 0", fontSize: "14px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, fontFamily: "Inter" }}>
                 Decoded Process Variables
               </h4>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
                 {activeModal === "spindle" && (
                   <>
                     <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "11px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Vibration</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--text-primary)", marginTop: "4px" }}>{sensorVal(data?.spindle?.vibration)} <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "Inter" }}>mm/s</span></div>
+                      <div style={{ fontSize: "14px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Vibration</div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--text-primary)", marginTop: "4px" }}>{sensorVal(data?.spindle?.vibration)} <span style={{ fontSize: "13px", fontWeight: 600, fontFamily: "Inter" }}>mm/s</span></div>
                     </div>
                     <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "11px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Temperature</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--text-primary)", marginTop: "4px" }}>{sensorVal(data?.spindle?.temperature, 1)} <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "Inter" }}>°C</span></div>
+                      <div style={{ fontSize: "14px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Temperature</div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--text-primary)", marginTop: "4px" }}>{sensorVal(data?.spindle?.temperature, 1)} <span style={{ fontSize: "13px", fontWeight: 600, fontFamily: "Inter" }}>°C</span></div>
                     </div>
                     <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "11px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Rotational Speed</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--text-primary)", marginTop: "4px" }}>{data?.spindle?.speed != null ? Math.round(data.spindle.speed) : "---"} <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "Inter" }}>RPM</span></div>
+                      <div style={{ fontSize: "14px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Rotational Speed</div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--text-primary)", marginTop: "4px" }}>{data?.spindle?.speed != null ? Math.round(data.spindle.speed) : "---"} <span style={{ fontSize: "13px", fontWeight: 600, fontFamily: "Inter" }}>RPM</span></div>
                     </div>
                   </>
                 )}
                 {activeModal === "tool" && (
                   <>
                     <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "11px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Vibration Peak</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--text-primary)", marginTop: "4px" }}>{sensorVal(data?.tool?.vibration)} <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "Inter" }}>mm/s</span></div>
+                      <div style={{ fontSize: "14px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Vibration Peak</div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--text-primary)", marginTop: "4px" }}>{sensorVal(data?.tool?.vibration)} <span style={{ fontSize: "13px", fontWeight: 600, fontFamily: "Inter" }}>mm/s</span></div>
                     </div>
                     <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "11px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Temperature</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--text-primary)", marginTop: "4px" }}>{sensorVal(data?.tool?.temperature, 1)} <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "Inter" }}>°C</span></div>
+                      <div style={{ fontSize: "14px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Temperature</div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--text-primary)", marginTop: "4px" }}>{sensorVal(data?.tool?.temperature, 1)} <span style={{ fontSize: "13px", fontWeight: 600, fontFamily: "Inter" }}>°C</span></div>
                     </div>
                     <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "11px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Reboot Count</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--text-primary)", marginTop: "4px" }}>{data?.tool?.reboot_count ?? "---"}</div>
+                      <div style={{ fontSize: "14px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Reboot Count</div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--text-primary)", marginTop: "4px" }}>{data?.tool?.reboot_count ?? "---"}</div>
                     </div>
                   </>
                 )}
                 {activeModal === "energy" && (
                   <>
                     <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "11px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Active Power</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--status-ok)", marginTop: "4px" }}>{sensorVal(data?.energy_meter?.power, 3)} <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "Inter" }}>kW</span></div>
+                      <div style={{ fontSize: "14px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Active Power</div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--status-ok)", marginTop: "4px" }}>{sensorVal(data?.energy_meter?.power, 3)} <span style={{ fontSize: "13px", fontWeight: 600, fontFamily: "Inter" }}>kW</span></div>
                     </div>
                     <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center", gridColumn: "span 2" }}>
-                      <div style={{ fontSize: "11px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Accumulated Consumption</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--text-primary)", marginTop: "4px" }}>{sensorVal(data?.energy_meter?.kwh, 4)} <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "Inter" }}>kWh</span></div>
+                      <div style={{ fontSize: "14px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Accumulated Consumption</div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--text-primary)", marginTop: "4px" }}>{sensorVal(data?.energy_meter?.kwh, 4)} <span style={{ fontSize: "13px", fontWeight: 600, fontFamily: "Inter" }}>kWh</span></div>
                     </div>
                   </>
                 )}
                 {activeModal === "axis" && (
                   <>
                     <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "11px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>X Axis Position</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--text-primary)", marginTop: "4px" }}>{data?.axes?.x?.value != null ? data.axes.x.value.toFixed(3) : "---"} <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "Inter" }}>mm</span></div>
+                      <div style={{ fontSize: "14px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>X Axis Position</div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--text-primary)", marginTop: "4px" }}>{data?.axes?.x?.value != null ? data.axes.x.value.toFixed(3) : "---"} <span style={{ fontSize: "13px", fontWeight: 600, fontFamily: "Inter" }}>mm</span></div>
                     </div>
                     <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "11px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Z Axis Position</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--text-primary)", marginTop: "4px" }}>{data?.axes?.z?.value != null ? data.axes.z.value.toFixed(3) : "---"} <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "Inter" }}>mm</span></div>
+                      <div style={{ fontSize: "14px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Z Axis Position</div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--text-primary)", marginTop: "4px" }}>{data?.axes?.z?.value != null ? data.axes.z.value.toFixed(3) : "---"} <span style={{ fontSize: "13px", fontWeight: 600, fontFamily: "Inter" }}>mm</span></div>
                     </div>
                     <div style={{ background: "var(--bg-900)", border: "1px solid var(--border)", borderRadius: "4px", padding: "10px", textAlign: "center" }}>
-                      <div style={{ fontSize: "11px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Feed Rate</div>
-                      <div style={{ fontSize: "1.1rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--text-primary)", marginTop: "4px" }}>{data?.axes?.x?.feed != null ? data.axes.x.feed.toFixed(1) : "---"} <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "Inter" }}>mm/min</span></div>
+                      <div style={{ fontSize: "14px", color: "var(--text-muted)", fontFamily: "Inter", textTransform: "uppercase", fontWeight: 600 }}>Feed Rate</div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 500, fontFamily: "JetBrains Mono", color: "var(--text-primary)", marginTop: "4px" }}>{data?.axes?.x?.feed != null ? data.axes.x.feed.toFixed(1) : "---"} <span style={{ fontSize: "13px", fontWeight: 600, fontFamily: "Inter" }}>mm/min</span></div>
                     </div>
                   </>
                 )}
@@ -1120,17 +1120,17 @@ const Mirac = () => {
 
             {/* Modbus Direct Registers */}
             <div>
-              <h4 style={{ margin: "0 0 8px 0", fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, fontFamily: "Inter" }}>
+              <h4 style={{ margin: "0 0 8px 0", fontSize: "14px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, fontFamily: "Inter" }}>
                 {activeModal === "axis" ? "OPC-UA Tag Namespace Binding" : "Modbus Telemetry Register Table (16-bit word representation)"}
               </h4>
               <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: "4px" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", textAlign: "left", fontFamily: "JetBrains Mono" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", textAlign: "left", fontFamily: "JetBrains Mono" }}>
                   <thead>
                     <tr style={{ background: "var(--bg-900)", borderBottom: "1px solid var(--border)" }}>
-                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "10px" }}>{activeModal === "axis" ? "NODE ID" : "ADDRESS"}</th>
-                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "10px" }}>VARIABLE NAME</th>
-                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "10px" }}>{activeModal === "axis" ? "RAW DOUBLE" : "RAW INT16[2]"}</th>
-                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "10px" }}>{activeModal === "axis" ? "BYTE LENGTH" : "HEX WORD"}</th>
+                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "13px" }}>{activeModal === "axis" ? "NODE ID" : "ADDRESS"}</th>
+                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "13px" }}>VARIABLE NAME</th>
+                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "13px" }}>{activeModal === "axis" ? "RAW DOUBLE" : "RAW INT16[2]"}</th>
+                      <th style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "13px" }}>{activeModal === "axis" ? "BYTE LENGTH" : "HEX WORD"}</th>
                     </tr>
                   </thead>
                   <tbody>

@@ -216,7 +216,7 @@ function Dashboard() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                fontSize: '11px',
+                fontSize: '14px',
                 fontWeight: 700,
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
@@ -235,7 +235,7 @@ function Dashboard() {
                 e.currentTarget.style.background = 'rgba(56, 189, 248, 0.1)';
               }}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>school</span>
+              <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>school</span>
               Start Tutorial
             </button>
             {isConnected ? (
@@ -244,7 +244,7 @@ function Dashboard() {
                 type="button"
                 onClick={handleDisconnect}
                 style={{
-                  fontSize: '11px',
+                  fontSize: '14px',
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
@@ -266,7 +266,7 @@ function Dashboard() {
                 type="button"
                 onClick={handleConnect}
                 style={{
-                  fontSize: '11px',
+                  fontSize: '14px',
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
@@ -305,7 +305,7 @@ function Dashboard() {
               type="button"
               onClick={() => setActiveTab(tab)}
               style={{
-                fontSize: '11px',
+                fontSize: '14px',
                 fontWeight: activeTab === tab ? 700 : 600,
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
@@ -334,7 +334,7 @@ function Dashboard() {
           height: '28px'
         }}>
           <span style={{
-            fontSize: '9px',
+            fontSize: '12px',
             fontFamily: 'var(--font-mono)',
             fontWeight: 700,
             color: 'var(--text-muted)',
@@ -355,7 +355,7 @@ function Dashboard() {
               boxShadow: greenActive ? '0 0 8px var(--status-ok)' : 'none',
               transition: 'all 0.3s ease'
             }} />
-            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: greenActive ? 'var(--status-ok)' : 'var(--text-disabled)' }}>RUN</span>
+            <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: greenActive ? 'var(--status-ok)' : 'var(--text-disabled)' }}>RUN</span>
           </div>
 
           {/* BUSY LED */}
@@ -370,7 +370,7 @@ function Dashboard() {
               boxShadow: orangeActive ? '0 0 8px var(--status-warn)' : 'none',
               transition: 'all 0.3s ease'
             }} />
-            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: orangeActive ? 'var(--status-warn)' : 'var(--text-disabled)' }}>BUSY</span>
+            <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: orangeActive ? 'var(--status-warn)' : 'var(--text-disabled)' }}>BUSY</span>
           </div>
 
           {/* FLT LED */}
@@ -385,7 +385,7 @@ function Dashboard() {
               boxShadow: redActive ? '0 0 8px var(--status-error)' : 'none',
               transition: 'all 0.3s ease'
             }} />
-            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: redActive ? 'var(--status-error)' : 'var(--text-disabled)' }}>FLT</span>
+            <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: redActive ? 'var(--status-error)' : 'var(--text-disabled)' }}>FLT</span>
           </div>
         </div>
       </div>

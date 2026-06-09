@@ -46,7 +46,7 @@
   justify-content: space-between;
   align-items: center;
   font-family: 'Inter', sans-serif;
-  font-size: 13px !important;
+  font-size: 16px !important;
   font-weight: 600 !important;
   color: var(--text-primary) !important;
   text-transform: uppercase;
@@ -58,7 +58,7 @@
 /* Custom Badges */
 .asm-hud-badge {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
+  font-size: 16px;
   padding: 2px 6px;
   border-radius: 4px;
   background: var(--bg-secondary);
@@ -111,7 +111,7 @@
 
 .asm-val__label {
   font-family: 'Inter', sans-serif;
-  font-size: 13px !important;
+  font-size: 16px !important;
   font-weight: 600 !important;
   color: var(--text-muted) !important;
   text-transform: uppercase;
@@ -120,14 +120,14 @@
 
 .asm-val__num {
   font-family: 'JetBrains Mono', monospace !important;
-  font-size: 22px !important;
+  font-size: 25px !important;
   font-weight: 500 !important;
   color: var(--text-primary) !important;
   text-shadow: none !important; /* Remove glow */
 }
 
 .asm-val__num--sm {
-  font-size: 16px !important;
+  font-size: 19px !important;
 }
 
 /* Remove Glowing variations completely */
@@ -158,7 +158,7 @@
 
 .asm-led-indicator span {
   font-family: 'Inter', sans-serif;
-  font-size: 13px !important;
+  font-size: 16px !important;
   font-weight: 600 !important;
   color: var(--text-muted) !important;
   text-transform: uppercase;

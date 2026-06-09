@@ -133,11 +133,11 @@ export default function OrderFeed({ wsUrl, onOrdersChange }) {
         marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontWeight: 800, fontSize: '0.85rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
             🛒 Ecom Orders
           </div>
           <span style={{
-            fontSize: '0.65rem', fontWeight: 700,
+            fontSize: '0.85rem', fontWeight: 700,
             padding: '3px 8px', borderRadius: 99,
             background: connected ? 'var(--success-bg, rgba(22,163,74,0.12))' : 'var(--error-bg, rgba(220,38,38,0.12))',
             color: connected ? 'var(--success, #16a34a)' : 'var(--error, #dc2626)',
@@ -151,7 +151,7 @@ export default function OrderFeed({ wsUrl, onOrdersChange }) {
           disabled={clearing}
           style={{
             background: 'var(--bg-secondary)', border: '1px solid var(--border)', 
-            borderRadius: '6px', fontSize: '0.7rem', padding: '6px 12px',
+            borderRadius: '6px', fontSize: '0.9rem', padding: '6px 12px',
             cursor: clearing ? 'not-allowed' : 'pointer', fontWeight: 600, color: 'var(--text-secondary)',
             width: '100%', transition: 'all 0.2s'
           }}
@@ -164,7 +164,7 @@ export default function OrderFeed({ wsUrl, onOrdersChange }) {
 
       {/* Order list */}
       {orders.length === 0 ? (
-        <div style={{ color: 'var(--text-muted, #94a3b8)', fontSize: '0.78rem', padding: '12px 0', textAlign: 'center' }}>
+        <div style={{ color: 'var(--text-muted, #94a3b8)', fontSize: '0.98rem', padding: '12px 0', textAlign: 'center' }}>
           No ecom orders yet
         </div>
       ) : (
@@ -177,7 +177,7 @@ export default function OrderFeed({ wsUrl, onOrdersChange }) {
                 border: '1px solid var(--border, #e2e8f0)',
                 padding: '8px 10px',
                 background: 'var(--bg-elevated, #fff)',
-                fontSize: '0.78rem',
+                fontSize: '0.98rem',
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 700, fontFamily: 'monospace' }}>
@@ -186,14 +186,14 @@ export default function OrderFeed({ wsUrl, onOrdersChange }) {
                   <span style={{
                     background: sc.bg, color: sc.color,
                     padding: '2px 7px', borderRadius: 99,
-                    fontWeight: 700, fontSize: '0.65rem',
+                    fontWeight: 700, fontSize: '0.85rem',
                     textTransform: 'uppercase',
                   }}>
                     {order.status}
                   </span>
                 </div>
                 {order.compartments?.length > 0 && (
-                  <div style={{ color: 'var(--text-muted, #94a3b8)', marginTop: 4, fontFamily: 'monospace', fontSize: '0.7rem' }}>
+                  <div style={{ color: 'var(--text-muted, #94a3b8)', marginTop: 4, fontFamily: 'monospace', fontSize: '0.9rem' }}>
                     Cleared: {order.compartments.join(', ')}
                   </div>
                 )}
