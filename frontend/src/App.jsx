@@ -4,6 +4,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ThemeToggle from "./components/ThemeToggle";
 import { useTheme } from "./theme/ThemeContext";
+import MiniStationIcon from "./components/MiniStationIcons";
 
 // Lazy load page components to improve initial load performance (LCP)
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -200,14 +201,14 @@ export default function App() {
         {/* Center: Main Links */}
         <div className="bottom-nav-links">
           <NavItem to="/" icon="dashboard" label="Dashboard" />
-          <NavItem to="/asrs" icon="inventory_2" label="AS/RS" />
-          <NavItem to="/mirac" icon="settings_input_component" label="Smart MIRAC" />
-          <NavItem to="/triac" icon="precision_manufacturing" label="Smart TRIAC" />
-          <NavItem to="/assembly" icon="factory" label="Assembly" />
-          <NavItem to="/testing-station" icon="fact_check" label="Testing Station" />
-          <NavItem to="/inspection" icon="policy" label="Inspection" />
-          <NavItem to="/amr" icon="local_shipping" label="AMR" />
-          <NavItem to="/cobot" icon="smart_toy" label="Cobot" />
+          <NavItem to="/asrs" machineType="asrs" label="AS/RS" />
+          <NavItem to="/mirac" machineType="mirac" label="Smart MIRAC" />
+          <NavItem to="/triac" machineType="triac" label="Smart TRIAC" />
+          <NavItem to="/assembly" machineType="assembly" label="Assembly" />
+          <NavItem to="/testing-station" machineType="testing" label="Testing Station" />
+          <NavItem to="/inspection" machineType="inspection" label="Inspection" />
+          <NavItem to="/amr" machineType="amr" label="AMR" />
+          <NavItem to="/cobot" machineType="cobot" label="Cobot" />
         </div>
 
         {/* Right Side: Status Cluster */}
@@ -230,18 +231,24 @@ export default function App() {
   );
 }
 
-function NavItem({ to, icon, label }) {
+function NavItem({ to, icon, machineType, label }) {
   return (
     <NavLink
       to={to}
       className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
     >
-      <span className="material-symbols-outlined" style={{
-        fontSize: '22px',
-        marginRight: '6px',
-        display: 'inline-block',
-        verticalAlign: 'middle'
-      }}>{icon}</span>
+      {machineType ? (
+        <span style={{ marginRight: '6px', display: 'inline-flex', alignItems: 'center' }}>
+          <MiniStationIcon type={machineType} size={22} color="var(--primary)" />
+        </span>
+      ) : (
+        <span className="material-symbols-outlined" style={{
+          fontSize: '22px',
+          marginRight: '6px',
+          display: 'inline-block',
+          verticalAlign: 'middle'
+        }}>{icon}</span>
+      )}
       <span style={{ verticalAlign: 'middle' }}>{label}</span>
     </NavLink>
   );
