@@ -28,16 +28,16 @@ flowchart TD
     %% Database Updates
     PLC_Check -- Yes --> DB_Check{Subcompartment<br/>exists in DB?}
     
-    DB_Check -- Yes --> Sub_Occ{Is status ==<br/>'occupied'?}
+    DB_Check -- Yes --> Sub_Occ{Is status ==<br/>occupied?}
     Sub_Occ -- Yes --> Rollback[Rollback DB transaction]
     Rollback --> Err3[Return Error:<br/>Already Occupied]
     
-    Sub_Occ -- No --> DB_Update[UPDATE subcompartment<br/>status='occupied', qty=1]
+    Sub_Occ -- No --> DB_Update[UPDATE subcompartment<br/>status=occupied, qty=1]
     
-    DB_Check -- No --> DB_Insert[INSERT new subcompartment<br/>status='occupied', qty=1]
+    DB_Check -- No --> DB_Insert[INSERT new subcompartment<br/>status=occupied, qty=1]
     
     %% Finalize
-    DB_Update --> Log[INSERT transaction<br/>action='add']
+    DB_Update --> Log[INSERT transaction<br/>action=add]
     DB_Insert --> Log
     
     Log --> Commit[Commit DB Session]
