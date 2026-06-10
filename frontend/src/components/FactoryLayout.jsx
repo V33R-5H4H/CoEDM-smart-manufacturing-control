@@ -6,14 +6,14 @@ import "./FactoryLayout.css";
 export default function FactoryLayout({ stations }) {
   // Map station keys to absolute X, Y percentages on the floor plan
   const coordinates = {
-    asrs: { x: 15, y: 15 },
-    amr: { x: 35, y: 50 },
-    mirac: { x: 55, y: 15 },
-    triac: { x: 85, y: 15 },
-    cobot: { x: 55, y: 50 },
-    assembly: { x: 85, y: 85 },
-    testing: { x: 55, y: 85 },
-    inspection: { x: 15, y: 85 },
+    asrs: { x: 15, y: 25 },
+    mirac: { x: 38, y: 25 },
+    triac: { x: 62, y: 25 },
+    assembly: { x: 85, y: 25 },
+    inspection: { x: 62, y: 75 },
+    testing: { x: 85, y: 75 },
+    cobot: { x: 15, y: 75 },
+    amr: { x: 38, y: 75 },
   };
 
   return (
@@ -24,9 +24,10 @@ export default function FactoryLayout({ stations }) {
         <line x1="15%" y1="50%" x2="85%" y2="50%" className="path-line active" />
         
         {/* Vertical connections */}
-        <line x1="15%" y1="15%" x2="15%" y2="85%" className="path-line active" />
-        <line x1="55%" y1="15%" x2="55%" y2="85%" className="path-line active" />
-        <line x1="85%" y1="15%" x2="85%" y2="85%" className="path-line active" />
+        <line x1="15%" y1="25%" x2="15%" y2="75%" className="path-line active" />
+        <line x1="38%" y1="25%" x2="38%" y2="75%" className="path-line active" />
+        <line x1="62%" y1="25%" x2="62%" y2="75%" className="path-line active" />
+        <line x1="85%" y1="25%" x2="85%" y2="75%" className="path-line active" />
       </svg>
 
       {/* Place each station node */}

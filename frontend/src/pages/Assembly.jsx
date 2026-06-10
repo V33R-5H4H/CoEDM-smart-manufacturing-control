@@ -365,6 +365,14 @@ export default function Assembly() {
     const canvas = rawCanvasRef.current;
     if (!canvas || rawDataPoints.length < 2) return;
 
+    // Fix canvas scaling (1:1 pixel mapping)
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    if (canvas.width !== Math.floor(rect.width * dpr) || canvas.height !== Math.floor(rect.height * dpr)) {
+      canvas.width = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+    }
+
     const ctx = canvas.getContext('2d');
     const width = canvas.width;
     const height = canvas.height;
@@ -375,8 +383,8 @@ export default function Assembly() {
     // Draw grid
     const computedStyle = getComputedStyle(document.body);
     ctx.strokeStyle = computedStyle.getPropertyValue('--border') || '#333';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1 * dpr;
+    ctx.setLineDash([4 * dpr, 4 * dpr]);
     for (let i = 0; i <= 4; i++) {
       const y = (height / 4) * i;
       ctx.beginPath();
@@ -393,18 +401,26 @@ export default function Assembly() {
     }
     ctx.setLineDash([]);
 
-    // Determine time range
+    // Determine time range and dynamic max limits
     const timeRange = rawDataPoints[rawDataPoints.length - 1].timestamp - rawDataPoints[0].timestamp;
     const startTime = rawDataPoints[0].timestamp;
-    const maxVal = rawDataPoints[rawDataPoints.length - 1].workpiece === 'bearing' ? 185 : 135;
+    
+    // Add 10% headroom to prevent going outside the box
+    const theoreticalMax = rawDataPoints[rawDataPoints.length - 1].workpiece === 'bearing' ? 185 : 135;
+    const highestVal = Math.max(...rawDataPoints.map(p => p.value));
+    const maxVal = Math.max(theoreticalMax, highestVal) * 1.1;
+
+    // Padding to avoid stroke clipping at the edges
+    const paddingY = 8 * dpr;
+    const drawHeight = height - paddingY * 2;
 
     // Draw data line
     ctx.strokeStyle = rawDataPoints[rawDataPoints.length - 1].workpiece === 'bearing' ? '#ff6b6b' : '#4dabf7';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2 * dpr;
     ctx.beginPath();
     rawDataPoints.forEach((point, idx) => {
       const x = timeRange > 0 ? ((point.timestamp - startTime) / timeRange) * width : 0;
-      const y = height - (point.value / maxVal) * height;
+      const y = paddingY + drawHeight - (point.value / maxVal) * drawHeight;
       if (idx === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     });
@@ -417,6 +433,14 @@ export default function Assembly() {
     const canvas = smoothedCanvasRef.current;
     if (!canvas || smoothedDataPoints.length < 2) return;
 
+    // Fix canvas scaling (1:1 pixel mapping)
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    if (canvas.width !== Math.floor(rect.width * dpr) || canvas.height !== Math.floor(rect.height * dpr)) {
+      canvas.width = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+    }
+
     const ctx = canvas.getContext('2d');
     const width = canvas.width;
     const height = canvas.height;
@@ -427,8 +451,8 @@ export default function Assembly() {
     // Draw grid
     const computedStyle = getComputedStyle(document.body);
     ctx.strokeStyle = computedStyle.getPropertyValue('--border') || '#333';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1 * dpr;
+    ctx.setLineDash([4 * dpr, 4 * dpr]);
     for (let i = 0; i <= 4; i++) {
       const y = (height / 4) * i;
       ctx.beginPath();
@@ -445,18 +469,26 @@ export default function Assembly() {
     }
     ctx.setLineDash([]);
 
-    // Determine time range
+    // Determine time range and dynamic max limits
     const timeRange = smoothedDataPoints[smoothedDataPoints.length - 1].timestamp - smoothedDataPoints[0].timestamp;
     const startTime = smoothedDataPoints[0].timestamp;
-    const maxVal = smoothedDataPoints[smoothedDataPoints.length - 1].workpiece === 'bearing' ? 185 : 135;
+    
+    // Add 10% headroom to prevent going outside the box
+    const theoreticalMax = smoothedDataPoints[smoothedDataPoints.length - 1].workpiece === 'bearing' ? 185 : 135;
+    const highestVal = Math.max(...smoothedDataPoints.map(p => p.value));
+    const maxVal = Math.max(theoreticalMax, highestVal) * 1.1;
+
+    // Padding to avoid stroke clipping at the edges
+    const paddingY = 8 * dpr;
+    const drawHeight = height - paddingY * 2;
 
     // Draw data line
     ctx.strokeStyle = smoothedDataPoints[smoothedDataPoints.length - 1].workpiece === 'bearing' ? '#ff6b6b' : '#4dabf7';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2 * dpr;
     ctx.beginPath();
     smoothedDataPoints.forEach((point, idx) => {
       const x = timeRange > 0 ? ((point.timestamp - startTime) / timeRange) * width : 0;
-      const y = height - (point.value / maxVal) * height;
+      const y = paddingY + drawHeight - (point.value / maxVal) * drawHeight;
       if (idx === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     });
@@ -646,9 +678,111 @@ export default function Assembly() {
                 <span className="asm-led__label">Orange</span>
               </div>
               <div className="asm-led">
-                <div className={`asm-led__dot ${plantData?.safety?.lights?.red ? 'asm-led__dot--red' : ''}`} />
-                <span className="asm-led__label">Red</span>
               </div>
+            </div>
+          </div>
+
+          {/* Action controls panel moved to sidebar */}
+          <div className="asm-side__section" style={{ marginTop: '24px' }}>
+            <h3>Machine Controls</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
+              <button
+                type="button"
+                onClick={handleBearingToggle}
+                disabled={isLoading || isSafetyFault || !isConnected}
+                style={{
+                  padding: '10px 16px',
+                  background: 'var(--bg-elevated)',
+                  color: 'var(--text-primary)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  border: '1px solid var(--border)',
+                  cursor: (isLoading || isSafetyFault || !isConnected) ? 'not-allowed' : 'pointer',
+                  opacity: (isLoading || isSafetyFault || !isConnected) ? 0.5 : 1,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  transition: 'all 0.2s ease',
+                  boxShadow: 'var(--shadow-sm)'
+                }}
+                onMouseEnter={(e) => { if (!e.currentTarget.disabled) { e.currentTarget.style.borderColor = '#10b981'; e.currentTarget.style.color = '#10b981'; } }}
+                onMouseLeave={(e) => { if (!e.currentTarget.disabled) { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-primary)'; } }}
+              >
+                <span>Press Bearing</span>
+                {isLoading && lastCommand === 'Bearing ON' ? (
+                  <span className="material-symbols-outlined" style={{ animation: 'spin 1s linear infinite', fontSize: '18px' }}>sync</span>
+                ) : (
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#10b981' }}>arrow_downward</span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleShaftToggle}
+                disabled={isLoading || isSafetyFault || !isConnected}
+                style={{
+                  padding: '10px 16px',
+                  background: 'var(--bg-elevated)',
+                  color: 'var(--text-primary)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  border: '1px solid var(--border)',
+                  cursor: (isLoading || isSafetyFault || !isConnected) ? 'not-allowed' : 'pointer',
+                  opacity: (isLoading || isSafetyFault || !isConnected) ? 0.5 : 1,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  transition: 'all 0.2s ease',
+                  boxShadow: 'var(--shadow-sm)'
+                }}
+                onMouseEnter={(e) => { if (!e.currentTarget.disabled) { e.currentTarget.style.borderColor = '#0ea5e9'; e.currentTarget.style.color = '#0ea5e9'; } }}
+                onMouseLeave={(e) => { if (!e.currentTarget.disabled) { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-primary)'; } }}
+              >
+                <span>Press Shaft</span>
+                {isLoading && lastCommand === 'Shaft ON' ? (
+                  <span className="material-symbols-outlined" style={{ animation: 'spin 1s linear infinite', fontSize: '18px' }}>sync</span>
+                ) : (
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#0ea5e9' }}>arrow_downward</span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleViceToggle}
+                disabled={isLoading || isSafetyFault || !isConnected}
+                style={{
+                  padding: '10px 16px',
+                  background: plantData?.vice?.close ? 'var(--primary)' : 'var(--bg-elevated)',
+                  color: plantData?.vice?.close ? 'var(--bg-primary)' : 'var(--text-primary)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  border: plantData?.vice?.close ? '1px solid var(--primary)' : '1px solid var(--border)',
+                  cursor: (isLoading || isSafetyFault || !isConnected) ? 'not-allowed' : 'pointer',
+                  opacity: (isLoading || isSafetyFault || !isConnected) ? 0.5 : 1,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  transition: 'all 0.2s ease',
+                  boxShadow: plantData?.vice?.close ? '0 0 10px rgba(245, 203, 92, 0.4)' : 'var(--shadow-sm)'
+                }}
+                onMouseEnter={(e) => { if (!e.currentTarget.disabled && !plantData?.vice?.close) { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)'; } }}
+                onMouseLeave={(e) => { if (!e.currentTarget.disabled && !plantData?.vice?.close) { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-primary)'; } }}
+              >
+                <span>{plantData?.vice?.close ? 'Vice Clamped' : 'Vice Released'}</span>
+                {isLoading && (lastCommand === 'Vice OPEN' || lastCommand === 'Vice CLOSE') ? (
+                  <span className="material-symbols-outlined" style={{ animation: 'spin 1s linear infinite', fontSize: '18px' }}>sync</span>
+                ) : (
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{plantData?.vice?.close ? 'lock' : 'lock_open'}</span>
+                )}
+              </button>
+            </div>
+            
+            {/* Timestamp feedback */}
+            <div style={{ marginTop: '12px', fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', visibility: lastCommandTime ? 'visible' : 'hidden' }}>
+              LAST CMD: {lastCommandTime || '00:00:00'}
             </div>
           </div>
         </aside>
@@ -894,54 +1028,6 @@ export default function Assembly() {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Action controls panel */}
-          <div id="asm-controls" className="asm-cmd" style={{ marginTop: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', flexDirection: 'column', gap: '8px' }}>
-            {/* Button row — always centred, never shifts */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span className="asm-cmd__label" style={{ marginRight: 0 }}>Press:</span>
-              <button
-                type="button"
-                className="asm-btn asm-btn--bearing"
-                onClick={handleBearingToggle}
-                disabled={isLoading || isSafetyFault || !isConnected}
-                style={{ minWidth: '120px' }}
-              >
-                {isLoading && lastCommand === 'Bearing ON' ? 'Processing…' : 'Bearing ON'}
-              </button>
-              <button
-                type="button"
-                className="asm-btn asm-btn--shaft"
-                onClick={handleShaftToggle}
-                disabled={isLoading || isSafetyFault || !isConnected}
-                style={{ minWidth: '120px' }}
-              >
-                {isLoading && lastCommand === 'Shaft ON' ? 'Processing…' : 'Shaft ON'}
-              </button>
-              <div style={{ width: '1px', height: '20px', background: 'var(--border)', flexShrink: 0 }} />
-              <span className="asm-cmd__label" style={{ marginRight: 0 }}>Vice:</span>
-              <button
-                type="button"
-                className={`asm-btn asm-btn--vice-toggle ${plantData?.vice?.close ? 'asm-btn--vice-toggle--open' : 'asm-btn--vice-toggle--closed'}`}
-                onClick={handleViceToggle}
-                disabled={isLoading || isSafetyFault || !isConnected}
-                title={plantData?.vice?.close ? 'Vice is CLOSED — click to open' : 'Vice is OPEN — click to close'}
-              >
-                {isLoading && (lastCommand === 'Vice OPEN' || lastCommand === 'Vice CLOSE')
-                  ? (lastCommand === 'Vice OPEN' ? 'Opening…' : 'Closing…')
-                  : plantData?.vice?.close ? 'Open Vice ○' : 'Close Vice ●'}
-              </button>
-            </div>
-            {/* Timestamp row — always present as a placeholder to prevent layout shift */}
-            <div style={{ display: 'flex', justifyContent: 'center', minHeight: '16px' }}>
-              <span style={{
-                fontSize: '14px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)',
-                fontWeight: 600, visibility: lastCommandTime ? 'visible' : 'hidden'
-              }}>
-                LAST CMD: {lastCommandTime || '00:00:00'}
-              </span>
             </div>
           </div>
         </main>

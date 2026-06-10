@@ -193,9 +193,9 @@ export default function Dashboard() {
           } else {
             return; // heartbeat
           }
-          const isPlcConnected = data.data_sources?.plc === true;
-          console.log("[MIRAC WS] Received data:", data.data_sources, "plcConnected:", isPlcConnected);
-          setMiracConnected(isPlcConnected);
+          const isConnected = data.data_sources?.plc === true || data.data_sources?.vibit === true;
+          console.log("[MIRAC WS] Received data:", data.data_sources, "Connected:", isConnected);
+          setMiracConnected(isConnected);
           if (data.spindle?.speed !== undefined && data.spindle?.speed !== null) {
             wsCache.dashboard.miracSpindle = data.spindle.speed;
             setMiracSpindle(data.spindle.speed);
@@ -244,8 +244,8 @@ export default function Dashboard() {
           } else {
             return; // heartbeat
           }
-          const isPlcConnected = data.data_sources?.plc === true;
-          setTriacConnected(isPlcConnected);
+          const isConnected = data.data_sources?.plc === true || data.data_sources?.vibit === true;
+          setTriacConnected(isConnected);
           if (data.spindle?.speed !== undefined && data.spindle?.speed !== null) {
             wsCache.dashboard.triacSpindle = data.spindle.speed;
             setTriacSpindle(data.spindle.speed);
@@ -346,6 +346,7 @@ export default function Dashboard() {
     if (forceAnimations) return "running";
     if (!miracConnected) return "offline";
     if (miracSpindle != null && miracSpindle > 0) return "running";
+    if (now - activity.mirac < ACTIVITY_TIMEOUT) return "running";
     return "idle";
   };
 
@@ -353,6 +354,7 @@ export default function Dashboard() {
     if (forceAnimations) return "running";
     if (!triacConnected) return "offline";
     if ((triacSpindle != null && triacSpindle > 0) || (triacFeed != null && triacFeed > 0)) return "running";
+    if (now - activity.triac < ACTIVITY_TIMEOUT) return "running";
     return "idle";
   };
 
@@ -373,16 +375,6 @@ export default function Dashboard() {
   };
 
   const stations = [
-    {
-      name: "AS/RS",
-      key: "asrs",
-      to: "/asrs",
-      emoticonState: getAsrsState(),
-      metrics: [
-        { label: "INV", value: inventoryCount, unit: "pcs" },
-        { label: "SHUTTLE", value: asrsConnected && asrsShuttle?.state ? asrsShuttle.state.substring(0, 3).toUpperCase() : "OFF" },
-      ]
-    },
     {
       name: "Smart MIRAC",
       key: "mirac",
@@ -411,6 +403,16 @@ export default function Dashboard() {
       metrics: [
         { label: "POS", value: assemblyConnected && assemblyPosition !== null ? assemblyPosition : "---", unit: "mm" },
         { label: "SYS", value: assemblyConnected ? assemblySafety : "---" },
+      ]
+    },
+    {
+      name: "AS/RS",
+      key: "asrs",
+      to: "/asrs",
+      emoticonState: getAsrsState(),
+      metrics: [
+        { label: "INV", value: inventoryCount, unit: "pcs" },
+        { label: "SHUTTLE", value: asrsConnected && asrsShuttle?.state ? asrsShuttle.state.substring(0, 3).toUpperCase() : "OFF" },
       ]
     },
     {
