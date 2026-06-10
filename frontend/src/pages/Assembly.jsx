@@ -131,13 +131,23 @@ export default function Assembly() {
           };
         });
 
-
         plotDataPointsRef.current = historyData;
         plotTimestampRef.current = historyData.length;
         setPlotData([...historyData]);
       }
     };
+    
+    const checkConnectionStatus = async () => {
+      try {
+        const res = await AssemblyControlService.getConnectionStatus();
+        setIsConnected(res.connected);
+      } catch (e) {
+        console.error('Failed to fetch connection status on mount:', e);
+      }
+    };
+
     fetchHistory();
+    checkConnectionStatus();
   }, []);
 
   const connectWS = useCallback(() => {
