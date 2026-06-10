@@ -18,7 +18,7 @@ class ItemController:
         """Get all items"""
         session = InventorySessionLocal()
         try:
-            query = 'SELECT item_id, sku, name, description, item_type, unit, created_at AS added_on FROM storage_items ORDER BY item_id'
+            query = 'SELECT item_id, sku, name, description, item_type, unit, created_at AS added_on FROM storage_items WHERE is_active = TRUE ORDER BY item_id'
             result = session.execute(text(query))
             columns = result.keys()
             return [dict(zip(columns, row)) for row in result.fetchall()]
@@ -88,16 +88,16 @@ class ItemController:
 
     @staticmethod
     def delete_item(item_id) -> Dict[str, Any]:
-        """Delete an item by ID"""
+        """Soft delete an item by ID"""
         session = InventorySessionLocal()
         try:
             result = session.execute(
-                text('DELETE FROM storage_items WHERE item_id = :id'),
+                text('UPDATE storage_items SET is_active = FALSE WHERE item_id = :id AND is_active = TRUE'),
                 {"id": int(item_id)}
             )
             session.commit()
             if result.rowcount == 0:
-                raise Exception(f"Item {item_id} not found")
+                raise Exception(f"Item {item_id} not found or already deleted")
             return {"success": True, "affectedRows": result.rowcount, "message": f"Item {item_id} deleted"}
         except Exception as e:
             session.rollback()
@@ -114,7 +114,7 @@ class ItemController:
                 SELECT i.item_id, i.name, COUNT(*) AS available_count
                 FROM storage_items i
                 JOIN storage_compartments sc ON i.item_id = sc.item_id
-                WHERE sc.status = 'occupied'
+                WHERE sc.status = 'occupied' AND i.is_active = TRUE
                 GROUP BY i.item_id, i.name
                 ORDER BY i.name
             """))
@@ -151,7 +151,7 @@ class ItemController:
 
     @staticmethod
     def check_item_id_exists(item_id) -> bool:
-        """Check if an item ID exists"""
+        """Check if an item ID exists (including archived items) to prevent PK conflicts"""
         session = InventorySessionLocal()
         try:
             result = session.execute(

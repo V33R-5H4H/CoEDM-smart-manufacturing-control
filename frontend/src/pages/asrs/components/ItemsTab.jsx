@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import ItemService from '../services/itemService';
-import ConfirmModal from './ConfirmModal';
 import { toast } from 'react-toastify';
 
 function ItemsTab() {
@@ -11,8 +10,6 @@ function ItemsTab() {
   const [loading, setLoading] = useState(false);
   const [validatingId, setValidatingId] = useState(false);
   const [idError, setIdError] = useState('');
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState(null);
 
   useEffect(() => {
     fetchItems();
@@ -138,16 +135,6 @@ function ItemsTab() {
     }
   };
 
-  const openDeleteModal = (itemId) => {
-    setItemToDelete(itemId);
-    setIsDeleteModalOpen(true);
-  };
-
-  const closeDeleteModal = () => {
-    setIsDeleteModalOpen(false);
-    setItemToDelete(null);
-  };
-
   const handleDeleteItem = async (itemId) => {
     try {
       setLoading(true);
@@ -156,10 +143,10 @@ function ItemsTab() {
       fetchItems();
     } catch (error) {
       console.error('Error deleting item:', error);
-      toast.error('Failed to delete item');
-      setLoading(false);
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to delete item';
+      toast.error(errorMessage);
     } finally {
-      closeDeleteModal();
+      setLoading(false);
     }
   };
 
@@ -309,7 +296,7 @@ function ItemsTab() {
                     <td style={{ padding: '8px 16px' }}>
                       <button 
                         className="btn btn-error btn-sm"
-                        onClick={() => openDeleteModal(item.item_id)}
+                        onClick={() => handleDeleteItem(item.item_id)}
                         style={{ height: '26px', padding: '0 8px', fontSize: '14px' }}
                       >
                         DELETE
@@ -323,12 +310,6 @@ function ItemsTab() {
         </div>
       </div>
 
-      <ConfirmModal
-        isOpen={isDeleteModalOpen}
-        onClose={closeDeleteModal}
-        onConfirm={() => itemToDelete && handleDeleteItem(itemToDelete)}
-        title="Delete Item"
-      />
     </div>
   );
 }

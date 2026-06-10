@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 function TransactionsTab() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [sortOption, setSortOption] = useState('id_asc');
+  const [sortOption, setSortOption] = useState('newest_first');
   const [autoRefresh, setAutoRefresh] = useState(false);
   const autoRefreshTimerRef = useRef(null);
 
@@ -67,16 +67,16 @@ function TransactionsTab() {
   };
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      gap: '24px', 
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '24px',
       height: '100%',
       overflow: 'auto',
       padding: '16px 24px',
       position: 'relative'
     }}>
-      
+
       {/* Control Panel */}
       <div style={{
         background: 'var(--bg-elevated)',
@@ -93,7 +93,7 @@ function TransactionsTab() {
           letterSpacing: '0.08em',
           marginBottom: '16px',
         }}>Transaction Filters</div>
-        
+
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: '16px' }}>
           <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div>
@@ -112,7 +112,7 @@ function TransactionsTab() {
                 ]}
               />
             </div>
-            
+
             <button
               className="btn btn-primary"
               onClick={fetchTransactions}
@@ -242,16 +242,16 @@ function CustomSelect({ value, onChange, options, disabled }) {
 
   return (
     <div ref={dropdownRef} style={{ position: 'relative', minWidth: '160px' }}>
-      <div 
+      <div
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        style={{ 
-          background: 'var(--bg-primary)', 
-          border: isOpen ? '1px solid var(--primary)' : '1px solid var(--border)', 
-          borderRadius: '4px', 
-          padding: '0 12px', 
-          color: 'var(--text-primary)', 
-          fontSize: '15px', 
-          height: '35px', 
+        style={{
+          background: 'var(--bg-primary)',
+          border: isOpen ? '1px solid var(--primary)' : '1px solid var(--border)',
+          borderRadius: '4px',
+          padding: '0 12px',
+          color: 'var(--text-primary)',
+          fontSize: '15px',
+          height: '35px',
           cursor: disabled ? 'not-allowed' : 'pointer',
           display: 'flex',
           justifyContent: 'space-between',
@@ -267,7 +267,7 @@ function CustomSelect({ value, onChange, options, disabled }) {
           expand_more
         </span>
       </div>
-      
+
       {isOpen && (
         <div style={{
           position: 'absolute',
