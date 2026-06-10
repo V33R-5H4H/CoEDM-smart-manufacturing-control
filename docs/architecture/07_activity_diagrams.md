@@ -83,7 +83,7 @@ flowchart TD
     CheckHealth -- No --> Release3[Release Lock]
     Release3 --> LogWarn[Log Warning:<br/>Connection Lost]
     
-    LogWarn --> ReconnectCall[Call reconnect()]
+    LogWarn --> ReconnectCall[Call reconnect function]
     ReconnectCall --> RawDisconnect[Raw Disconnect<br/>destroy socket]
     RawDisconnect --> RawConnect[Raw Connect<br/>new client]
     
