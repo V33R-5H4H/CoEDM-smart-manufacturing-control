@@ -9,55 +9,41 @@ State machine diagrams show the distinct states each major component can be in a
 ## Statechart 1: OPC-UA Connection Manager
 *Source: `backend/communication/opcua_driver.py` — `OPCUAConnection` class*
 
-The `OPCUAConnection` class manages a single persistent OPC-UA session per station (ASRS, MIRAC, TRIAC, Assembly). One instance exists per station.
-
 ```mermaid
 stateDiagram-v2
     [*] --> Disconnected : instantiated
 
     Disconnected --> Connecting : connect() called
-
-    Connecting --> Connected : _raw_connect() success
-    Connecting --> Disconnected : connection refused / timeout
+    Connecting --> Connected : session established
+    Connecting --> Disconnected : refused / timeout
 
     Connected --> Monitoring : monitor thread started
-    Monitoring --> Monitoring : health check OK (every 5s)
-    Monitoring --> Reconnecting : read ns=0i=2259 fails
+    Monitoring --> Monitoring : health check OK every 5s
+    Monitoring --> Reconnecting : health check fails
 
-    Reconnecting --> Connected : _raw_connect() success
-    Reconnecting --> Reconnecting : reconnect attempt failed
+    Reconnecting --> Connected : reconnect success
+    Reconnecting --> Reconnecting : reconnect failed
 
     Connected --> Disconnected : disconnect() called
     Monitoring --> Disconnected : disconnect() called
 
-    note right of Connected
-        self.connected = True
-        Broadcaster reads PLC nodes
-        Node cache is valid
-    end note
-
-    note right of Reconnecting
-        Callbacks fired:
-        _plc_node_cache.clear()
-        Broadcaster re-subscribes
-    end note
+    Disconnected --> [*] : system shutdown
 ```
 
-**Key transitions from code:**
-| Event | From State | To State | Code |
-|-------|-----------|----------|------|
-| `connect()` called | Disconnected | Connecting | `opcua_driver.py:42` |
-| TCP session established | Connecting | Connected | `_raw_connect()` |
-| Health check fails every 5s | Monitoring | Reconnecting | `_monitor_loop():172` |
-| Reconnect success | Reconnecting | Connected | `reconnect():74` |
-| `disconnect()` called | Any | Disconnected | `_raw_disconnect()` |
+**Key transitions:**
+| Event | From | To |
+|-------|------|----|
+| `connect()` called | Disconnected | Connecting |
+| TCP session established | Connecting | Connected |
+| Health check fails (every 5s) | Monitoring | Reconnecting |
+| `_raw_connect()` succeeds | Reconnecting | Connected |
+| `disconnect()` called | Any | Disconnected |
+| System shutdown | Disconnected | End |
 
 ---
 
 ## Statechart 2: ASRS Operation Lifecycle
-*Source: `backend/stations/asrs/asrs_logic.py` — `ASRSLogic` class + shuttle state machine*
-
-The ASRS system orchestrates both the database and the physical shuttle. The shuttle state is polled during retrieval operations.
+*Source: `backend/stations/asrs/asrs_logic.py` — `ASRSLogic` class*
 
 ```mermaid
 stateDiagram-v2
@@ -67,102 +53,75 @@ stateDiagram-v2
     Idle --> ValidatingRetrieve : Retrieve command received
     Idle --> Error : PLC connection lost
 
-    ValidatingStore --> SendingPLC : item + box exist in DB
-    ValidatingStore --> Idle : validation failed (item/box not found)
+    ValidatingStore --> SendingPLC : item and box found in DB
+    ValidatingStore --> Idle : validation failed
 
-    SendingPLC --> UpdatingDB : PLC store command OK
-    SendingPLC --> Idle : PLC command failed
+    SendingPLC --> UpdatingDB : PLC store OK
+    SendingPLC --> Idle : PLC failed
 
-    UpdatingDB --> Idle : compartment marked occupied + transaction logged
-    UpdatingDB --> Idle : compartment already occupied (rollback)
+    UpdatingDB --> Idle : compartment occupied, transaction logged
+    UpdatingDB --> Idle : compartment already occupied, rollback
 
     ValidatingRetrieve --> FindingLocations : inputs valid
-    FindingLocations --> SendingPLC_Retrieve : locations found (quantity met)
+    FindingLocations --> SendingPLC_Retrieve : locations found
     FindingLocations --> Idle : insufficient stock
 
     SendingPLC_Retrieve --> WaitingForShuttle : box command sent
-    WaitingForShuttle --> SendingPLC_Retrieve : shuttle idle/error (next box)
-    WaitingForShuttle --> WaitingForShuttle : shuttle busy (poll every 1s, timeout 90s)
+    WaitingForShuttle --> SendingPLC_Retrieve : shuttle returned idle
+    WaitingForShuttle --> WaitingForShuttle : shuttle busy, poll 1s, max 90s
 
     SendingPLC_Retrieve --> UpdatingDB_Retrieve : all PLC commands succeeded
     SendingPLC_Retrieve --> Idle : any PLC command failed
 
-    UpdatingDB_Retrieve --> Idle : compartments marked empty + transactions logged
+    UpdatingDB_Retrieve --> Idle : compartments emptied, transactions logged
 
     Error --> Idle : connection restored
     Idle --> [*] : system shutdown
-
-    note right of WaitingForShuttle
-        get_shuttle_state()
-        polls state every 1s
-        returns "idle" or "error"
-        to advance to next box
-    end note
 ```
 
-**Key states from code:**
+**Key states:**
 | State | Meaning | Source |
 |-------|---------|--------|
 | `Idle` | No operation in progress | Initial / after commit |
-| `ValidatingStore` | Checking item + box exist in DB | `asrs_logic.py:83-116` |
-| `SendingPLC` | Issuing `{box_id}S` store pulse to ASRS PLC | `asrs_logic.py:119-137` |
-| `UpdatingDB` | Marking compartment `occupied`, inserting transaction | `asrs_logic.py:139-207` |
-| `WaitingForShuttle` | Polling `get_shuttle_state()` every 1s (max 90s) | `asrs_logic.py:341-347` |
-| `UpdatingDB_Retrieve` | Marking compartments `empty`, inserting transactions | `asrs_logic.py:376-398` |
+| `ValidatingStore` | Checking item + box exist in DB | `asrs_logic.py:83` |
+| `SendingPLC` | Issuing store pulse `{box_id}S` to PLC | `asrs_logic.py:119` |
+| `UpdatingDB` | Marking compartment `occupied`, logging transaction | `asrs_logic.py:139` |
+| `WaitingForShuttle` | Polling `get_shuttle_state()` every 1s (max 90s) | `asrs_logic.py:341` |
+| `UpdatingDB_Retrieve` | Marking compartments `empty`, logging transactions | `asrs_logic.py:376` |
 
 ---
 
 ## Statechart 3: WebSocket Broadcaster (per station)
-*Source: `backend/websockets/*_broadcaster.py` — e.g., `MiracBroadcaster`, `HydraulicBroadcaster`*
-
-Each station has a dedicated broadcaster instance that manages the lifecycle of WebSocket clients and background polling tasks.
+*Source: `backend/websockets/*_broadcaster.py` — `MiracBroadcaster`, `HydraulicBroadcaster`, etc.*
 
 ```mermaid
 stateDiagram-v2
     [*] --> Idle : broadcaster instantiated
 
-    Idle --> Broadcasting : first WebSocket client connects
-    Broadcasting --> Broadcasting : additional clients connect
-
-    Broadcasting --> SendingSnapshot : new client joins mid-session
-    SendingSnapshot --> Broadcasting : initial snapshot sent
+    Idle --> Broadcasting : first client connects
+    Broadcasting --> Idle : last client disconnects
+    Broadcasting --> Idle : task cancelled
 
     state Broadcasting {
         [*] --> ReadingHardware
-        ReadingHardware --> ComputingDelta : sensor data read
-        ComputingDelta --> SendingDelta : delta has changes
-        ComputingDelta --> SendingHeartbeat : no changes, tick % 50 == 0
-        ComputingDelta --> ReadingHardware : no changes, heartbeat not due
-        SendingDelta --> ReadingHardware : sent to all clients (100ms sleep)
-        SendingHeartbeat --> ReadingHardware : sent to all clients (100ms sleep)
-
-        ReadingHardware --> LoggingToDB : state changed OR 2s elapsed
-        LoggingToDB --> ReadingHardware : DB write complete (asyncio.to_thread)
+        ReadingHardware --> ComputingDelta : sensor data received
+        ComputingDelta --> SendingDelta : fields changed
+        ComputingDelta --> SendingHeartbeat : no change, tick mod 50 = 0
+        ComputingDelta --> ReadingHardware : no change, heartbeat not due
+        SendingDelta --> ReadingHardware : sent, sleep 100ms
+        SendingHeartbeat --> ReadingHardware : sent, sleep 100ms
+        ReadingHardware --> LoggingToDB : state changed or 2s elapsed
+        LoggingToDB --> ReadingHardware : write complete
     }
 
-    Broadcasting --> Idle : last client disconnects
-    Broadcasting --> Idle : broadcast task cancelled
     Idle --> [*] : system shutdown
-
-    note right of Broadcasting
-        MIRAC: separate _modbus_poll_loop
-        runs every 8s concurrently
-        alongside the 10 Hz OPC-UA loop
-    end note
-
-    note right of ComputingDelta
-        compute_delta() compares
-        current vs _last_broadcast_payload
-        Only changed keys are sent
-    end note
 ```
 
-**Key state data from code:**
+**Key state data:**
 | State | `is_broadcasting` | `active_connections` | Trigger |
 |-------|------------------|---------------------|---------|
-| `Idle` | `False` | `{}` (empty set) | No clients connected |
-| `Broadcasting` | `True` | `{ws1, ws2, ...}` | ≥1 client connected |
-| `SendingSnapshot` | `True` | New ws added | `connect()` → sends `_last_broadcast_payload` |
+| `Idle` | `False` | empty set | No clients |
+| `Broadcasting` | `True` | one or more WS clients | First client connects |
 
 ---
 
