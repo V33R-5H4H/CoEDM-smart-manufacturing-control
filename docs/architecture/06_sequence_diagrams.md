@@ -105,3 +105,4 @@ sequenceDiagram
 ---
 
 *Previous: [Object Diagrams](./05_object_diagram.md)*
+*Next: [Activity Diagrams](./07_activity_diagrams.md)*

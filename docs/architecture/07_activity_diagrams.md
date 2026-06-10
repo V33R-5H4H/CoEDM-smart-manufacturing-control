@@ -21,7 +21,7 @@ flowchart TD
     V_Box -- No --> Err1
     
     %% PLC Command
-    V_Box -- Yes --> PLC[Send PLC command<br/>e.g. "A1S"]
+    V_Box -- Yes --> PLC[Send PLC command<br/>e.g. A1S]
     PLC --> PLC_Check{PLC Status OK?}
     PLC_Check -- No --> Err2[Return PLC Error<br/>Status=ERROR]
     
