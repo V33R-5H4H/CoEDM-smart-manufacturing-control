@@ -16,7 +16,7 @@ classDiagram
         <<MiracBroadcaster>>
         is_broadcasting = True
         _heartbeat_tick = 42
-        _last_broadcast_payload = { "rpm": 1200, "x_pos": 15.5 }
+        _last_broadcast_payload = [ rpm: 1200, x_pos: 15.5 ]
     }
 
     class opc_conn {
