@@ -7,67 +7,81 @@ DFD Level 1 decomposes the single "CoEDM System" black box from the Context Diag
 ---
 
 ```mermaid
-graph TD
+graph LR
+    %% --- Human Actors ---
     OP["Shop Floor Operator"]
     ADMIN["Admin / Engineer"]
+    ECOM["E-Commerce"]
+
+    %% --- Hardware ---
     ASRS_HW["ASRS PLC"]
     ASSEMBLY_HW["Assembly PLC"]
     MIRAC_HW["MIRAC CNC"]
     TRIAC_HW["TRIAC CNC"]
     VIBIT["VibIT Sensors"]
-    ECOM["E-Commerce"]
 
-    DS1[("DS1: Telemetry DB")]
-    DS2[("DS2: Orders DB")]
-    DS3[("DS3: WS Cache")]
-
+    %% --- Processes ---
     P1["P1: REST API Handler"]
     P2["P2: Hardware Driver"]
     P3["P3: WS Broadcaster"]
     P4["P4: DB Writer"]
     P5["P5: Order Manager"]
 
-    OP -- "Control Command" --> P1
-    ADMIN -- "Reports / Logs" --> P1
-    P1 -- "HTTP Response" --> OP
-    P1 -- "Report Data" --> ADMIN
+    %% --- Data Stores ---
+    DS1[("DS1: Telemetry DB")]
+    DS2[("DS2: Orders DB")]
+    DS3[("DS3: WS Cache")]
 
-    P1 -- "Validated Command" --> P2
-    P2 -- "OPC-UA Write" --> ASRS_HW
-    P2 -- "OPC-UA Write" --> ASSEMBLY_HW
+    %% --- Human -> P1 ---
+    OP --> P1
+    ADMIN --> P1
+    ECOM --> P5
 
-    P1 -- "Order Request" --> P5
-    P5 -- "ASRS Trigger" --> P1
+    %% --- P1 responses ---
+    P1 --> OP
+    P1 --> ADMIN
 
-    ASRS_HW -- "LED + Safety States" --> P2
-    ASSEMBLY_HW -- "Position + Vice + Lights" --> P2
-    MIRAC_HW -- "Spindle + Axes + Tool" --> P2
-    TRIAC_HW -- "Spindle + Axes" --> P2
-    VIBIT -- "Vibration + Temp + RPM" --> P2
+    %% --- P1 <-> P2 control ---
+    P1 --> P2
 
-    P2 -- "Sensor Snapshot" --> P3
+    %% --- P1 <-> P5 orders ---
+    P1 --> P5
+    P5 --> P1
 
-    P3 -- "Cache State" --> DS3
-    DS3 -- "Initial Snapshot" --> P3
+    %% --- Hardware -> P2 data ingestion ---
+    ASRS_HW --> P2
+    ASSEMBLY_HW --> P2
+    MIRAC_HW --> P2
+    TRIAC_HW --> P2
+    VIBIT --> P2
 
-    P3 -- "WS: snapshot" --> OP
-    P3 -- "WS: delta" --> OP
-    P3 -- "WS: heartbeat" --> OP
+    %% --- P2 -> Hardware control ---
+    P2 --> ASRS_HW
+    P2 --> ASSEMBLY_HW
 
-    P3 -- "Telemetry Row" --> P4
-    P3 -- "Connection Event" --> P4
-    P3 -- "Machine Alarm" --> P4
+    %% --- P2 -> P3 ---
+    P2 --> P3
 
-    P4 -- "INSERT telemetry" --> DS1
-    P4 -- "INSERT events" --> DS1
-    P4 -- "INSERT connections" --> DS1
+    %% --- P3 <-> DS3 ---
+    P3 --> DS3
+    DS3 --> P3
 
-    DS1 -- "SELECT history" --> P1
+    %% --- P3 -> OP (WebSocket) ---
+    P3 --> OP
 
-    ECOM -- "New Order" --> P5
-    P5 -- "INSERT order" --> DS2
-    DS2 -- "Inventory Status" --> P5
-    P5 -- "Order Confirmation" --> ECOM
+    %% --- P3 -> P4 ---
+    P3 --> P4
+
+    %% --- P4 -> DS1 ---
+    P4 --> DS1
+
+    %% --- DS1 -> P1 ---
+    DS1 --> P1
+
+    %% --- P5 <-> DS2 ---
+    P5 --> DS2
+    DS2 --> P5
+    P5 --> ECOM
 
     style P1 fill:#1a1a2e,color:#f5cb5c,stroke:#f5cb5c,stroke-width:2px
     style P2 fill:#1a1a2e,color:#f5cb5c,stroke:#f5cb5c,stroke-width:2px
@@ -79,13 +93,42 @@ graph TD
     style DS3 fill:#1a3a1a,color:#e0e0e0,stroke:#10b981,stroke-width:1px
     style OP fill:#16213e,color:#e0e0e0,stroke:#555,stroke-width:1px
     style ADMIN fill:#16213e,color:#e0e0e0,stroke:#555,stroke-width:1px
+    style ECOM fill:#3b1a3b,color:#e0e0e0,stroke:#a855f7,stroke-width:1px
     style ASRS_HW fill:#0d3b66,color:#e0e0e0,stroke:#2a7cc7,stroke-width:1px
     style ASSEMBLY_HW fill:#0d3b66,color:#e0e0e0,stroke:#2a7cc7,stroke-width:1px
     style MIRAC_HW fill:#0d3b66,color:#e0e0e0,stroke:#2a7cc7,stroke-width:1px
     style TRIAC_HW fill:#0d3b66,color:#e0e0e0,stroke:#2a7cc7,stroke-width:1px
     style VIBIT fill:#1a3a2e,color:#e0e0e0,stroke:#10b981,stroke-width:1px
-    style ECOM fill:#3b1a3b,color:#e0e0e0,stroke:#a855f7,stroke-width:1px
 ```
+
+---
+
+## Data Flow Detail
+
+| From | To | Data / Action |
+|------|----|---------------|
+| Shop Floor Operator | P1 | HTTP POST control command (BEARING_ON, Store A1, etc.) |
+| Admin / Engineer | P1 | HTTP GET reports, event logs, machine status |
+| P1 | Operator / Admin | HTTP JSON response |
+| P1 | P2 | Validated OPC-UA write command |
+| P2 | ASRS PLC | OPC-UA write: store / retrieve / home pulse |
+| P2 | Assembly PLC | OPC-UA write: BEARING_ON, SHAFT_ON, VICE relay |
+| ASRS PLC | P2 | OPC-UA subscription: LED grid (35 nodes), safety curtain |
+| Assembly PLC | P2 | OPC-UA poll (10 Hz): displacement, vice, lights, buzzer |
+| MIRAC / TRIAC CNC | P2 | OPC-UA poll (10 Hz): spindle, axes, tool data |
+| VibIT Sensors | P2 | Modbus TCP (8s): X/Y/Z RMS, peak acc/vel, temp, RPM |
+| P2 | P3 | Normalized sensor snapshot |
+| P3 | DS3 | Write last broadcast payload (delta cache) |
+| DS3 | P3 | Read initial snapshot for new WS client |
+| P3 | Operator | WebSocket: snapshot / delta / heartbeat at ~10 Hz |
+| P3 | P4 | Telemetry row, connection event, machine alarm |
+| P4 | DS1 | INSERT into telemetry, events, connections tables |
+| DS1 | P1 | SELECT history for reports |
+| E-Commerce | P5 | POST new order (item_id, sub_id, quantity) |
+| P5 | DS2 | INSERT/UPDATE orders, order_items, compartments |
+| DS2 | P5 | SELECT inventory count, compartment status |
+| P5 | E-Commerce | Order confirmation + sub-compartment ID |
+| P5 | P1 | Trigger ASRS retrieve command |
 
 ---
 
@@ -108,15 +151,6 @@ graph TD
 | **DS1** | `machine_events`, `machine_connections`, `mirac_sensor_data`, `triac_sensor_data`, `vibit_readings`, `assembly_station_data` | Historical telemetry and audit trail |
 | **DS2** | `orders`, `order_items`, `storage_items`, `storage_boxes`, `storage_compartments` | Inventory and order management |
 | **DS3** | `_last_broadcast_payload` (in-memory dict) | WebSocket broadcaster cache for delta computation and initial snapshots |
-
----
-
-## Key Design Decisions
-
-1. **Dual polling rates**: P2 polls OPC-UA at **10 Hz** but VibIT Modbus at **8s intervals** (separate asyncio task) to prevent slow RS-485 reads blocking axis position updates.
-2. **Delta compression**: P3 uses `compute_delta()` to only transmit changed fields, minimizing WebSocket bandwidth.
-3. **Last-good cache**: P3 maintains a `_last_good_vibit*` cache so the frontend always shows the most recent valid reading when sensors drop temporarily.
-4. **Non-blocking DB writes**: All P4 writes use `asyncio.to_thread()` keeping the broadcast loop at full speed.
 
 ---
 
