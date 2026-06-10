@@ -91,6 +91,11 @@ export default function Catalogue({ onCartChange }) {
             placeholder="Search products by name or SKU..."
             value={search}
             onChange={e => setSearch(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Escape') {
+                e.currentTarget.blur();
+              }
+            }}
             style={{ paddingLeft: 48, paddingRight: 72, fontSize: '1.1rem', height: 56, borderRadius: 99, boxShadow: 'var(--shadow-sm)' }}
           />
           <div style={{ 
