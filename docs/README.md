@@ -20,6 +20,7 @@
 | [Class Diagram](architecture/04_class_diagram.md) | Python classes mapping to physical hardware and DB entities |
 | [Object Diagrams](architecture/05_object_diagram.md) | Runtime memory snapshots of the system in action |
 | [Sequence Diagrams](architecture/06_sequence_diagrams.md) | Flow of ASRS order fulfillment and WS telemetry loop |
+| [Activity Diagrams](architecture/07_activity_diagrams.md) | Decision logic flows for ASRS and PLC health monitoring |
 
 ## Quick Reference
 
