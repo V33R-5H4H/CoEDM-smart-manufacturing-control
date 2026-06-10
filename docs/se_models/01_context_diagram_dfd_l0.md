@@ -9,44 +9,44 @@ A context diagram (DFD Level 0) defines the system boundary and shows all extern
 ```mermaid
 graph LR
     %% External Entities (Actors)
-    OP["🧑‍🏭 Shop Floor Operator"]
-    ADMIN["👨‍💼 Admin / Engineer"]
-    ASRS_HW["⚙️ ASRS PLC\n(Codesys / OPC-UA)"]
-    ASSEMBLY_HW["⚙️ Assembly Press PLC\n(AX-308EA0MA1P / OPC-UA)"]
-    MIRAC_HW["⚙️ MIRAC CNC Lathe\n(OPC-UA)"]
-    TRIAC_HW["⚙️ TRIAC CNC Mill\n(OPC-UA)"]
-    VIBIT["📡 VibIT Sensors\n(Modbus TCP / RS-485)"]
-    ECOM["🛒 E-Commerce Portal\n(Order Management)"]
-    DB[("🗄️ PostgreSQL\nDatabase")]
+    OP["Shop Floor Operator"]
+    ADMIN["Admin / Engineer"]
+    ASRS_HW["ASRS PLC<br/>(Codesys / OPC-UA)"]
+    ASSEMBLY_HW["Assembly Press PLC<br/>(AX-308EA0MA1P / OPC-UA)"]
+    MIRAC_HW["MIRAC CNC Lathe<br/>(OPC-UA)"]
+    TRIAC_HW["TRIAC CNC Mill<br/>(OPC-UA)"]
+    VIBIT["VibIT Sensors<br/>(Modbus TCP / RS-485)"]
+    ECOM["E-Commerce Portal<br/>(Order Management)"]
+    DB[("PostgreSQL<br/>Database")]
 
     %% The System
-    SYSTEM["[ CoEDM Smart Manufacturing\n  Control System ]"]
+    SYSTEM["CoEDM Smart Manufacturing<br/>Control System"]
 
     %% Flows FROM Operators/Admin TO System
-    OP -- "Control commands\n(Store, Retrieve, Press, Vice)" --> SYSTEM
+    OP -- "Control commands<br/>(Store, Retrieve, Press, Vice)" --> SYSTEM
     OP -- "Dashboard view request" --> SYSTEM
-    ADMIN -- "Configure settings\nView logs & reports" --> SYSTEM
-    ECOM -- "Customer orders\n(Item, Sub-ID, Compartment)" --> SYSTEM
+    ADMIN -- "Configure settings<br/>View logs & reports" --> SYSTEM
+    ECOM -- "Customer orders<br/>(Item, Sub-ID, Compartment)" --> SYSTEM
 
     %% Flows FROM System TO Operators/Admin
-    SYSTEM -- "Real-time machine state\n(Running / Idle / Error)" --> OP
+    SYSTEM -- "Real-time machine state<br/>(Running / Idle / Error)" --> OP
     SYSTEM -- "Safety alerts & alarms" --> OP
-    SYSTEM -- "Historical reports\nEvent logs" --> ADMIN
+    SYSTEM -- "Historical reports<br/>Event logs" --> ADMIN
 
     %% Flows FROM Hardware TO System
-    ASRS_HW -- "LED grid states\nSafety curtain signal\nShuttle position" --> SYSTEM
-    ASSEMBLY_HW -- "Piston displacement (mm)\nVice state\nSafety lights (R/Y/G)\nBuzzer state" --> SYSTEM
-    MIRAC_HW -- "Spindle RPM\nSpindle temperature\nAxis position & feed\nTool data" --> SYSTEM
-    TRIAC_HW -- "Spindle RPM\nAxis feed rate\nTool data" --> SYSTEM
-    VIBIT -- "Vibration (X/Y/Z RMS)\nAcceleration & velocity\nSensor temperature\nRPM" --> SYSTEM
+    ASRS_HW -- "LED grid states<br/>Safety curtain signal<br/>Shuttle position" --> SYSTEM
+    ASSEMBLY_HW -- "Piston displacement (mm)<br/>Vice state<br/>Safety lights (R/Y/G)<br/>Buzzer state" --> SYSTEM
+    MIRAC_HW -- "Spindle RPM<br/>Spindle temperature<br/>Axis position & feed<br/>Tool data" --> SYSTEM
+    TRIAC_HW -- "Spindle RPM<br/>Axis feed rate<br/>Tool data" --> SYSTEM
+    VIBIT -- "Vibration (X/Y/Z RMS)<br/>Acceleration & velocity<br/>Sensor temperature<br/>RPM" --> SYSTEM
 
     %% Flows FROM System TO Hardware (Control Commands)
-    SYSTEM -- "Store/Retrieve/Home\npulse commands" --> ASRS_HW
-    SYSTEM -- "BEARING_ON, SHAFT_ON\nVICE_OPEN, VICE_CLOSE\n(OPC-UA write)" --> ASSEMBLY_HW
+    SYSTEM -- "Store/Retrieve/Home<br/>pulse commands" --> ASRS_HW
+    SYSTEM -- "BEARING_ON, SHAFT_ON<br/>VICE_OPEN, VICE_CLOSE<br/>(OPC-UA write)" --> ASSEMBLY_HW
 
     %% Flows to/from Database
-    SYSTEM -- "Log events, transactions\nconnection history\ntelemetry snapshots" --> DB
-    DB -- "Inventory counts\nOrder status\nShuttle history\nEvent log" --> SYSTEM
+    SYSTEM -- "Log events, transactions<br/>connection history<br/>telemetry snapshots" --> DB
+    DB -- "Inventory counts<br/>Order status<br/>Shuttle history<br/>Event log" --> SYSTEM
 
     %% Styling
     style SYSTEM fill:#1a1a2e,color:#f5cb5c,stroke:#f5cb5c,stroke-width:3px
