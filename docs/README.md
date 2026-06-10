@@ -10,6 +10,17 @@
 | [NETWORK_TOPOLOGY.md](NETWORK_TOPOLOGY.md) | Device map, protocol details, connection state machines |
 | [INTERVIEW_GUIDE.md](INTERVIEW_GUIDE.md) | How to explain the project in an interview — decisions, challenges, learnings |
 
+## Architecture & System Engineering Models
+
+| Model | Description |
+|---|---|
+| [Context Diagram (DFD L0)](architecture/01_context_diagram_dfd_l0.md) | External entities and high-level system boundaries |
+| [Data Flow Diagram (DFD L1)](architecture/02_dfd_level1.md) | Internal process decomposition and data stores |
+| [State Machine Diagrams](architecture/03_state_machine_diagrams.md) | Statecharts for OPC-UA, ASRS operations, and WS Broadcasters |
+| [Class Diagram](architecture/04_class_diagram.md) | Python classes mapping to physical hardware and DB entities |
+| [Object Diagrams](architecture/05_object_diagram.md) | Runtime memory snapshots of the system in action |
+| [Sequence Diagrams](architecture/06_sequence_diagrams.md) | Flow of ASRS order fulfillment and WS telemetry loop |
+
 ## Quick Reference
 
 ```
