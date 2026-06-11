@@ -33,8 +33,8 @@ Tokens are issued by `POST /api/ecom/auth/login`.
 
 | File | Contents |
 |------|----------|
-| [endpoints/README.md](endpoints/README.md) | Full reference for all REST endpoints with parameters, request bodies, and response examples |
-| [schemas/README.md](schemas/README.md) | All Pydantic request/response schemas, inline payload formats, and WebSocket message formats |
+| [endpoints/Endpoints.md](endpoints/Endpoints.md) | Full reference for all REST endpoints with parameters, request bodies, and response examples |
+| [schemas/Schemas.md](schemas/Schemas.md) | All Pydantic request/response schemas, inline payload formats, and WebSocket message formats |
 
 ---
 
