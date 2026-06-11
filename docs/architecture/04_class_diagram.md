@@ -155,3 +155,4 @@ classDiagram
 ---
 
 *Previous: [State Machine Diagrams](./03_state_machine_diagrams.md)*
+*Next: [Object Diagrams](./05_object_diagram.md)*

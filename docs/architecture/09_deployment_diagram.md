@@ -110,3 +110,4 @@ The edge server acts as the master to these slave devices.
 
 ---
 *Previous: [Component Diagram](./08_component_diagram.md)*
+*Next: [Use Case Diagram](./10_use_case_diagram.md)*

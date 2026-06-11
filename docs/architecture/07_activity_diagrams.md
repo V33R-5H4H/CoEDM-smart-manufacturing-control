@@ -112,3 +112,4 @@ flowchart TD
 ---
 
 *Previous: [Sequence Diagrams](./06_sequence_diagrams.md)*
+*Next: [Component Diagram](./08_component_diagram.md)*

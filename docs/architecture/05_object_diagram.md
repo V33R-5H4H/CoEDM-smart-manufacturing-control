@@ -136,3 +136,4 @@ classDiagram
 ---
 
 *Previous: [Class Diagram](./04_class_diagram.md)*
+*Next: [Sequence Diagrams](./06_sequence_diagrams.md)*
