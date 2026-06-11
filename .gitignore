@@ -12,6 +12,7 @@ build/
 # Environment secrets — NEVER commit
 .env
 *.env
+.env.docker
 *.key
 *.pem
 
