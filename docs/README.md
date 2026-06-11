@@ -21,6 +21,9 @@
 | [Object Diagrams](architecture/05_object_diagram.md) | Runtime memory snapshots of the system in action |
 | [Sequence Diagrams](architecture/06_sequence_diagrams.md) | Flow of ASRS order fulfillment and WS telemetry loop |
 | [Activity Diagrams](architecture/07_activity_diagrams.md) | Decision logic flows for ASRS and PLC health monitoring |
+| [Component Diagram](architecture/08_component_diagram.md) | Software modular architecture and module boundaries |
+| [Deployment Diagram](architecture/09_deployment_diagram.md) | Physical node layout, networking, and port mappings |
+| [Use Case Diagram](architecture/10_use_case_diagram.md) | Actor interactions and automated fulfillment workflows |
 
 ## Quick Reference
 
