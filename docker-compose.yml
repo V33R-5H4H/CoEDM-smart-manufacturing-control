@@ -3,10 +3,7 @@ services:
     image: postgres:16
     container_name: coedm_db
     restart: always
-    environment:
-      POSTGRES_USER: coedm
-      POSTGRES_PASSWORD: coedm_password
-      POSTGRES_DB: coedm
+    env_file: .env.docker
     volumes:
       - pgdata:/var/lib/postgresql/data
       # Mount the schema file so PostgreSQL runs it on first boot
