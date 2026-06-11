@@ -24,6 +24,7 @@
 | [Component Diagram](architecture/08_component_diagram.md) | Software modular architecture and module boundaries |
 | [Deployment Diagram](architecture/09_deployment_diagram.md) | Physical node layout, networking, and port mappings |
 | [Use Case Diagram](architecture/10_use_case_diagram.md) | Actor interactions and automated fulfillment workflows |
+| [ERD — Database Schema](architecture/11_erd.md) | All 22 tables, relationships, domains, and design decisions |
 
 ## Quick Reference
 

@@ -97,3 +97,4 @@ flowchart LR
 
 ---
 *Previous: [Deployment Diagram](./09_deployment_diagram.md)*
+*Next: [ERD — Database Schema](./11_erd.md)*
