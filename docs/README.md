@@ -10,6 +10,14 @@
 | [NETWORK_TOPOLOGY.md](NETWORK_TOPOLOGY.md) | Device map, protocol details, connection state machines |
 | [INTERVIEW_GUIDE.md](INTERVIEW_GUIDE.md) | How to explain the project in an interview — decisions, challenges, learnings |
 
+## API Documentation
+
+| Document | Description |
+|---|---|
+| [API Overview](api/README.md) | Base URL, auth, and index of all 67 endpoints by tag |
+| [Endpoints Reference](api/endpoints/README.md) | Full reference for every REST endpoint with params and examples |
+| [Schemas Reference](api/schemas/README.md) | All request/response schemas, inline payloads, and WebSocket formats |
+
 ## Architecture & System Engineering Models
 
 | Model | Description |
