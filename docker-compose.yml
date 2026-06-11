@@ -18,8 +18,8 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: coedm_backend
     restart: always
     env_file: .env.docker
@@ -41,7 +41,7 @@ services:
     container_name: coedm_frontend
     restart: always
     ports:
-      - "80:80"
+      - "3000:80"
     depends_on:
       backend:
         condition: service_healthy
