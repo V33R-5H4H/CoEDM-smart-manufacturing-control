@@ -24,6 +24,8 @@ def upgrade() -> None:
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../database'))
     sql_files = [
         "Integrated_Schema_v2.sql",
+        "migrations/003_workflow_engine.sql",
+        "migrations/004_timescaledb_integration.sql",
         "migrations/ecom_001_add_price_and_auth.sql",
         "migrations/ecom_002_admin_role.sql",
         "migrations/ecom_003_add_image_url.sql"
