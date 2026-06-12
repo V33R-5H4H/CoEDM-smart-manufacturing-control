@@ -79,10 +79,9 @@ class Settings(BaseSettings):
     COBOT_HOST: str = "10.10.14.106"
     COBOT_PORT: int = 5890
 
-    # ── AMR Autonomous Mobile Robot (Modbus TCP) ────────────────────────────
+    # ── AMR Autonomous Mobile Robot (Raw TCP) ───────────────────────────────────
     AMR_HOST: str = "10.10.14.122"
-    AMR_PORT: int = 502
-    AMR_UNIT_ID: int = 1                # Modbus slave/unit ID
+    AMR_PORT: int = 5000
 
     # ── FastAPI Application ───────────────────────────────────────────────────
     API_HOST: str = "0.0.0.0"
