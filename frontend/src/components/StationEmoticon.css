@@ -1,0 +1,116 @@
+.station-emoticon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  position: relative;
+  background: var(--bg-elevated);
+  border: 2px solid var(--border-light);
+  box-shadow: var(--shadow);
+  transition: all 0.3s ease;
+  user-select: none;
+}
+
+/* Base states */
+.station-emoticon.state-running {
+  border-color: var(--status-ok);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--status-ok) 40%, transparent);
+  animation: bounce-happy 2s infinite ease-in-out;
+}
+
+.station-emoticon.state-idle {
+  border-color: var(--status-idle);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--status-idle) 20%, transparent);
+}
+
+.station-emoticon.state-error {
+  border-color: var(--status-error);
+  box-shadow: 0 0 15px color-mix(in srgb, var(--status-error) 60%, transparent);
+  animation: shake-error 0.5s infinite ease-in-out;
+}
+
+.station-emoticon.state-offline {
+  border-color: var(--text-disabled);
+  background: var(--bg-secondary);
+  filter: grayscale(100%);
+  opacity: 0.6;
+}
+
+/* Animations */
+@keyframes bounce-happy {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes shake-error {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px) rotate(-3deg);
+  }
+  75% {
+    transform: translateX(3px) rotate(3deg);
+  }
+}
+
+/* Sleeping Zzz animation */
+.sleeping-zzz {
+  position: absolute;
+  top: -10px;
+  right: -5px;
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  pointer-events: none;
+}
+
+.sleeping-zzz span {
+  position: absolute;
+  opacity: 0;
+  animation: float-zzz 3s infinite linear;
+}
+
+.sleeping-zzz span:nth-child(1) {
+  animation-delay: 0s;
+  font-size: 12px;
+}
+.sleeping-zzz span:nth-child(2) {
+  animation-delay: 1s;
+  font-size: 16px;
+  margin-left: 8px;
+  margin-top: -8px;
+}
+.sleeping-zzz span:nth-child(3) {
+  animation-delay: 2s;
+  font-size: 20px;
+  margin-left: 18px;
+  margin-top: -18px;
+}
+
+@keyframes float-zzz {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.5);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(2px, -5px) scale(0.8);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(8px, -20px) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(10px, -25px) scale(1.2);
+  }
+}

@@ -9,6 +9,8 @@ import { useTheme } from "../../theme/ThemeContext";
 import { toast } from "react-toastify";
 import "../Assembly.css";
 import SafetyOverlay from "../../components/SafetyOverlay";
+import TutorialOverlay from "./components/TutorialOverlay";
+import OrderFeed from "./components/OrderFeed";
 
 const API_BASE = `${import.meta.env.VITE_API_URL || "/api"}/control/asrs`;
 
@@ -16,10 +18,82 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState("boxes");
   const [isConnected, setIsConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
+  const [ecomOrders, setEcomOrders] = useState([]);
   const { shuttleState, connected: ledConnected, ledStates, safetyCurtain } = useLEDMonitoring();
   const { resolved: theme } = useTheme();
 
   const prevSafetyCurtainRef = useRef(false);
+
+  // ── Custom Tutorial ──────────────────────────────────────────────────────
+  const [tutorialActive, setTutorialActive] = useState(false);
+  // advanceRef is called by the box-click handler to move past the
+  // "click any box" step without any Joyride controlled-mode complexity.
+  const advanceRef = useRef(null);
+
+  const TUTORIAL_STEPS = [
+    {
+      targetId: 'asrs-cell-DROP_OFF',
+      title: 'Handoff Zone',
+      content: 'This is where AMRs and operators drop off or pick up crates. The shuttle crane services this position first.',
+      placement: 'right',
+    },
+    {
+      targetId: 'asrs-connect-btn',
+      title: 'Connect / Disconnect',
+      content: 'Use this button to connect the AS/RS control system to the OPC-UA server. You must be connected to run store or retrieve operations.',
+      placement: 'bottom',
+    },
+    {
+      targetId: 'asrs-rack-grid',
+      title: 'Storage Matrix',
+      content: 'Each cell is a physical bin. The colour shows occupancy: green = full, red = empty. Click any bin now to open its operations panel.',
+      placement: 'right',
+      waitForClick: true,
+    },
+    {
+      targetId: 'asrs-operations-panel',
+      title: 'Operations Panel',
+      content: 'This panel slides up whenever you select a bin. From here you can inspect the bin\'s contents and choose to Store or Retrieve an item. The left side shows the 6 subcompartment slots; the right side shows the action.',
+      placement: 'top',
+    },
+    {
+      targetId: 'asrs-subcompartment-grid',
+      title: 'Subcompartment Slots',
+      content: 'Each bin has 6 slots labelled A–F. Green slots are occupied; dashed slots are empty. Click a slot to select it — the right panel will automatically show Store or Retrieve based on whether it\'s occupied.',
+      placement: 'right',
+    },
+    {
+      targetId: 'asrs-action-area',
+      title: 'Execute Store or Retrieve',
+      content: 'Once a slot is selected, this area shows the action. For empty slots: pick an inventory item and hit Execute Store. For occupied slots: hit Execute Retrieve to dispatch the shuttle. That\'s it — you\'re ready!',
+      placement: 'top',
+    },
+  ];
+
+  // Listen for box clicks so we can advance past the "click any box" step.
+  // Registered once — reads tutorialActive via ref to avoid stale closures.
+  const tutorialActiveRef = useRef(false);
+  useEffect(() => { tutorialActiveRef.current = tutorialActive; }, [tutorialActive]);
+
+  useEffect(() => {
+    const handleBoxClicked = () => {
+      if (!tutorialActiveRef.current) return;
+      // advanceRef.current is set by TutorialOverlay and moves to the next step.
+      // We wait one rAF so the OperationsPanel has time to mount before the
+      // overlay tries to measure its bounding rect.
+      const tryAdvance = () => {
+        const panel = document.getElementById('asrs-operations-panel');
+        if (panel) {
+          advanceRef.current?.();
+        } else {
+          requestAnimationFrame(tryAdvance);
+        }
+      };
+      requestAnimationFrame(tryAdvance);
+    };
+    window.addEventListener('asrs-box-clicked', handleBoxClicked);
+    return () => window.removeEventListener('asrs-box-clicked', handleBoxClicked);
+  }, []);
 
   // Trigger edge-triggered toast notifications for ASRS Safety Curtain status
   useEffect(() => {
@@ -98,6 +172,7 @@ function Dashboard() {
         shuttleState={shuttleState}
         ledConnected={ledConnected}
         safetyCurtainTriggered={isSafetyInterrupted}
+        activeEcomOrders={ecomOrders}
       />
     ),
     items: <ItemsTab isServerConnected={isConnected} />,
@@ -112,6 +187,14 @@ function Dashboard() {
       overflow: 'hidden',
       background: 'var(--bg-primary)',
     }}>
+      {/* Custom tutorial overlay — replaces Joyride */}
+      {tutorialActive && (
+        <TutorialOverlay
+          steps={TUTORIAL_STEPS}
+          advanceRef={advanceRef}
+          onFinish={() => setTutorialActive(false)}
+        />
+      )}
       {/* Stitch-style top bar */}
       <PageHeader
         title="AS/RS"
@@ -124,12 +207,44 @@ function Dashboard() {
               ledConnected={ledConnected}
               shuttleState={shuttleState}
             />
+            
+            {/* Tutorial Button */}
+            <button
+              type="button"
+              onClick={() => setTutorialActive(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '14px',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                color: '#38bdf8',
+                background: 'rgba(56, 189, 248, 0.1)',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                padding: '4px 12px',
+                borderRadius: '2px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(56, 189, 248, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(56, 189, 248, 0.1)';
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>school</span>
+              Start Tutorial
+            </button>
             {isConnected ? (
               <button
+                id="asrs-connect-btn"
                 type="button"
                 onClick={handleDisconnect}
                 style={{
-                  fontSize: '11px',
+                  fontSize: '14px',
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
@@ -147,10 +262,11 @@ function Dashboard() {
               </button>
             ) : (
               <button
+                id="asrs-connect-btn"
                 type="button"
                 onClick={handleConnect}
                 style={{
-                  fontSize: '11px',
+                  fontSize: '14px',
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
@@ -189,7 +305,7 @@ function Dashboard() {
               type="button"
               onClick={() => setActiveTab(tab)}
               style={{
-                fontSize: '11px',
+                fontSize: '16px',
                 fontWeight: activeTab === tab ? 700 : 600,
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
@@ -208,7 +324,7 @@ function Dashboard() {
         </div>
 
         {/* 3-LED Status Tower Indicator */}
-        <div style={{
+        <div id="asrs-status-tower" style={{
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
@@ -218,7 +334,7 @@ function Dashboard() {
           height: '28px'
         }}>
           <span style={{
-            fontSize: '9px',
+            fontSize: '12px',
             fontFamily: 'var(--font-mono)',
             fontWeight: 700,
             color: 'var(--text-muted)',
@@ -233,16 +349,13 @@ function Dashboard() {
               width: '12px',
               height: '12px',
               borderRadius: '50%',
-              border: '1.5px solid #333',
-              background: greenActive
-                ? 'radial-gradient(circle, #4ade80, #22c55e)'
-                : 'radial-gradient(circle, #1a1a1a, #0a0a0a)',
-              boxShadow: greenActive
-                ? '0 0 8px rgba(74, 222, 128, 0.75), inset 0 1px 1px rgba(255,255,255,0.3)'
-                : 'inset 0 1px 2px rgba(0,0,0,0.5)',
+              border: '1.5px solid var(--border-dark)',
+              background: greenActive ? 'var(--status-ok)' : 'transparent',
+              opacity: greenActive ? 1 : 0.3,
+              boxShadow: greenActive ? '0 0 8px var(--status-ok)' : 'none',
               transition: 'all 0.3s ease'
             }} />
-            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: greenActive ? '#4ade80' : 'var(--text-disabled)' }}>RUN</span>
+            <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: greenActive ? 'var(--status-ok)' : 'var(--text-disabled)' }}>RUN</span>
           </div>
 
           {/* BUSY LED */}
@@ -251,16 +364,13 @@ function Dashboard() {
               width: '12px',
               height: '12px',
               borderRadius: '50%',
-              border: '1.5px solid #333',
-              background: orangeActive
-                ? 'radial-gradient(circle, #fbbf24, #f59e0b)'
-                : 'radial-gradient(circle, #1a1a1a, #0a0a0a)',
-              boxShadow: orangeActive
-                ? '0 0 8px rgba(251, 191, 36, 0.75), inset 0 1px 1px rgba(255,255,255,0.3)'
-                : 'inset 0 1px 2px rgba(0,0,0,0.5)',
+              border: '1.5px solid var(--border-dark)',
+              background: orangeActive ? 'var(--status-warn)' : 'transparent',
+              opacity: orangeActive ? 1 : 0.3,
+              boxShadow: orangeActive ? '0 0 8px var(--status-warn)' : 'none',
               transition: 'all 0.3s ease'
             }} />
-            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: orangeActive ? '#fbbf24' : 'var(--text-disabled)' }}>BUSY</span>
+            <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: orangeActive ? 'var(--status-warn)' : 'var(--text-disabled)' }}>BUSY</span>
           </div>
 
           {/* FLT LED */}
@@ -269,16 +379,13 @@ function Dashboard() {
               width: '12px',
               height: '12px',
               borderRadius: '50%',
-              border: '1.5px solid #333',
-              background: redActive
-                ? 'radial-gradient(circle, #ef4444, #dc2626)'
-                : 'radial-gradient(circle, #1a1a1a, #0a0a0a)',
-              boxShadow: redActive
-                ? '0 0 8px rgba(239, 68, 68, 0.75), inset 0 1px 1px rgba(255,255,255,0.3)'
-                : 'inset 0 1px 2px rgba(0,0,0,0.5)',
+              border: '1.5px solid var(--border-dark)',
+              background: redActive ? 'var(--status-error)' : 'transparent',
+              opacity: redActive ? 1 : 0.3,
+              boxShadow: redActive ? '0 0 8px var(--status-error)' : 'none',
               transition: 'all 0.3s ease'
             }} />
-            <span style={{ fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: redActive ? '#ef4444' : 'var(--text-disabled)' }}>FLT</span>
+            <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: redActive ? 'var(--status-error)' : 'var(--text-disabled)' }}>FLT</span>
           </div>
         </div>
       </div>
@@ -288,10 +395,27 @@ function Dashboard() {
         flex: 1,
         overflow: 'hidden',
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'row',
         position: 'relative'
       }}>
-        {tabPanels[activeTab]}
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          {tabPanels[activeTab]}
+        </div>
+
+        {/* Live E-Com Order Feed sidebar */}
+        <div style={{
+          width: 272,
+          flexShrink: 0,
+          borderLeft: '1px solid var(--border)',
+          overflowY: 'auto',
+          padding: 12,
+          background: 'var(--bg-secondary)',
+        }}>
+          <OrderFeed
+            wsUrl={`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:8000/api/control/asrs/ws/led-status`}
+            onOrdersChange={setEcomOrders}
+          />
+        </div>
 
         {/* SAFETY INTERRUPT OVERLAY */}
         <SafetyOverlay

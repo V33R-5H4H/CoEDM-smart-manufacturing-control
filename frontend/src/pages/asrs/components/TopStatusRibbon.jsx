@@ -120,7 +120,7 @@ const TopStatusRibbon = ({ plcConnected, ledConnected, shuttleState }) => {
         <span
           style={{
             fontFamily: 'var(--font-mono)',
-            fontSize: '10px',
+            fontSize: '13px',
             fontWeight: 700,
             color: 'var(--text-primary)',
             letterSpacing: '0.05em',

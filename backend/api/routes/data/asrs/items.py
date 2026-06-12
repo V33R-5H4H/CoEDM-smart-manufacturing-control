@@ -81,7 +81,7 @@ async def delete_item(item_id: str):
         result = ItemController.delete_item(item_id)
         return {"success": True, "message": result["message"]}
     except Exception as e:
-        if "not found" in str(e).lower():
+        if "not found" in str(e).lower() or "already deleted" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 

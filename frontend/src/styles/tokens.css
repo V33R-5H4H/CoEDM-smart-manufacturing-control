@@ -54,13 +54,13 @@
   --accent: #F5CB5C;
 
   /* Status */
-  --success: #CFDBD5;
-  --success-light: #e0ebe7;
+  --success: #10b981;
+  --success-light: #34d399;
   --warning: #F5CB5C;
   --error: #ff6b6b;
-  --info: #CFDBD5;
+  --info: #38bdf8;
 
-  --status-ok: #CFDBD5;
+  --status-ok: #10b981;
   --status-warn: #F5CB5C;
   --status-error: #ff6b6b;
   --status-idle: #8a9490;
@@ -99,60 +99,117 @@
 
   --focus-ring: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--primary);
   --overlay: rgba(0,0,0,0.72);
+
+  /* ASRS / Matrix specific indicators (Original hardcoded dark mode colors) */
+  --matrix-green: #10b981;
+  --matrix-red: #ef4444;
+  --matrix-orange: #f97316;
+  --matrix-yellow: #eab308;
+  --matrix-info: #06b6d4;
+  --matrix-info-bg: rgba(6,182,212,0.12);
+  --rail-idle: #475569;
+  --rail-moving: #00bcd4;
+  --rail-busy: #00e5ff;
+  --rail-bg: radial-gradient(circle at 30% 30%, #374151, #1a202c);
 }
 
 /* ========================================
-   LIGHT THEME — Stitch M3 Industrial
+   LIGHT THEME — CoEDM Design Spec
+   Derived from light_mode.md pixel analysis
    ======================================== */
 [data-theme="light"] {
   color-scheme: light;
 
-  --primary: #545f72;
-  --primary-light: #4a5568;
-  --primary-dark: #263142;
-  --accent: #724d00;
+  /* Primary / Accent — Amber (spec: --color-accent-amber) */
+  --primary:       #c8860a;
+  --primary-light: #d99b1a;
+  --primary-dark:  #a06808;
+  --accent:        #c8860a;
 
-  --success: #017a4f;
-  --success-light: #79daa6;
-  --warning: #724d00;
-  --error: #93000a;
-  --info: #545f72;
+  /* Status — solid, spec-defined LED colors */
+  --success:        #1e7a48;
+  --success-light:  #d6f0e4;
+  --warning:        #b06010;
+  --error:          #c0282f;
+  --info:           #0b7a6e;
 
-  --status-ok: #017a4f;
-  --status-warn: #724d00;
-  --status-error: #93000a;
-  --status-idle: #44474c;
-  --status-active: #545f72;
+  --status-ok:      #1e7a48;   /* --color-led-green */
+  --status-warn:    #b06010;   /* --color-led-orange */
+  --status-error:   #c0282f;   /* --color-led-red */
+  --status-idle:    #a0a09c;   /* --color-led-off-border */
+  --status-active:  #0b7a6e;   /* --color-accent-teal */
 
-  --bg-primary: #fafafc;
-  --bg-secondary: #f0f1f4;
-  --bg-tertiary: #e6e7eb;
-  --bg-elevated: #ffffff;
-  --bg-hover: #eaebed;
-  --bg-pressed: #dddee2;
-  --bg-800: #f0f1f4;
-  --bg-900: #ffffff;
-  --bg-700: #e6e7eb;
+  /* Surfaces
+     topbar   → --bg-tertiary  (#f5f5f3)
+     subheader → --bg-secondary (#e8e8e5)
+     page-bg  → --bg-primary   (#edecea)
+     card-bg  → --bg-elevated  (#ffffff)
+     alt-card → --bg-800       (#f9f9f7)
+     bottomnav → --bg-900      (#e4e4e0)
+     hover    → --bg-hover     (#e2e2de)
+     pressed  → --bg-pressed   (#d4d3d0)  viewport bg
+  */
+  --bg-primary:   #edecea;
+  --bg-secondary: #e8e8e5;
+  --bg-tertiary:  #f5f5f3;
+  --bg-elevated:  #ffffff;
+  --bg-hover:     #e2e2de;
+  --bg-pressed:   #d4d3d0;
+  --bg-800:       #f9f9f7;
+  --bg-900:       #e4e4e0;
+  --bg-700:       #c2c1be;
 
-  --text-primary: #1a1c20;
-  --text-secondary: #44474c;
-  --text-muted: #74777d;
-  --text-disabled: #c5c6cd;
+  /* Text */
+  --text-primary:   #1a1c1a;   /* --color-text-primary */
+  --text-secondary: #52544f;   /* --color-text-secondary */
+  --text-muted:     #858780;   /* --color-text-dim */
+  --text-disabled:  #a0a09c;   /* --color-led-off-border */
 
-  --border: #c5c6cd;
-  --border-light: #dddee2;
-  --border-lighter: #eaebed;
-  --border-dark: #8f9097;
+  /* Borders */
+  --border:        #d0d0cc;    /* --color-border */
+  --border-light:  #d8d8d4;
+  --border-lighter: #e4e4e0;
+  --border-dark:   #b8b8b4;    /* --color-border-strong */
 
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
-  --shadow: 0 1px 3px rgba(0,0,0,0.08);
-  --shadow-lg: 0 4px 12px rgba(0,0,0,0.1);
-  --shadow-xl: 0 8px 24px rgba(0,0,0,0.12);
-  --shadow-inset: inset 0 1px 2px rgba(0,0,0,0.06);
-  --shadow-elevated: var(--shadow);
+  /* Extended semantic tokens for components */
+  --color-accent-amber:    #c8860a;
+  --color-accent-amber-bg: #fef3e0;
+  --color-accent-teal:     #0b7a6e;
+  --color-accent-teal-bg:  #e0f5f3;
+  --color-accent-cyan:     #007db8;
+  --color-accent-cyan-bg:  #e0f3fc;
+  --color-tool-amber:      #f99c01;
 
-  --focus-ring: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--primary);
-  --overlay: rgba(26,28,32,0.45);
+  --color-led-green:      #1e7a48;
+  --color-led-green-bg:   #d6f0e4;
+  --color-led-orange:     #b06010;
+  --color-led-orange-bg:  #fde8d0;
+  --color-led-red:        #c0282f;
+  --color-led-red-bg:     #fcd8d9;
+  --color-led-off-border: #a0a09c;
+
+  /* Shadows — diffuse, warm-neutral */
+  --shadow-sm:       0 1px 2px rgba(26, 28, 26, 0.06);
+  --shadow:          0 2px 6px rgba(26, 28, 26, 0.08);
+  --shadow-lg:       0 6px 14px rgba(26, 28, 26, 0.10);
+  --shadow-xl:       0 12px 28px rgba(26, 28, 26, 0.12);
+  --shadow-inset:    inset 0 1px 3px rgba(26, 28, 26, 0.06);
+  --shadow-elevated: 0 4px 16px rgba(26, 28, 26, 0.10);
+
+  --focus-ring: 0 0 0 2px var(--bg-primary), 0 0 0 4px rgba(200, 134, 10, 0.45);
+  --overlay:    rgba(26, 28, 26, 0.48);
+
+  /* ASRS / Matrix specific indicators (Adapted for light mode) */
+  --matrix-green: var(--status-ok);
+  --matrix-red: var(--status-error);
+  --matrix-orange: var(--status-warn);
+  --matrix-yellow: var(--status-warn);
+  --matrix-info: var(--info);
+  --matrix-info-bg: rgba(11,122,110,0.12);
+  --rail-idle: var(--text-disabled);
+  --rail-moving: var(--primary);
+  --rail-busy: var(--primary-light);
+  --rail-bg: var(--bg-elevated);
 }
 
 /* Material Symbols config */

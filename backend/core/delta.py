@@ -10,7 +10,7 @@ Provides:
   - build_heartbeat_message()— JSON-encode a keep-alive heartbeat
 """
 
-import json
+import orjson
 from typing import Any
 
 # Sensor floats that differ by less than this are treated as "unchanged".
@@ -59,14 +59,14 @@ def compute_delta(old: dict, new: dict, tolerance: float = FLOAT_TOLERANCE) -> d
 
 def build_snapshot_message(data: dict) -> str:
     """Return a full-state snapshot frame as a JSON string."""
-    return json.dumps({"type": "snapshot", "data": data})
+    return orjson.dumps({"type": "snapshot", "data": data}).decode("utf-8")
 
 
 def build_delta_message(delta: dict) -> str:
     """Return a changed-fields-only delta frame as a JSON string."""
-    return json.dumps({"type": "delta", "data": delta})
+    return orjson.dumps({"type": "delta", "data": delta}).decode("utf-8")
 
 
 def build_heartbeat_message(timestamp: float) -> str:
     """Return a lightweight keep-alive heartbeat frame as a JSON string."""
-    return json.dumps({"type": "heartbeat", "timestamp": timestamp})
+    return orjson.dumps({"type": "heartbeat", "timestamp": timestamp}).decode("utf-8")

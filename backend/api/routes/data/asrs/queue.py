@@ -92,3 +92,94 @@ async def push_to_queue(payload: QueueCreate):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         session.close()
+
+@router.delete("")
+async def clear_queue():
+    """Clear all pending and processing items from the retrieval queue and restore stock if needed"""
+    session = SessionLocal()
+    try:
+        queue_ids = set()
+        restored_count = 0
+        
+        # 1. Find all pending and processing queues to restore reserved compartments
+        pending_queues = session.execute(
+            text("SELECT queue_id, notes FROM retrieval_queue WHERE status IN ('pending', 'processing')")
+        ).fetchall()
+        
+        for q in pending_queues:
+            q_id, notes = q
+            queue_ids.add(q_id)
+            
+            if notes and "compartment: " in notes:
+                comp_id = notes.split("compartment: ")[1].strip()
+                
+                # Restore stock: change status back from reserved to occupied
+                session.execute(
+                    text("""
+                        UPDATE storage_compartments 
+                        SET status = 'occupied', updated_at = :now
+                        WHERE compartment_id = :cid AND status = 'reserved'
+                    """),
+                    {"cid": comp_id, "now": ist_now()}
+                )
+                restored_count += 1
+
+        # 2. Also handle legacy offline PLC transactions that haven't been reversed
+        transactions = session.execute(
+            text("""
+                SELECT compartment_id, item_id, tran_id, queue_id 
+                FROM storage_transactions 
+                WHERE asrs_result = 'ecom_db_only_plc_offline'
+            """)
+        ).fetchall()
+        
+        for tx in transactions:
+            comp_id, item_id, tran_id, q_id = tx
+            if q_id:
+                queue_ids.add(q_id)
+            
+            # Restore stock
+            session.execute(
+                text("""
+                    UPDATE storage_compartments 
+                    SET status = 'occupied', item_id = :iid 
+                    WHERE compartment_id = :cid
+                """),
+                {"iid": item_id, "cid": comp_id}
+            )
+            # Mark transaction as reversed
+            session.execute(
+                text("UPDATE storage_transactions SET asrs_result = 'reversed_clear_queue' WHERE tran_id = :tid"),
+                {"tid": tran_id}
+            )
+            restored_count += 1
+            
+        if not queue_ids:
+            session.execute(
+                text("UPDATE orders SET order_status = 'cancelled' WHERE order_status IN ('pending', 'processing', 'shipped')")
+            )
+            session.commit()
+            return {"success": True, "message": "Queue is already empty and no stock to restore"}
+
+        # 3. Cancel the queue entries
+        session.execute(
+            text("UPDATE retrieval_queue SET status = 'cancelled' WHERE queue_id = ANY(:qids)"),
+            {"qids": list(queue_ids)}
+        )
+
+        # 4. Cancel associated e-commerce orders
+        session.execute(
+            text("UPDATE orders SET order_status = 'cancelled' WHERE order_status IN ('pending', 'processing', 'shipped')")
+        )
+
+        session.commit()
+        return {
+            "success": True, 
+            "message": f"Cleared queue items and restored {restored_count} items to stock."
+        }
+    except Exception as e:
+        logger.error(f"Error clearing queue: {e}")
+        session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        session.close()

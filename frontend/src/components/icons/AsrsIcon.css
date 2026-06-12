@@ -1,0 +1,115 @@
+.asrs-icon-container {
+  position: relative;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-light);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.5s ease;
+}
+
+/* Glass Reflection */
+.asrs-icon-container::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-20deg);
+  animation: glass-shine 6s infinite;
+  pointer-events: none;
+}
+
+@keyframes glass-shine {
+  0% { left: -100%; }
+  20% { left: 200%; }
+  100% { left: 200%; }
+}
+
+/* Base Rack Styles */
+.asrs-rack {
+  fill: var(--bg-hover);
+  stroke: var(--border);
+  stroke-width: 1;
+  transition: all 0.3s ease;
+}
+
+/* States */
+.asrs-icon-container.state-running {
+  border-color: var(--status-ok);
+  box-shadow: inset 0 0 20px color-mix(in srgb, var(--status-ok) 15%, transparent), 0 0 15px color-mix(in srgb, var(--status-ok) 30%, transparent);
+}
+
+.asrs-icon-container.state-idle {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 15px color-mix(in srgb, var(--primary) 15%, transparent);
+  animation: asrs-breathe 4s ease-in-out infinite alternate;
+}
+
+.asrs-icon-container.state-error {
+  border-color: var(--status-error);
+  box-shadow: inset 0 0 20px color-mix(in srgb, var(--status-error) 30%, transparent), 0 0 15px color-mix(in srgb, var(--status-error) 40%, transparent);
+  animation: asrs-shake 0.5s infinite ease-in-out;
+}
+
+.asrs-icon-container.state-offline {
+  filter: grayscale(100%);
+  opacity: 0.5;
+}
+
+@keyframes asrs-breathe {
+  0% { box-shadow: inset 0 0 10px color-mix(in srgb, var(--primary) 5%, transparent); }
+  100% { box-shadow: inset 0 0 25px color-mix(in srgb, var(--primary) 25%, transparent), 0 0 15px color-mix(in srgb, var(--primary) 15%, transparent); }
+}
+
+@keyframes asrs-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px) rotate(-1deg); }
+  75% { transform: translateX(2px) rotate(1deg); }
+}
+
+/* Shuttle Animation */
+.asrs-shuttle {
+  fill: var(--status-ok);
+  filter: drop-shadow(0 0 4px var(--status-ok));
+}
+
+.state-running .asrs-shuttle {
+  animation: shuttle-move 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.state-idle .asrs-shuttle {
+  transform: translate(0px, 0px); /* Home position (bottom left conceptually) */
+  fill: var(--primary);
+  filter: drop-shadow(0 0 4px var(--primary));
+}
+
+.state-error .asrs-shuttle {
+  fill: var(--status-error);
+  filter: drop-shadow(0 0 4px var(--status-error));
+}
+
+/* Simulate the shuttle moving between different rack cells */
+/* The grid is 7 cols x 5 rows. We'll simulate movement across X and Y */
+@keyframes shuttle-move {
+  0%   { transform: translate(0px, 0px); }            /* col 0, row 0 */
+  15%  { transform: translate(0px, 0px); }
+  25%  { transform: translate(45px, 0px); }           /* col 3, row 0 */
+  40%  { transform: translate(45px, 0px); }
+  50%  { transform: translate(45px, -30px); }         /* col 3, row 2 */
+  65%  { transform: translate(45px, -30px); }
+  75%  { transform: translate(90px, -30px); }         /* col 6, row 2 */
+  90%  { transform: translate(90px, -30px); }
+  100% { transform: translate(0px, 0px); }            /* return to home */
+}

@@ -12,6 +12,7 @@ build/
 # Environment secrets — NEVER commit
 .env
 *.env
+.env.docker
 *.key
 *.pem
 
@@ -29,6 +30,7 @@ dashboard/coedm-dashboard/.env
 .idea/
 *.swp
 *.swo
+/.kiro/
 
 # OS
 .DS_Store
@@ -51,10 +53,10 @@ reference/
 
 #Stitch Designs
 stitch_designs/
-
 *.zip
-
 *.exe
-
 /backend/scratch/
-/.kiro/
+/light_mode.md
+/todo.txt
+/scripts/
+/scratch/

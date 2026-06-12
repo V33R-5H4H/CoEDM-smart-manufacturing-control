@@ -1,0 +1,142 @@
+.testing-icon-container {
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Glass and Glow Effects by State */
+.testing-icon-container.state-running {
+  border-color: var(--status-ok);
+  box-shadow: inset 0 0 15px color-mix(in srgb, var(--status-ok) 15%, transparent);
+}
+
+.testing-icon-container.state-idle {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 15px color-mix(in srgb, var(--primary) 15%, transparent);
+  animation: test-breathe 4s ease-in-out infinite alternate;
+}
+
+.testing-icon-container.state-error {
+  border-color: var(--status-error);
+  box-shadow: inset 0 0 20px color-mix(in srgb, var(--status-error) 30%, transparent), 0 0 15px color-mix(in srgb, var(--status-error) 40%, transparent);
+  animation: test-shake 0.5s infinite ease-in-out;
+}
+
+.testing-icon-container.state-offline {
+  filter: grayscale(100%);
+  opacity: 0.5;
+}
+
+/* Colors */
+.testing-base {
+  fill: var(--bg-tertiary, #4a4d4a);
+  stroke: var(--border-dark);
+  stroke-width: 0.5;
+}
+
+.testing-gantry-top, .testing-gantry-leg {
+  fill: var(--bg-hover);
+  stroke: var(--text-muted);
+  stroke-width: 0.5;
+}
+
+.testing-carriage {
+  fill: var(--text-muted);
+}
+
+.testing-probe-shaft {
+  fill: var(--border-dark);
+}
+
+.testing-probe-tip {
+  fill: #ef4444; /* Ruby red */
+  filter: drop-shadow(0 0 2px rgba(239, 68, 68, 0.5));
+}
+
+.testing-workpiece {
+  fill: var(--info);
+  stroke: var(--text-muted);
+  stroke-width: 1;
+}
+
+.testing-bore {
+  fill: var(--bg-elevated);
+  stroke: var(--text-muted);
+  stroke-width: 0.5;
+}
+
+.testing-led {
+  fill: var(--text-muted);
+}
+
+/* State-specific Overrides */
+.state-idle .testing-led {
+  fill: var(--primary);
+  filter: drop-shadow(0 0 2px var(--primary));
+}
+
+.state-error .testing-led {
+  fill: var(--status-error);
+  filter: drop-shadow(0 0 2px var(--status-error));
+}
+
+/* Animations */
+@keyframes test-breathe {
+  0% { box-shadow: inset 0 0 10px color-mix(in srgb, var(--primary) 5%, transparent); }
+  100% { box-shadow: inset 0 0 25px color-mix(in srgb, var(--primary) 25%, transparent), 0 0 15px color-mix(in srgb, var(--primary) 15%, transparent); }
+}
+
+@keyframes test-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+/* CMM Motion */
+@keyframes test-cmm-x {
+  0%, 25% { transform: translateX(0); }
+  35%, 55% { transform: translateX(2.5px); }
+  65%, 85% { transform: translateX(20px); }
+  95%, 100% { transform: translateX(0); }
+}
+
+@keyframes test-cmm-z {
+  0%, 5% { transform: translateY(0); }
+  10%, 15% { transform: translateY(4.5px); }
+  20%, 35% { transform: translateY(0); }
+  40%, 45% { transform: translateY(12px); }
+  50%, 65% { transform: translateY(0); }
+  70%, 75% { transform: translateY(12.5px); }
+  80%, 100% { transform: translateY(0); }
+}
+
+@keyframes test-cmm-led {
+  0%, 9%, 16%, 39%, 46%, 69%, 76%, 100% { 
+    fill: var(--text-muted); 
+    filter: none;
+  }
+  10%, 15%, 40%, 45%, 70%, 75% { 
+    fill: var(--status-ok); 
+    filter: drop-shadow(0 0 3px var(--status-ok)); 
+  }
+}
+
+/* Apply Running Animations */
+.state-running .testing-probe-assembly {
+  animation: test-cmm-x 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.state-running .testing-probe-shaft-group {
+  animation: test-cmm-z 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.state-running .testing-led {
+  animation: test-cmm-led 4s step-end infinite;
+}

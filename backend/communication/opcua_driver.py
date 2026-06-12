@@ -88,6 +88,8 @@ class OPCUAConnection:
     def get_node(self, tag_name: str):
         if not self.connected:
             raise Exception("Not connected to OPC UA server")
+        if tag_name.startswith("ns="):
+            return self.client.get_node(tag_name)
         return self.client.get_node(f"ns=4;s={tag_name}")
 
     def pulse_node(self, tag_name: str, duration: float = 0.1):
@@ -95,7 +97,7 @@ class OPCUAConnection:
         if not self.connected:
             raise Exception("Not connected to OPC UA server")
 
-        node = self.client.get_node(f"ns=4;s={tag_name}")
+        node = self.get_node(tag_name)
 
         def _write(val: bool):
             node.write_value(ua.DataValue(ua.Variant(val, ua.VariantType.Boolean)))
@@ -122,7 +124,7 @@ class OPCUAConnection:
             raise Exception("Not connected to OPC UA server")
 
         try:
-            node = self.client.get_node(f"ns=4;s={tag_name}")
+            node = self.get_node(tag_name)
             node.write_value(ua.DataValue(ua.Variant(value, ua.VariantType.Boolean)))
             logging.info(f"[OPC] Wrote {value} to node {tag_name}")
         except Exception as e:

@@ -6,7 +6,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #242423 !important;
+  background: var(--bg-primary);
 }
 
 .asm-header {
@@ -19,19 +19,19 @@
   align-items: center;
 }
 .asm-header h1 {
-  font-size: 0.9rem;
+  font-size: 1.1rem;
   font-weight: 600;
   display: flex;
   align-items: baseline;
   gap: 8px;
 }
 .asm-header h1 .accent { color: var(--primary); }
-.asm-header h1 span { font-size: 0.72rem; font-weight: 500; color: var(--text-muted); }
+.asm-header h1 span { font-size: 0.92rem; font-weight: 500; color: var(--text-muted); }
 
 /* Buttons */
 .asm-btn {
   height: 44px;
-  font-size: 0.95rem;
+  font-size: 1.15rem;
   font-weight: 700;
   padding: 0 16px;
   border: 1px solid var(--border);
@@ -68,7 +68,7 @@
 /* Vice toggle button — single button that reflects current state */
 .asm-btn--vice-toggle {
   height: 44px;
-  font-size: 0.95rem;
+  font-size: 1.15rem;
   min-width: 130px;
   border-color: rgba(167, 139, 250, 0.4);
   background: rgba(167, 139, 250, 0.05);
@@ -94,7 +94,7 @@
 }
 .asm-btn--clear {
   color: var(--text-muted);
-  font-size: 0.6rem;
+  font-size: 0.8rem;
   height: 24px;
   padding: 0 8px;
 }
@@ -109,21 +109,21 @@
 
 /* Sidebar */
 .asm-sidebar {
-  width: 220px;
+  width: 260px;
   flex-shrink: 0;
-  border-right: 1px solid #4a4d4a;
+  border-right: 1px solid var(--border);
   overflow-y: auto;
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  background: #242423 !important;
+  background: var(--bg-primary);
 }
 .asm-side__section h3 {
   font-family: 'Inter', sans-serif;
-  font-size: 13px !important;
+  font-size: 16px !important;
   font-weight: 600 !important;
-  color: #8a9490 !important;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em !important;
   margin-bottom: 10px;
@@ -142,16 +142,17 @@
 .asm-led__dot--green { background: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
 .asm-led__dot--orange { background: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.6); }
 .asm-led__dot--red { background: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.6); }
-.asm-led__label { font-size: 0.62rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+.asm-led__label { font-size: 0.82rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
 
 /* Safety items */
 .asm-safety-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 6px 10px;
   border-radius: var(--radius-sm);
-  font-size: 0.72rem;
+  font-size: 0.92rem;
   font-weight: 600;
   color: var(--text-muted);
   border: 1px solid var(--border);
@@ -177,8 +178,8 @@
 
 /* Glassmorphic HUD Panel Style (Flattened) */
 .asm-hud-card {
-  background: #333533 !important;
-  border: 1px solid #4a4d4a !important;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
   border-radius: 4px !important;
   padding: 12px !important;
   box-shadow: none !important;
@@ -196,19 +197,19 @@
 }
 
 .asm-hud-card--clickable:hover {
-  background-color: #404340 !important;
+  background-color: var(--bg-hover) !important;
   transform: none !important;
   box-shadow: none !important;
-  border-color: #555855 !important;
+  border-color: var(--border-lighter) !important;
 }
 .asm-hud-header {
   font-family: 'Inter', sans-serif;
-  font-size: 13px !important;
+  font-size: 16px !important;
   font-weight: 600 !important;
-  color: #E8EDDF !important;
+  color: var(--text-primary);
   text-transform: uppercase;
   letter-spacing: 0.05em !important;
-  border-bottom: 1px solid #4a4d4a !important;
+  border-bottom: 1px solid var(--border) !important;
   padding-bottom: 6px !important;
 }
 
@@ -219,22 +220,22 @@
 }
 .asm-val__label {
   font-family: 'Inter', sans-serif;
-  font-size: 13px !important;
+  font-size: 16px !important;
   font-weight: 600 !important;
-  color: #8a9490 !important;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em !important;
 }
 .asm-val__num {
   font-family: 'JetBrains Mono', monospace !important;
-  font-size: 22px !important;
+  font-size: 25px !important;
   font-weight: 500 !important;
-  color: #E8EDDF !important;
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
   text-shadow: none !important;
 }
 .asm-val__num--sm {
-  font-size: 16px !important;
+  font-size: 19px !important;
 }
 .asm-val__num--glowing-blue {
   color: #38bdf8 !important;
@@ -245,10 +246,10 @@
   text-shadow: none !important;
 }
 .asm-val__unit {
-  font-size: 12px !important;
+  font-size: 15px !important;
   font-weight: 600 !important;
   font-family: 'Inter', sans-serif !important;
-  color: #8a9490 !important;
+  color: var(--text-muted);
   margin-left: 2px;
 }
 
@@ -266,8 +267,8 @@
 .asm-viz {
   flex: 1;
   min-height: 400px;
-  background: #333533 !important;
-  border: 1px solid #4a4d4a !important;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
   border-radius: 4px !important;
   position: relative;
   overflow: hidden;
@@ -279,20 +280,20 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid #4a4d4a !important;
-  background: #2a2c2a !important;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
 }
 .asm-viz__bar span {
   font-family: 'Inter', sans-serif;
-  font-size: 13px !important;
+  font-size: 16px !important;
   font-weight: 600 !important;
-  color: #E8EDDF !important;
+  color: var(--text-primary);
   text-transform: uppercase;
   letter-spacing: 0.05em !important;
 }
 .asm-workpiece-badge {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.82rem;
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 3px;
@@ -310,12 +311,12 @@
   justify-content: center;
   position: relative;
   padding: 24px;
-  background-color: #1a1b1a !important;
+  background-color: var(--bg-pressed);
   background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px) !important;
-  background-size: 30px 30px !important;
-  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.95), 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+    linear-gradient(rgba(128,128,128,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(128,128,128,0.04) 1px, transparent 1px);
+  background-size: 30px 30px;
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.3);
   border-radius: 0 0 4px 4px !important;
 }
 
@@ -339,7 +340,7 @@
 .asm-flange {
   width: 160px;
   height: 22px;
-  background: linear-gradient(180deg, var(--bg-hover) 0%, var(--bg-secondary) 40%, var(--bg-primary) 100%);
+  background: linear-gradient(180deg, #404340 0%, #333533 40%, #242423 100%);
   border: 1.5px solid rgba(255, 255, 255, 0.08);
   border-bottom: 3px solid rgba(0, 0, 0, 0.6);
   border-radius: 6px 6px 3px 3px;
@@ -374,12 +375,12 @@
   z-index: 2;
 }
 .asm-cylinder__wall--left {
-  background: linear-gradient(90deg, var(--bg-primary) 0%, var(--bg-elevated) 15%, var(--text-muted) 45%, #94a3b8 55%, var(--bg-secondary) 85%, var(--bg-primary) 100%);
+  background: linear-gradient(90deg, #242423 0%, #3a3d3a 15%, #8a9490 45%, #94a3b8 55%, #333533 85%, #242423 100%);
   border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: inset 1px 1px 2px rgba(255, 255, 255, 0.15), inset -2px -2px 4px rgba(0, 0, 0, 0.6);
 }
 .asm-cylinder__wall--right {
-  background: linear-gradient(270deg, var(--bg-primary) 0%, var(--bg-elevated) 15%, var(--text-muted) 45%, #94a3b8 55%, var(--bg-secondary) 85%, var(--bg-primary) 100%);
+  background: linear-gradient(270deg, #242423 0%, #3a3d3a 15%, #8a9490 45%, #94a3b8 55%, #333533 85%, #242423 100%);
   border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: inset -1px 1px 2px rgba(255, 255, 255, 0.15), inset 2px -2px 4px rgba(0, 0, 0, 0.6);
 }
@@ -429,8 +430,8 @@
     -45deg,
     #fbbf24,
     #fbbf24 4px,
-    var(--bg-pressed) 4px,
-    var(--bg-pressed) 8px
+    #1a1b1a 4px,
+    #1a1b1a 8px
   );
   border-top: 1px solid rgba(0,0,0,0.4);
   border-bottom: 1px solid rgba(0,0,0,0.4);
@@ -490,12 +491,12 @@
 }
 .asm-jaw--left {
   left: 12px;
-  background: linear-gradient(90deg, var(--bg-secondary) 0%, var(--bg-hover) 65%, var(--bg-elevated) 85%, var(--bg-secondary) 100%);
+  background: linear-gradient(90deg, #333533 0%, #404340 65%, #3a3d3a 85%, #333533 100%);
   border-right: 3px solid rgba(255, 255, 255, 0.2);
 }
 .asm-jaw--right {
   right: 12px;
-  background: linear-gradient(270deg, var(--bg-secondary) 0%, var(--bg-hover) 65%, var(--bg-elevated) 85%, var(--bg-secondary) 100%);
+  background: linear-gradient(270deg, #333533 0%, #404340 65%, #3a3d3a 85%, #333533 100%);
   border-left: 3px solid rgba(255, 255, 255, 0.2);
 }
 .asm-jaw__groove {
@@ -511,7 +512,7 @@
 .asm-pipe {
   position: absolute;
   width: 8px;
-  background: linear-gradient(90deg, var(--bg-elevated), var(--text-muted), var(--bg-secondary));
+  background: linear-gradient(90deg, #3a3d3a, #8a9490, #333533);
   border: 1px solid rgba(0,0,0,0.5);
   box-shadow: inset 1px 0 1px rgba(255,255,255,0.1);
   z-index: 1;
@@ -576,7 +577,7 @@
 .asm-ruler__tick-line {
   width: 6px;
   height: 1px;
-  background: var(--text-muted);
+  background: #8a9490;
 }
 .asm-ruler__tick-line--major {
   width: 11px;
@@ -608,7 +609,7 @@
 /* Bearing workpiece visual */
 .asm-workpiece--bearing-item {
   border-radius: 50%;
-  background: radial-gradient(circle, #4b5563 15%, var(--bg-secondary) 35%, #9ca3af 55%, #374151 75%, var(--bg-pressed) 100%);
+  background: radial-gradient(circle, #4b5563 15%, #333533 35%, #9ca3af 55%, #374151 75%, #1a1b1a 100%);
   border: 2px solid rgba(0, 0, 0, 0.85);
   box-shadow: 
     0 5px 12px rgba(0, 0, 0, 0.5), 
@@ -638,7 +639,7 @@
 
 /* Shaft workpiece visual */
 .asm-workpiece--shaft-item {
-  background: linear-gradient(90deg, var(--bg-hover) 0%, #cbd5e1 25%, #ffffff 50%, #94a3b8 75%, var(--bg-secondary) 100%);
+  background: linear-gradient(90deg, #404340 0%, #cbd5e1 25%, #ffffff 50%, #94a3b8 75%, #333533 100%);
   border: 1.5px solid rgba(0, 0, 0, 0.8);
   border-radius: 3px 3px 2px 2px;
   box-shadow: 
@@ -654,7 +655,7 @@
   left: -1px;
   right: -1px;
   height: 8px;
-  background: linear-gradient(90deg, #94a3b8, #ffffff, var(--bg-hover));
+  background: linear-gradient(90deg, #94a3b8, #ffffff, #404340);
   border-bottom: 1.5px solid rgba(0, 0, 0, 0.85);
 }
 
@@ -664,17 +665,17 @@
   flex-direction: column;
   gap: 8px;
   padding: 12px 16px;
-  background: #333533 !important;
-  border: 1px solid #4a4d4a !important;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
   border-radius: 6px !important;
   flex-shrink: 0;
   align-items: center;
 }
 .asm-cmd__label {
   font-family: 'Inter', sans-serif;
-  font-size: 13px !important;
+  font-size: 16px !important;
   font-weight: 600 !important;
-  color: #8a9490 !important;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em !important;
 }
@@ -705,14 +706,14 @@
   line-height: 1.2;
 }
 .asm-safety-overlay__sub {
-  font-size: 0.8rem;
+  font-size: 1rem;
   font-weight: 500;
   color: #fca5a5;
   font-family: var(--font-mono);
   margin-top: 4px;
 }
 .asm-safety-overlay__badge {
-  font-size: 0.68rem;
+  font-size: 0.88rem;
   font-weight: 700;
   color: #ef4444;
   text-transform: uppercase;
@@ -736,3 +737,48 @@
   0%, 100% { opacity: 0; border-width: 2px; }
   50% { opacity: 0.5; border-width: 4px; }
 }
+
+/* ============================================================
+   Light mode overrides — Assembly / Dashboard shared CSS
+   Corrects dark-only hardcoded colours in machine schematic
+   ============================================================ */
+
+
+
+[data-theme="light"] .asm-hud-card {
+  background: var(--bg-elevated);
+  border-color: var(--border);
+}
+
+[data-theme="light"] .asm-hud-card--clickable:hover {
+  background-color: var(--bg-hover) !important;
+  border-color: var(--border-dark) !important;
+}
+
+[data-theme="light"] .asm-safety-item {
+  border-color: var(--border);
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+}
+
+[data-theme="light"] .asm-safety-item--danger {
+  border-color: rgba(192, 40, 47, 0.30);
+  color: #c0282f;
+  background: rgba(192, 40, 47, 0.05);
+}
+
+[data-theme="light"] .asm-viz {
+  background: var(--bg-elevated);
+  border-color: var(--border);
+}
+
+[data-theme="light"] .asm-viz__bar {
+  background: var(--bg-secondary);
+  border-bottom-color: var(--border);
+}
+
+[data-theme="light"] .asm-cmd {
+  background: var(--bg-elevated);
+  border-color: var(--border);
+}
+

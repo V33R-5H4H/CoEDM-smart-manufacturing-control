@@ -17,10 +17,10 @@ from backend.stations.mirac.cnc_mirac_station import (
     connect_mirac,
     disconnect_mirac,
     get_mirac_status,
+    pulse_mirac_command,
 )
 from backend.websockets.mirac_broadcaster import mirac_broadcaster
 import asyncio
-import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -96,6 +96,20 @@ async def disconnect_mirac_endpoint():
     try:
         success, message = disconnect_mirac()
         return {"success": success, "message": message}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/pulse")
+async def pulse_command(action: str = Body(..., embed=True)):
+    """
+    Pulse start, stop, or reset command to the MIRAC machine.
+    """
+    try:
+        success, message = await pulse_mirac_command(action)
+        return {"success": success, "message": message}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

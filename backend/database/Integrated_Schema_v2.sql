@@ -6,11 +6,12 @@
 -- all other functions are (re)created with OR REPLACE.
 --
 -- Changes vs v1:
---   • Removed TimescaleDB extension, create_hypertable,
---     continuous aggregates, compression/retention policies
---   • Standard PostgreSQL partial indexes replace hypertable chunks
---   • Materialized views replace continuous aggregates
---     (refresh manually or via pg_cron)
+--   • Integrated TimescaleDB for time-series hypertables.
+--     (Materialized views will be converted to continuous aggregates later)
+--   • All CREATE TABLE now guarded with IF NOT EXISTS
+
+CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+
 --   • All CREATE TABLE now guarded with IF NOT EXISTS
 --   • update_updated_at() wrapped in DO block — skipped if owned
 --     by another role; all other functions use CREATE OR REPLACE
@@ -69,8 +70,8 @@ CREATE TABLE IF NOT EXISTS machines (
                         CHECK (port BETWEEN 0 AND 65535),
     is_active       BOOLEAN      NOT NULL DEFAULT FALSE,
     meta            JSONB        NOT NULL DEFAULT '{}',
-    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    last_active_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    created_at      TIMESTAMP  NOT NULL DEFAULT NOW(),
+    last_active_at  TIMESTAMP  NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_machines_active ON machines (is_active);
@@ -108,8 +109,8 @@ CREATE TABLE IF NOT EXISTS machine_sensors (
     legacy_key      TEXT         UNIQUE,
     is_active       BOOLEAN      NOT NULL DEFAULT FALSE,
     meta            JSONB        NOT NULL DEFAULT '{}',
-    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    last_active_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    created_at      TIMESTAMP  NOT NULL DEFAULT NOW(),
+    last_active_at  TIMESTAMP  NOT NULL DEFAULT NOW(),
     UNIQUE (machine_id, name)
 );
 
@@ -149,8 +150,8 @@ CREATE TABLE IF NOT EXISTS users (
     role          TEXT         NOT NULL DEFAULT 'viewer'
                       CHECK (role IN ('admin','operator','supervisor','viewer')),
     is_active     BOOLEAN      NOT NULL DEFAULT TRUE,
-    created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    last_login    TIMESTAMPTZ
+    created_at    TIMESTAMP  NOT NULL DEFAULT NOW(),
+    last_login    TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_active ON users (email) WHERE is_active = TRUE;
@@ -171,8 +172,8 @@ CREATE TABLE IF NOT EXISTS storage_items (
     description TEXT,
     item_type   TEXT         NOT NULL CHECK (item_type IN ('raw','finished','tool','consumable')),
     unit        TEXT         NOT NULL DEFAULT 'pcs',
-    created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    created_at  TIMESTAMP  NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMP  NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_items_machine ON storage_items (machine_id);
@@ -202,7 +203,7 @@ CREATE TABLE IF NOT EXISTS storage_boxes (
                                  DEFAULT 'asrs',
     row_label   CHAR(1)      NOT NULL CHECK (row_label  BETWEEN 'A' AND 'E'),
     col_number  SMALLINT     NOT NULL CHECK (col_number BETWEEN 1   AND 7  ),
-    created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    created_at  TIMESTAMP  NOT NULL DEFAULT NOW(),
     UNIQUE (machine_id, row_label, col_number)
 );
 
@@ -251,7 +252,7 @@ CREATE TABLE IF NOT EXISTS storage_compartments (
     quantity        INTEGER      NOT NULL DEFAULT 0 CHECK (quantity >= 0),
     status          TEXT         NOT NULL DEFAULT 'empty'
                         CHECK (status IN ('empty','occupied','reserved','error')),
-    updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMP  NOT NULL DEFAULT NOW(),
     UNIQUE (box_id, sub_slot)
 );
 
@@ -301,13 +302,13 @@ CREATE TABLE IF NOT EXISTS retrieval_queue (
                                   DEFAULT 'asrs',
     item_id      INTEGER      NOT NULL REFERENCES storage_items(item_id),
     requested_by UUID         REFERENCES users(user_id),
-    enqueue_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    enqueue_at   TIMESTAMP  NOT NULL DEFAULT NOW(),
     status       TEXT         NOT NULL DEFAULT 'pending'
                      CHECK (status IN ('pending','processing','completed','cancelled')),
     priority     SMALLINT     NOT NULL DEFAULT 5
                      CHECK (priority BETWEEN 1 AND 10),
     notes        TEXT,
-    processed_at TIMESTAMPTZ
+    processed_at TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_queue_machine ON retrieval_queue (machine_id);
@@ -325,7 +326,7 @@ CREATE TABLE IF NOT EXISTS storage_transactions (
     tran_id        BIGSERIAL    PRIMARY KEY,
     machine_id     TEXT         NOT NULL REFERENCES machines(machine_id) ON DELETE RESTRICT
                                     DEFAULT 'asrs',
-    time           TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    time           TIMESTAMP  NOT NULL DEFAULT NOW(),
     compartment_id TEXT         REFERENCES storage_compartments(compartment_id),
     item_id        INTEGER      REFERENCES storage_items(item_id),
     action         TEXT         NOT NULL
@@ -354,7 +355,7 @@ CREATE TABLE IF NOT EXISTS shuttle_movements (
     id           BIGSERIAL    PRIMARY KEY,
     machine_id   TEXT         NOT NULL REFERENCES machines(machine_id) ON DELETE CASCADE
                                   DEFAULT 'asrs',
-    time         TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    time         TIMESTAMP  NOT NULL DEFAULT NOW(),
     command      TEXT         NOT NULL,
     from_row     INTEGER,
     from_col     TEXT,
@@ -391,8 +392,8 @@ CREATE TABLE IF NOT EXISTS orders (
     shipping_address TEXT,
     order_status     TEXT          NOT NULL DEFAULT 'pending'
                          CHECK (order_status IN ('pending','processing','shipped','delivered','cancelled')),
-    created_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
-    updated_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+    created_at       TIMESTAMP   NOT NULL DEFAULT NOW(),
+    updated_at       TIMESTAMP   NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_orders_machine ON orders (machine_id);
@@ -421,7 +422,7 @@ CREATE TABLE IF NOT EXISTS order_items (
     quantity      INTEGER        NOT NULL CHECK (quantity > 0),
     unit_price    NUMERIC(10,2)  NOT NULL,
     total_price   NUMERIC(10,2)  GENERATED ALWAYS AS (quantity * unit_price) STORED,
-    created_at    TIMESTAMPTZ    NOT NULL DEFAULT NOW()
+    created_at    TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_oi_order ON order_items (order_id);
@@ -434,7 +435,7 @@ COMMENT ON COLUMN order_items.total_price IS 'Auto-computed: quantity × unit_pr
 -- 12. MACHINE_EVENTS  → machines, machine_sensors, users
 -- ============================================================
 CREATE TABLE IF NOT EXISTS machine_events (
-    time        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    time        TIMESTAMP  NOT NULL DEFAULT NOW(),
     machine_id  TEXT         NOT NULL REFERENCES machines(machine_id) ON DELETE CASCADE,
     sensor_id   UUID         REFERENCES machine_sensors(sensor_id),
     event_type  TEXT         NOT NULL
@@ -446,7 +447,7 @@ CREATE TABLE IF NOT EXISTS machine_events (
     severity    TEXT         CHECK (severity IN ('info','warning','critical')),
     title       TEXT         NOT NULL,
     payload     JSONB,
-    resolved_at TIMESTAMPTZ,
+    resolved_at TIMESTAMP,
     operator_id UUID         REFERENCES users(user_id)
 );
 
@@ -463,8 +464,8 @@ COMMENT ON TABLE machine_events IS 'Alarm/warning/lifecycle events for all machi
 CREATE TABLE IF NOT EXISTS machine_connections (
     id                BIGSERIAL    PRIMARY KEY,
     sensor_id         UUID         NOT NULL REFERENCES machine_sensors(sensor_id) ON DELETE CASCADE,
-    connected_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    disconnected_at   TIMESTAMPTZ,
+    connected_at      TIMESTAMP  NOT NULL DEFAULT NOW(),
+    disconnected_at   TIMESTAMP,
     disconnect_reason TEXT,
     simulated         BOOLEAN      NOT NULL DEFAULT FALSE
 );
@@ -482,13 +483,13 @@ COMMENT ON TABLE machine_connections IS 'Sensor connect/disconnect history.';
 --    • ID        → BIGSERIAL         (was plain INT)
 --    • machine_id → TEXT FK          (was INT — wrong type)
 --    • sensor_id  → UUID FK          (was INT — wrong type)
---    • DATETIME   → TIMESTAMPTZ      (DATETIME is not valid in PostgreSQL)
+--    • DATETIME   → TIMESTAMP      (DATETIME is not valid in PostgreSQL)
 --    • Added z_axis_value, z_axis_feed for 3-axis CNC completeness
 --    • Removed bare FOREIGN KEY clauses that referenced wrong PKs
 -- ============================================================
 CREATE TABLE IF NOT EXISTS mirac_sensor_data (
-    id                    BIGSERIAL        PRIMARY KEY,
-    time                  TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+    id                    BIGSERIAL,
+    time                  TIMESTAMP      NOT NULL DEFAULT NOW(),
     machine_id            TEXT             NOT NULL REFERENCES machines(machine_id)       ON DELETE CASCADE,
     sensor_id             UUID             NOT NULL REFERENCES machine_sensors(sensor_id) ON DELETE CASCADE,
     -- Axis positions (mm)
@@ -511,15 +512,14 @@ CREATE TABLE IF NOT EXISTS mirac_sensor_data (
     led_red               BOOLEAN          NOT NULL DEFAULT FALSE,
     led_yellow            BOOLEAN          NOT NULL DEFAULT FALSE,
     led_green             BOOLEAN          NOT NULL DEFAULT FALSE,
-    safety_curtain_status BOOLEAN          NOT NULL DEFAULT FALSE
+    safety_curtain_status BOOLEAN          NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (time, id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_mirac_machine_time ON mirac_sensor_data (machine_id, time DESC);
 CREATE INDEX IF NOT EXISTS idx_mirac_sensor_time  ON mirac_sensor_data (sensor_id,  time DESC);
 CREATE INDEX IF NOT EXISTS idx_mirac_tool         ON mirac_sensor_data (tool_number, time DESC);
--- Partial index: recent data (last 7 days) — used by dashboard queries
-CREATE INDEX IF NOT EXISTS idx_mirac_recent ON mirac_sensor_data (time DESC)
-    WHERE time > NOW() - INTERVAL '7 days';
+-- Partial index removed because NOW() is not IMMUTABLE. Relies on idx_mirac_machine_time instead.
 
 COMMENT ON TABLE  mirac_sensor_data IS 'MIRAC CNC Lathe real-time PLC + VIBIT sensor data.';
 COMMENT ON COLUMN mirac_sensor_data.z_axis_value    IS 'Z-axis position (mm). Added for 3-axis completeness.';
@@ -537,7 +537,7 @@ COMMENT ON COLUMN mirac_sensor_data.tool_number       IS 'Active tool number fro
 --  modbus_unit_id is retained as an informational copy.
 -- ============================================================
 CREATE TABLE IF NOT EXISTS vibit_readings (
-    time            TIMESTAMPTZ      NOT NULL,
+    time            TIMESTAMP      NOT NULL,
     machine_id      TEXT             NOT NULL REFERENCES machines(machine_id) ON DELETE CASCADE,
     sensor_id       UUID             NOT NULL REFERENCES machine_sensors(sensor_id) ON DELETE CASCADE,
     modbus_unit_id  SMALLINT         NOT NULL,  -- informational copy; no FK (not unique in machine_sensors)
@@ -559,8 +559,7 @@ CREATE TABLE IF NOT EXISTS vibit_readings (
 );
 
 CREATE INDEX IF NOT EXISTS idx_vibit_sensor_time ON vibit_readings (sensor_id, time DESC);
-CREATE INDEX IF NOT EXISTS idx_vibit_recent      ON vibit_readings (time DESC)
-    WHERE time > NOW() - INTERVAL '7 days';
+-- Partial index removed because NOW() is not IMMUTABLE. Relies on idx_vibit_sensor_time instead.
 
 COMMENT ON TABLE  vibit_readings                IS 'Vibration time-series (VIBIT Modbus). Resolves to machines via machine_sensors.machine_id.';
 COMMENT ON COLUMN vibit_readings.modbus_unit_id IS 'Informational copy of Modbus unit address. Not a FK — modbus_unit_id has no UNIQUE constraint in machine_sensors.';
@@ -570,7 +569,7 @@ COMMENT ON COLUMN vibit_readings.modbus_unit_id IS 'Informational copy of Modbus
 -- 16. ENERGY_METER_DATA  → machines, machine_sensors
 -- ============================================================
 CREATE TABLE IF NOT EXISTS energy_meter_data (
-    time                TIMESTAMPTZ      NOT NULL,
+    time                TIMESTAMP      NOT NULL,
     machine_id          TEXT             NOT NULL REFERENCES machines(machine_id)       ON DELETE CASCADE,
     sensor_id           UUID             NOT NULL REFERENCES machine_sensors(sensor_id) ON DELETE CASCADE,
     average_voltage_ln  DOUBLE PRECISION NOT NULL,
@@ -589,7 +588,7 @@ COMMENT ON TABLE energy_meter_data IS 'Energy meter time-series. FK → machines
 -- 17. ASSEMBLY_STATION_DATA  → machines, machine_sensors
 -- ============================================================
 CREATE TABLE IF NOT EXISTS assembly_station_data (
-    time                     TIMESTAMPTZ  NOT NULL,
+    time                     TIMESTAMP  NOT NULL,
     machine_id               TEXT         NOT NULL REFERENCES machines(machine_id)       ON DELETE CASCADE,
     sensor_id                UUID         NOT NULL REFERENCES machine_sensors(sensor_id) ON DELETE CASCADE,
     bearing_operation_status BOOLEAN      NOT NULL,
@@ -615,8 +614,8 @@ COMMENT ON TABLE assembly_station_data IS 'Assembly PLC status time-series. FK �
 
 -- 18a. TRIAC_SENSOR_DATA (future — TRIAC CNC Mill)
 CREATE TABLE IF NOT EXISTS triac_sensor_data (
-    id                    BIGSERIAL        PRIMARY KEY,
-    time                  TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+    id                    BIGSERIAL,
+    time                  TIMESTAMP      NOT NULL DEFAULT NOW(),
     machine_id            TEXT             NOT NULL REFERENCES machines(machine_id)       ON DELETE CASCADE,
     sensor_id             UUID             NOT NULL REFERENCES machine_sensors(sensor_id) ON DELETE CASCADE,
     x_axis_value          DOUBLE PRECISION,
@@ -634,14 +633,15 @@ CREATE TABLE IF NOT EXISTS triac_sensor_data (
     led_red               BOOLEAN DEFAULT FALSE,
     led_yellow            BOOLEAN DEFAULT FALSE,
     led_green             BOOLEAN DEFAULT FALSE,
-    safety_curtain_status BOOLEAN DEFAULT FALSE
+    safety_curtain_status BOOLEAN DEFAULT FALSE,
+    PRIMARY KEY (time, id)
 );
 COMMENT ON TABLE triac_sensor_data IS 'PLACEHOLDER: TRIAC CNC Mill sensor data. Mirrors mirac_sensor_data. Activate when pipeline is ready.';
 
 -- 18b. AMR_SENSOR_DATA (future — Autonomous Mobile Robot)
 CREATE TABLE IF NOT EXISTS amr_sensor_data (
-    id                BIGSERIAL        PRIMARY KEY,
-    time              TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+    id                BIGSERIAL,
+    time              TIMESTAMP      NOT NULL DEFAULT NOW(),
     machine_id        TEXT             NOT NULL REFERENCES machines(machine_id)       ON DELETE CASCADE,
     sensor_id         UUID             NOT NULL REFERENCES machine_sensors(sensor_id) ON DELETE CASCADE,
     position_x        DOUBLE PRECISION,
@@ -650,14 +650,15 @@ CREATE TABLE IF NOT EXISTS amr_sensor_data (
     battery_pct       DOUBLE PRECISION,
     velocity          DOUBLE PRECISION,
     navigation_state  TEXT,
-    obstacle_detected BOOLEAN DEFAULT FALSE
+    obstacle_detected BOOLEAN DEFAULT FALSE,
+    PRIMARY KEY (time, id)
 );
 COMMENT ON TABLE amr_sensor_data IS 'PLACEHOLDER: AMR position/navigation data. Activate when Modbus pipeline is ready.';
 
 -- 18c. COBOT_SENSOR_DATA (future — TM Collaborative Robot)
 CREATE TABLE IF NOT EXISTS cobot_sensor_data (
-    id             BIGSERIAL        PRIMARY KEY,
-    time           TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+    id             BIGSERIAL,
+    time           TIMESTAMP      NOT NULL DEFAULT NOW(),
     machine_id     TEXT             NOT NULL REFERENCES machines(machine_id)       ON DELETE CASCADE,
     sensor_id      UUID             NOT NULL REFERENCES machine_sensors(sensor_id) ON DELETE CASCADE,
     joint1_angle   DOUBLE PRECISION,
@@ -670,11 +671,53 @@ CREATE TABLE IF NOT EXISTS cobot_sensor_data (
     tcp_y          DOUBLE PRECISION,
     tcp_z          DOUBLE PRECISION,
     tcp_force      DOUBLE PRECISION,
-    safety_status  TEXT
+    safety_status  TEXT,
+    PRIMARY KEY (time, id)
 );
 COMMENT ON TABLE cobot_sensor_data IS 'PLACEHOLDER: TM Cobot joint/TCP data. Activate when TMSCT TCP pipeline is ready.';
 
+-- ============================================================
+-- 18d. WORKFLOW ENGINE
+-- ============================================================
+CREATE TABLE IF NOT EXISTS workflows (
+    workflow_id   UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    name          TEXT         NOT NULL,
+    status        TEXT         NOT NULL DEFAULT 'pending'
+                      CHECK (status IN ('pending', 'running', 'paused', 'completed', 'failed')),
+    created_at    TIMESTAMP  NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMP  NOT NULL DEFAULT NOW(),
+    started_at    TIMESTAMP,
+    completed_at  TIMESTAMP,
+    error_msg     TEXT
+);
 
+CREATE TABLE IF NOT EXISTS workflow_steps (
+    step_id       UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    workflow_id   UUID         NOT NULL REFERENCES workflows(workflow_id) ON DELETE CASCADE,
+    step_order    INTEGER      NOT NULL,
+    machine_id    TEXT         NOT NULL REFERENCES machines(machine_id) ON DELETE CASCADE,
+    action        TEXT         NOT NULL,
+    parameters    JSONB        DEFAULT '{}',
+    status        TEXT         NOT NULL DEFAULT 'pending'
+                      CHECK (status IN ('pending', 'running', 'completed', 'failed', 'skipped')),
+    started_at    TIMESTAMP,
+    completed_at  TIMESTAMP,
+    error_msg     TEXT,
+    UNIQUE (workflow_id, step_order)
+);
+
+CREATE INDEX IF NOT EXISTS idx_workflow_status ON workflows(status);
+CREATE INDEX IF NOT EXISTS idx_workflow_steps_workflow ON workflow_steps(workflow_id);
+
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'workflows_updated_at'
+    ) THEN
+        CREATE TRIGGER workflows_updated_at
+        BEFORE UPDATE ON workflows
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    END IF;
+END $$;
 -- ============================================================
 -- 19. OPERATIONAL VIEWS
 -- ============================================================
@@ -894,9 +937,18 @@ COMMENT ON MATERIALIZED VIEW events_daily_summary IS
 --   REFRESH MATERIALIZED VIEW CONCURRENTLY energy_1hr_agg;
 --   REFRESH MATERIALIZED VIEW CONCURRENTLY events_daily_summary;
 --
--- When TimescaleDB becomes available, convert time-series tables
--- with: SELECT create_hypertable('<table>', 'time', if_not_exists => TRUE);
--- and replace materialized views with continuous aggregates.
+-- TIMESCALEDB HYPERTABLES
+-- Convert time-series tables to hypertables for optimized performance
+-- ============================================================
+SELECT create_hypertable('mirac_sensor_data', 'time', if_not_exists => TRUE);
+SELECT create_hypertable('vibit_readings', 'time', if_not_exists => TRUE);
+SELECT create_hypertable('energy_meter_data', 'time', if_not_exists => TRUE);
+SELECT create_hypertable('assembly_station_data', 'time', if_not_exists => TRUE);
+SELECT create_hypertable('triac_sensor_data', 'time', if_not_exists => TRUE);
+SELECT create_hypertable('amr_sensor_data', 'time', if_not_exists => TRUE);
+SELECT create_hypertable('cobot_sensor_data', 'time', if_not_exists => TRUE);
+
+-- Note: Materialized views should eventually be replaced with Continuous Aggregates
 -- ============================================================
 
 -- ============================================================
@@ -905,3 +957,6 @@ COMMENT ON MATERIALIZED VIEW events_daily_summary IS
 ALTER TABLE assembly_station_data
     ADD COLUMN IF NOT EXISTS vice_status TEXT NOT NULL DEFAULT 'unknown'
         CHECK (vice_status IN ('open','closed','unknown'));
+
+ALTER TABLE vibit_readings
+    ADD COLUMN IF NOT EXISTS machine_id TEXT;

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import ItemService from '../services/itemService';
-import ConfirmModal from './ConfirmModal';
 import { toast } from 'react-toastify';
 
 function ItemsTab() {
@@ -11,8 +10,6 @@ function ItemsTab() {
   const [loading, setLoading] = useState(false);
   const [validatingId, setValidatingId] = useState(false);
   const [idError, setIdError] = useState('');
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState(null);
 
   useEffect(() => {
     fetchItems();
@@ -138,16 +135,6 @@ function ItemsTab() {
     }
   };
 
-  const openDeleteModal = (itemId) => {
-    setItemToDelete(itemId);
-    setIsDeleteModalOpen(true);
-  };
-
-  const closeDeleteModal = () => {
-    setIsDeleteModalOpen(false);
-    setItemToDelete(null);
-  };
-
   const handleDeleteItem = async (itemId) => {
     try {
       setLoading(true);
@@ -156,10 +143,10 @@ function ItemsTab() {
       fetchItems();
     } catch (error) {
       console.error('Error deleting item:', error);
-      toast.error('Failed to delete item');
-      setLoading(false);
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to delete item';
+      toast.error(errorMessage);
     } finally {
-      closeDeleteModal();
+      setLoading(false);
     }
   };
 
@@ -168,7 +155,15 @@ function ItemsTab() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '24px' }}>
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      gap: '24px', 
+      height: '100%',
+      overflow: 'auto',
+      padding: '16px 24px',
+      position: 'relative'
+    }}>
       
       {/* Control Panel / Form */}
       <div style={{
@@ -179,7 +174,7 @@ function ItemsTab() {
         boxShadow: 'var(--shadow-sm)'
       }}>
         <div style={{
-          fontSize: '11px',
+          fontSize: '14px',
           fontWeight: 600,
           color: 'var(--text-muted)',
           textTransform: 'uppercase',
@@ -189,9 +184,9 @@ function ItemsTab() {
         
         <form onSubmit={handleAddItem} style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'flex-start' }}>
           <div style={{ flex: '1 1 120px' }}>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px' }} htmlFor="itemId">Item ID</label>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px' }} htmlFor="itemId">Item ID</label>
             <input
-              style={{ width: '100%', background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '4px', padding: '8px 12px', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: '13px' }}
+              style={{ width: '100%', background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '4px', padding: '8px 12px', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: '16px' }}
               type="text"
               id="itemId"
               value={itemId}
@@ -200,13 +195,13 @@ function ItemsTab() {
               placeholder="e.g. 101"
               required
             />
-            {idError && <div style={{ color: 'var(--error)', fontSize: '11px', marginTop: '4px', fontWeight: 500 }}>{idError}</div>}
+            {idError && <div style={{ color: 'var(--error)', fontSize: '14px', marginTop: '4px', fontWeight: 500 }}>{idError}</div>}
           </div>
           
           <div style={{ flex: '2 1 200px' }}>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px' }} htmlFor="name">Item Name</label>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px' }} htmlFor="name">Item Name</label>
             <input
-              style={{ width: '100%', background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '4px', padding: '8px 12px', color: 'var(--text-primary)', fontSize: '13px' }}
+              style={{ width: '100%', background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '4px', padding: '8px 12px', color: 'var(--text-primary)', fontSize: '16px' }}
               type="text"
               id="name"
               value={name}
@@ -217,9 +212,9 @@ function ItemsTab() {
           </div>
           
           <div style={{ flex: '3 1 300px' }}>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px' }} htmlFor="description">Description</label>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px' }} htmlFor="description">Description</label>
             <input
-              style={{ width: '100%', background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '4px', padding: '8px 12px', color: 'var(--text-primary)', fontSize: '13px' }}
+              style={{ width: '100%', background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '4px', padding: '8px 12px', color: 'var(--text-primary)', fontSize: '16px' }}
               type="text"
               id="description"
               value={description}
@@ -229,11 +224,11 @@ function ItemsTab() {
           </div>
           
           <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', height: '62px', paddingBottom: idError ? '19px' : '0' }}>
-            <button className="btn btn-primary" type="submit" disabled={loading || validatingId} style={{ height: '35px', padding: '0 16px', fontSize: '12px' }}>
+            <button className="btn btn-primary" type="submit" disabled={loading || validatingId} style={{ height: '35px', padding: '0 16px', fontSize: '15px' }}>
               {loading ? 'ADDING...' : 'ADD ITEM'}
             </button>
             <button className="btn btn-ghost" type="button" onClick={fetchItems} disabled={loading} style={{ height: '35px', padding: '0 12px' }} title="Refresh List">
-              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>refresh</span>
+              <span className="material-symbols-outlined" style={{ fontSize: '21px' }}>refresh</span>
             </button>
           </div>
         </form>
@@ -242,7 +237,7 @@ function ItemsTab() {
       {/* Items Table */}
       <div>
         <div style={{
-          fontSize: '11px',
+          fontSize: '14px',
           fontWeight: 600,
           color: 'var(--text-muted)',
           textTransform: 'uppercase',
@@ -261,7 +256,7 @@ function ItemsTab() {
                 {['ITEM ID', 'NAME', 'DESCRIPTION', 'ADDED ON', 'ACTIONS'].map((h) => (
                   <th key={h} style={{
                     padding: '10px 16px',
-                    fontSize: '10px',
+                    fontSize: '13px',
                     fontWeight: 600,
                     color: 'var(--text-muted)',
                     textTransform: 'uppercase',
@@ -274,35 +269,35 @@ function ItemsTab() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-                    <span className="material-symbols-outlined" style={{ animation: 'spin 1s linear infinite', fontSize: '20px', verticalAlign: 'middle', marginRight: '8px' }}>sync</span>
+                  <td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '16px' }}>
+                    <span className="material-symbols-outlined" style={{ animation: 'spin 1s linear infinite', fontSize: '23px', verticalAlign: 'middle', marginRight: '8px' }}>sync</span>
                     Loading items...
                   </td>
                 </tr>
               ) : !items || items.length === 0 ? (
                 <tr>
-                  <td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>No items found in catalog.</td>
+                  <td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '16px' }}>No items found in catalog.</td>
                 </tr>
               ) : (
                 items.map((item) => (
                   <tr key={item.item_id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-                    <td style={{ padding: '12px 16px', fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--primary)', fontWeight: 500 }}>
+                    <td style={{ padding: '12px 16px', fontFamily: 'var(--font-mono)', fontSize: '16px', color: 'var(--primary)', fontWeight: 500 }}>
                       #{item.item_id}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500 }}>
+                    <td style={{ padding: '12px 16px', fontSize: '16px', color: 'var(--text-primary)', fontWeight: 500 }}>
                       {item.name}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                    <td style={{ padding: '12px 16px', fontSize: '16px', color: 'var(--text-secondary)' }}>
                       {item.description || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No description</span>}
                     </td>
-                    <td style={{ padding: '12px 16px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>
+                    <td style={{ padding: '12px 16px', fontFamily: 'var(--font-mono)', fontSize: '15px', color: 'var(--text-muted)' }}>
                       {formatDate(item.added_on)}
                     </td>
                     <td style={{ padding: '8px 16px' }}>
                       <button 
                         className="btn btn-error btn-sm"
-                        onClick={() => openDeleteModal(item.item_id)}
-                        style={{ height: '26px', padding: '0 8px', fontSize: '11px' }}
+                        onClick={() => handleDeleteItem(item.item_id)}
+                        style={{ height: '26px', padding: '0 8px', fontSize: '14px' }}
                       >
                         DELETE
                       </button>
@@ -315,12 +310,6 @@ function ItemsTab() {
         </div>
       </div>
 
-      <ConfirmModal
-        isOpen={isDeleteModalOpen}
-        onClose={closeDeleteModal}
-        onConfirm={() => itemToDelete && handleDeleteItem(itemToDelete)}
-        title="Delete Item"
-      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import asyncio
 import copy
-import json
+import orjson
 import time
 from fastapi import WebSocket
 from typing import Set
@@ -457,7 +457,7 @@ class MiracBroadcaster:
                         "event_type": event_type,
                         "severity": severity,
                         "title": title,
-                        "payload": json.dumps(payload_data) if payload_data else None
+                        "payload": orjson.dumps(payload_data).decode("utf-8") if payload_data else None
                     }
                 )
                 session.commit()

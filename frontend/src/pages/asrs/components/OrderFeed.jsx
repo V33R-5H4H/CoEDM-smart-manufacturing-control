@@ -1,0 +1,211 @@
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'react-toastify';
+
+/**
+ * OrderFeed — Live incoming e-commerce orders panel for the ASRS HMI.
+ *
+ * Connects to the existing ASRS WebSocket (ws://host/api/control/asrs/ws/led-status)
+ * and listens for `ecom_order` typed events injected by the orders API.
+ * Displays the last 10 orders with status badges.
+ */
+
+const STATUS_COLORS = {
+  pending:    { bg: 'rgba(217,119,6,0.12)',   color: '#d97706' },
+  processing: { bg: 'rgba(37,99,235,0.12)',   color: '#2563eb' },
+  shipped:    { bg: 'rgba(22,163,74,0.12)',    color: '#16a34a' },
+  delivered:  { bg: 'rgba(22,163,74,0.12)',    color: '#16a34a' },
+  cancelled:  { bg: 'rgba(220,38,38,0.12)',    color: '#dc2626' },
+};
+
+function formatTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+}
+
+export default function OrderFeed({ wsUrl, onOrdersChange }) {
+  const [orders, setOrders] = useState([]);
+  const [connected, setConnected] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const wsRef = useRef(null);
+  const reconnectRef = useRef(null);
+
+  const connectWS = () => {
+    if (wsRef.current) return; // already connected
+
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      setConnected(true);
+      if (reconnectRef.current) clearTimeout(reconnectRef.current);
+    };
+
+    ws.onmessage = (ev) => {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg.type !== 'ecom_order') return;
+        const payload = msg.payload;
+
+        setOrders(prev => {
+          // Update existing or prepend new
+          const idx = prev.findIndex(o => o.sub_id === payload.sub_id);
+          const entry = {
+            order_id:    payload.order_id,
+            item_id:     payload.item_id,
+            sub_id:      payload.sub_id,
+            status:      payload.status,
+            plc_ok:      payload.plc_ok,
+            compartments: payload.compartments_cleared || [],
+            time:        new Date().toISOString(),
+          };
+          if (idx >= 0) {
+            const updated = [...prev];
+            updated[idx] = entry;
+            return updated;
+          }
+          return [entry, ...prev].slice(0, 20); // keep last 20
+        });
+      } catch { /* ignore non-JSON */ }
+    };
+
+    ws.onclose = () => {
+      setConnected(false);
+      wsRef.current = null;
+      // Auto-reconnect after 5s
+      reconnectRef.current = setTimeout(connectWS, 5000);
+    };
+
+    ws.onerror = () => {
+      ws.close();
+    };
+  };
+
+  const fetchOrders = () => {
+    fetch('/api/ecom/orders/recent/feed', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setOrders(data);
+        }
+      })
+      .catch(e => console.error('[OrderFeed] Failed to fetch history', e));
+  };
+
+  useEffect(() => {
+    fetchOrders();
+    connectWS();
+
+    return () => {
+      if (reconnectRef.current) clearTimeout(reconnectRef.current);
+      wsRef.current?.close();
+    };
+  }, [wsUrl]);
+
+  useEffect(() => {
+    onOrdersChange?.(orders);
+  }, [orders, onOrdersChange]);
+
+  const handleClearQueue = async () => {
+    if (!window.confirm('Are you sure you want to clear the retrieval queue?')) return;
+    setClearing(true);
+    try {
+      const res = await fetch('/api/asrs-data/queue', { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Order queue cleared successfully');
+        fetchOrders();
+      } else {
+        const err = await res.json();
+        toast.error('Failed to clear queue: ' + (err.detail || 'Unknown error'));
+      }
+    } catch (e) {
+      toast.error('Error clearing queue: ' + e.message);
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex', flexDirection: 'column', gap: '10px',
+        marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid var(--border)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            🛒 Ecom Orders
+          </div>
+          <span style={{
+            fontSize: '0.85rem', fontWeight: 700,
+            padding: '3px 8px', borderRadius: 99,
+            background: connected ? 'var(--success-bg, rgba(22,163,74,0.12))' : 'var(--error-bg, rgba(220,38,38,0.12))',
+            color: connected ? 'var(--success, #16a34a)' : 'var(--error, #dc2626)',
+            boxShadow: connected ? '0 0 8px rgba(22,163,74,0.3)' : 'none'
+          }}>
+            {connected ? 'LIVE' : 'OFFLINE'}
+          </span>
+        </div>
+        <button 
+          onClick={handleClearQueue} 
+          disabled={clearing}
+          style={{
+            background: 'var(--bg-secondary)', border: '1px solid var(--border)', 
+            borderRadius: '6px', fontSize: '0.9rem', padding: '6px 12px',
+            cursor: clearing ? 'not-allowed' : 'pointer', fontWeight: 600, color: 'var(--text-secondary)',
+            width: '100%', transition: 'all 0.2s'
+          }}
+          onMouseOver={e => !clearing && (e.currentTarget.style.borderColor = 'var(--text-muted)')}
+          onMouseOut={e => !clearing && (e.currentTarget.style.borderColor = 'var(--border)')}
+        >
+          {clearing ? 'CLEARING QUEUE...' : 'CLEAR ASRS QUEUE'}
+        </button>
+      </div>
+
+      {/* Order list */}
+      {orders.length === 0 ? (
+        <div style={{ color: 'var(--text-muted, #94a3b8)', fontSize: '0.98rem', padding: '12px 0', textAlign: 'center' }}>
+          No ecom orders yet
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {orders.map((order, i) => {
+            const sc = STATUS_COLORS[order.status] || STATUS_COLORS.pending;
+            return (
+              <div key={`${order.order_id}-${order.sub_id}-${i}`} style={{
+                borderRadius: 6,
+                border: '1px solid var(--border, #e2e8f0)',
+                padding: '8px 10px',
+                background: 'var(--bg-elevated, #fff)',
+                fontSize: '0.98rem',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 700, fontFamily: 'monospace' }}>
+                    #ORD-{order.order_id}-{order.sub_id}
+                  </span>
+                  <span style={{
+                    background: sc.bg, color: sc.color,
+                    padding: '2px 7px', borderRadius: 99,
+                    fontWeight: 700, fontSize: '0.85rem',
+                    textTransform: 'uppercase',
+                  }}>
+                    {order.status}
+                  </span>
+                </div>
+                {order.compartments?.length > 0 && (
+                  <div style={{ color: 'var(--text-muted, #94a3b8)', marginTop: 4, fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                    Cleared: {order.compartments.join(', ')}
+                  </div>
+                )}
+                <div style={{ color: 'var(--text-muted, #94a3b8)', marginTop: 2 }}>
+                  {formatTime(order.time)} · Item #{order.item_id}
+                  {order.plc_ok ? ' · PLC ✓' : ' · DB only'}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

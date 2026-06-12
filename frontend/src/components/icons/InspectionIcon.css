@@ -1,0 +1,135 @@
+.insp-icon-container {
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Glass and Glow Effects by State */
+.insp-icon-container.state-running {
+  border-color: var(--status-ok);
+  box-shadow: inset 0 0 15px color-mix(in srgb, var(--status-ok) 15%, transparent);
+}
+
+.insp-icon-container.state-idle {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 15px color-mix(in srgb, var(--primary) 15%, transparent);
+  animation: insp-breathe 4s ease-in-out infinite alternate;
+}
+
+.insp-icon-container.state-error {
+  border-color: var(--status-error);
+  box-shadow: inset 0 0 20px color-mix(in srgb, var(--status-error) 30%, transparent), 0 0 15px color-mix(in srgb, var(--status-error) 40%, transparent);
+  animation: insp-shake 0.5s infinite ease-in-out;
+}
+
+.insp-icon-container.state-offline {
+  filter: grayscale(100%);
+  opacity: 0.5;
+}
+
+/* Colors */
+.insp-body, .insp-jaw {
+  fill: var(--bg-hover);
+  stroke: var(--text-muted);
+  stroke-width: 1;
+}
+
+.insp-marks {
+  stroke: var(--text-muted);
+  stroke-width: 0.5;
+}
+
+.insp-workpiece {
+  fill: var(--info);
+  stroke: var(--text-muted);
+  stroke-width: 1;
+}
+
+.insp-slider {
+  fill: var(--bg-tertiary, #4a4d4a);
+  stroke: var(--text-muted);
+  stroke-width: 1;
+}
+
+.insp-screen {
+  fill: var(--bg-primary);
+  stroke: var(--border-light);
+  stroke-width: 0.5;
+}
+
+.insp-readout {
+  font-family: var(--font-mono);
+  font-size: 5px;
+  font-weight: 800;
+  fill: var(--text-disabled);
+}
+
+.insp-roller {
+  fill: var(--text-muted);
+}
+
+/* State-specific Colors */
+.state-idle .insp-readout {
+  fill: var(--primary);
+  filter: drop-shadow(0 0 2px var(--primary));
+}
+
+.state-running .insp-readout {
+  fill: var(--status-ok);
+  filter: drop-shadow(0 0 2px var(--status-ok));
+}
+
+.state-error .insp-readout {
+  fill: var(--status-error);
+  filter: drop-shadow(0 0 2px var(--status-error));
+}
+
+/* Animations */
+@keyframes insp-breathe {
+  0% { box-shadow: inset 0 0 10px color-mix(in srgb, var(--primary) 5%, transparent); }
+  100% { box-shadow: inset 0 0 25px color-mix(in srgb, var(--primary) 25%, transparent), 0 0 15px color-mix(in srgb, var(--primary) 15%, transparent); }
+}
+
+@keyframes insp-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+@keyframes insp-jaw-slide {
+  0%, 100% { transform: translateX(0); }
+  40% { transform: translateX(-15px); }
+  60% { transform: translateX(-15px); }
+}
+
+@keyframes insp-readout-flash {
+  0%, 39% { opacity: 0; }
+  40%, 60% { opacity: 1; }
+  61%, 100% { opacity: 0; }
+}
+
+@keyframes insp-workpiece-squish {
+  0%, 100% { transform: scaleX(1); }
+  40%, 60% { transform: scaleX(0.95); }
+}
+
+/* Running State Animations */
+.state-running .insp-sliding-group {
+  animation: insp-jaw-slide 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.state-running .insp-readout {
+  animation: insp-readout-flash 3s linear infinite;
+}
+
+.state-running .insp-workpiece {
+  transform-origin: 32px 35px;
+  animation: insp-workpiece-squish 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}

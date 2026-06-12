@@ -456,7 +456,7 @@ function OperationsTab() {
             )}
             
             {activeOperation === 'retrieve' && (
-              <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+              <p style={{ marginTop: '0.5rem', fontSize: '1.075rem', color: 'var(--text-secondary)' }}>
                 <strong>Retrieval Strategy:</strong> Column-wise (A1→A7, then B1→B7, etc.)
               </p>
             )}
@@ -534,7 +534,7 @@ function OperationsTab() {
             <h3 style={{ 
               color: 'var(--primary)', 
               marginBottom: '0.5rem',
-              fontSize: '1.5rem'
+              fontSize: '1.7rem'
             }}>AS/RS Operation In Progress</h3>
             <p style={{ 
               color: 'var(--text-secondary)',
