@@ -30,6 +30,7 @@ dashboard/coedm-dashboard/.env
 .idea/
 *.swp
 *.swo
+/.kiro/
 
 # OS
 .DS_Store
@@ -52,16 +53,10 @@ reference/
 
 #Stitch Designs
 stitch_designs/
-
 *.zip
-
 *.exe
-
 /backend/scratch/
-/.kiro/
-/.kiro/
-/scratch/
-/scripts/
-
 /light_mode.md
 /todo.txt
+/scripts/
+/scratch/
