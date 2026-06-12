@@ -325,10 +325,14 @@ const Mirac = () => {
 
       // Drive SVG directly — no React setState, no reconciliation
       if (machineViewRef.current) {
-        const normalizedZ = Math.min(1, Math.max(0, Math.abs(displayZ) / 300));
-        const tx = 170 - normalizedZ * 530;
-        const normalizedX = Math.min(1, Math.max(0, Math.abs(displayX) / 100));
-        const ty = 10 + normalizedX * 90;
+        // Z range: -42.84 (touching) to 118.76 (far away)
+        const effectiveZ = Math.max(0, displayZ - (-42.84));
+        const normalizedZ = Math.min(1, effectiveZ / 161.6);
+        const tx = -260 + normalizedZ * 430;
+
+        const effectiveX = Math.max(0, displayX - 8.44);
+        const normalizedX = Math.min(1, effectiveX / 100);
+        const ty = 70 - normalizedX * 60;
         machineViewRef.current.setPosition(tx, ty);
       }
 

@@ -122,7 +122,7 @@ const MiracMachineView = forwardRef(function MiracMachineView({
       `}</style>
 
       <svg
-        viewBox="0 0 900 500"
+        viewBox="0 50 950 400"
         width="100%"
         height="100%"
         preserveAspectRatio="xMidYMid meet"
@@ -137,7 +137,7 @@ const MiracMachineView = forwardRef(function MiracMachineView({
 
           {/* Workpiece clipping path */}
           <clipPath id="workpiece-clip">
-            <rect x="160" y="150" width="260" height="100" rx="3" />
+            <rect x="160" y="170" width="160" height="60" rx="3" />
           </clipPath>
 
           {/* Glowing filters */}
@@ -168,7 +168,7 @@ const MiracMachineView = forwardRef(function MiracMachineView({
 
         {/* Headstock Casing */}
         <g id="headstock">
-          <rect x="10" y="70" width="110" height="260" fill="#1b1c23" rx="4" stroke="#121318" strokeWidth="2.5" />
+          <rect x="10" y="100" width="110" height="200" fill="#1b1c23" rx="4" stroke="#121318" strokeWidth="2.5" />
           
 
 
@@ -176,28 +176,28 @@ const MiracMachineView = forwardRef(function MiracMachineView({
         </g>
 
         {/* Chuck Adapter */}
-        <rect x="120" y="110" width="40" height="180" fill="#252731" stroke="#17181f" strokeWidth="2" />
+        <rect x="120" y="130" width="40" height="140" fill="#252731" stroke="#17181f" strokeWidth="2" />
 
         {/* Clamping Jaws */}
-        <rect x="160" y="110" width="20" height="40" fill="#383b48" stroke="#1c1d24" strokeWidth="1.5" rx="1" />
-        <rect x="160" y="250" width="20" height="40" fill="#383b48" stroke="#1c1d24" strokeWidth="1.5" rx="1" />
+        <rect x="160" y="150" width="20" height="20" fill="#383b48" stroke="#1c1d24" strokeWidth="1.5" rx="1" />
+        <rect x="160" y="230" width="20" height="20" fill="#383b48" stroke="#1c1d24" strokeWidth="1.5" rx="1" />
 
         {/* Workpiece with Vertical Ridges & Rotation Animation */}
         <g id="workpiece" clipPath="url(#workpiece-clip)">
           <rect
             className="asm-workpiece-surface"
             x="140"
-            y="150"
+            y="170"
             width="300"
-            height="100"
+            height="60"
             fill="url(#workpiece-stripes)"
           />
           {/* Highlight/shading overlay for metallic depth */}
-          <rect x="160" y="150" width="260" height="100" fill="none" rx="3" pointerEvents="none" />
+          <rect x="160" y="170" width="160" height="60" fill="none" rx="3" pointerEvents="none" />
           {/* Top highlight */}
-          <rect x="160" y="150" width="260" height="12" fill="rgba(255, 255, 255, 0.08)" />
+          <rect x="160" y="170" width="160" height="8" fill="rgba(255, 255, 255, 0.08)" />
           {/* Bottom shadow */}
-          <rect x="160" y="238" width="260" height="12" fill="rgba(0, 0, 0, 0.25)" />
+          <rect x="160" y="222" width="160" height="8" fill="rgba(0, 0, 0, 0.25)" />
         </g>
 
         {/* Centerline indicator (subtle dashed line) */}
@@ -209,10 +209,10 @@ const MiracMachineView = forwardRef(function MiracMachineView({
         <g id="carriage-assembly" ref={carriageRef} transform="translate(170, 0)">
           {/* Carriage base/slide block */}
           <rect
-            x="550"
-            y="310"
-            width="200"
-            height="30"
+            x="558"
+            y="258"
+            width="150"
+            height="23"
             fill="#20222a"
             stroke="#121317"
             strokeWidth="2.5"
@@ -223,37 +223,35 @@ const MiracMachineView = forwardRef(function MiracMachineView({
           <g id="cross-slide" ref={crossSlideRef} transform="translate(0, 10)">
             {/* Vertical block */}
             <rect
-              x="590"
-              y="150"
-              width="120"
-              height="160"
+              x="588"
+              y="138"
+              width="90"
+              height="120"
               fill="#2d3039"
               stroke="#181a20"
               strokeWidth="2.5"
               rx="4"
             />
 
-
-
             {/* Tool post block */}
             <rect
-              x="610"
+              x="603"
               y="100"
-              width="80"
-              height="50"
+              width="60"
+              height="38"
               fill="#3a3d48"
               stroke="#1f2129"
               strokeWidth="2"
               rx="2"
             />
             {/* Tool Number Display */}
-            <text x="650" y="130" fill="#94a3b8" fontSize="14" fontFamily="JetBrains Mono" fontWeight="bold" textAnchor="middle">
+            <text x="633" y="123" fill="#94a3b8" fontSize="13" fontFamily="JetBrains Mono" fontWeight="bold" textAnchor="middle">
               {formattedTool}
             </text>
 
             {/* Yellow cutter triangle (pointing up-left) */}
             <polygon
-              points="580,100 615,100 615,125"
+              points="580,100 606,100 606,119"
               fill="#f59e0b"
               stroke="#ffd54f"
               strokeWidth="1.5"
@@ -303,7 +301,7 @@ const MiracMachineView = forwardRef(function MiracMachineView({
             {/* Coolant flow */}
             {coolantOn && (
               <path
-                d="M 610,120 Q 570,115 540,140"
+                d="M 600,110 Q 570,110 540,140"
                 fill="none"
                 stroke="#00a2ff"
                 strokeWidth="2.5"
