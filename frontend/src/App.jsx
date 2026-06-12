@@ -246,7 +246,8 @@ function NavItem({ to, icon, machineType, label }) {
           fontSize: '22px',
           marginRight: '6px',
           display: 'inline-block',
-          verticalAlign: 'middle'
+          verticalAlign: 'middle',
+          color: 'var(--primary)'
         }}>{icon}</span>
       )}
       <span style={{ verticalAlign: 'middle' }}>{label}</span>
