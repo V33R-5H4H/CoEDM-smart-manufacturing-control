@@ -956,3 +956,148 @@ ALTER TABLE assembly_station_data
 
 ALTER TABLE vibit_readings
     ADD COLUMN IF NOT EXISTS machine_id TEXT;
+
+
+-- ============================================================
+-- E-Commerce Migration: Add price, image_url to storage_items
+--                       Add ecom_users table for customer auth
+-- Safe to re-run: uses IF NOT EXISTS / DO blocks throughout
+-- ============================================================
+
+-- 1. Add price column to storage_items (for storefront display)
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name='storage_items' AND column_name='price'
+    ) THEN
+        ALTER TABLE storage_items ADD COLUMN price NUMERIC(10,2) NOT NULL DEFAULT 0.00;
+        COMMENT ON COLUMN storage_items.price IS 'Unit selling price shown on e-commerce storefront.';
+    END IF;
+END $$;
+
+-- 2. Add image_url column to storage_items
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name='storage_items' AND column_name='image_url'
+    ) THEN
+        ALTER TABLE storage_items ADD COLUMN image_url TEXT;
+        COMMENT ON COLUMN storage_items.image_url IS 'Product image URL for storefront display.';
+    END IF;
+END $$;
+
+-- 3. Create ecom_users table for customer authentication
+CREATE TABLE IF NOT EXISTS ecom_users (
+    user_id       UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    email         TEXT         UNIQUE NOT NULL,
+    full_name     TEXT         NOT NULL,
+    password_hash TEXT         NOT NULL,
+    is_active     BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    last_login    TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_ecom_users_email ON ecom_users (email) WHERE is_active = TRUE;
+
+COMMENT ON TABLE ecom_users IS 'Customer accounts for the e-commerce storefront (separate from internal users table).';
+
+-- 4. Add ecom_user_id FK to orders table so we can link orders to ecom customers
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name='orders' AND column_name='ecom_user_id'
+    ) THEN
+        ALTER TABLE orders ADD COLUMN ecom_user_id UUID REFERENCES ecom_users(user_id);
+        COMMENT ON COLUMN orders.ecom_user_id IS 'FK to ecom_users. Set when order is placed via the storefront.';
+    END IF;
+END $$;
+
+-- 5. Update prices on the seeded items
+UPDATE storage_items SET price = 2500.00 WHERE sku = 'RAW-ALU-01';
+UPDATE storage_items SET price = 3200.00 WHERE sku = 'RAW-STL-02';
+UPDATE storage_items SET price = 8500.00 WHERE sku = 'FIN-PART-A';
+UPDATE storage_items SET price = 7200.00 WHERE sku = 'FIN-PART-B';
+UPDATE storage_items SET price = 1200.00 WHERE sku = 'TOOL-MILL-4';
+UPDATE storage_items SET price =  350.00 WHERE sku = 'CONS-LUBE';
+
+-- Update item types — storefront will only show 'finished' items
+UPDATE storage_items SET item_type = 'finished' WHERE sku IN ('FIN-PART-A', 'FIN-PART-B');
+
+-- ============================================================
+-- E-Commerce Migration: Add is_admin to ecom_users
+-- ============================================================
+
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name='ecom_users' AND column_name='is_admin'
+    ) THEN
+        ALTER TABLE ecom_users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT FALSE;
+        COMMENT ON COLUMN ecom_users.is_admin IS 'Admin privileges for the e-commerce admin dashboard.';
+    END IF;
+END $$;
+
+-- Optional: Give admin rights to the first seeded user for testing
+UPDATE ecom_users SET is_admin = TRUE WHERE email = 'test@example.com';
+
+-- ============================================================
+-- WORKFLOW ENGINE TABLES
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS workflows (
+    workflow_id   UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    name          TEXT         NOT NULL,
+    status        TEXT         NOT NULL DEFAULT 'pending'
+                      CHECK (status IN ('pending', 'running', 'paused', 'completed', 'failed')),
+    created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    started_at    TIMESTAMPTZ,
+    completed_at  TIMESTAMPTZ,
+    error_msg     TEXT
+);
+
+CREATE TABLE IF NOT EXISTS workflow_steps (
+    step_id       UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    workflow_id   UUID         NOT NULL REFERENCES workflows(workflow_id) ON DELETE CASCADE,
+    step_order    INTEGER      NOT NULL,
+    machine_id    TEXT         NOT NULL REFERENCES machines(machine_id) ON DELETE CASCADE,
+    action        TEXT         NOT NULL,
+    parameters    JSONB        DEFAULT '{}',
+    status        TEXT         NOT NULL DEFAULT 'pending'
+                      CHECK (status IN ('pending', 'running', 'completed', 'failed', 'skipped')),
+    started_at    TIMESTAMPTZ,
+    completed_at  TIMESTAMPTZ,
+    error_msg     TEXT,
+    UNIQUE (workflow_id, step_order)
+);
+
+CREATE INDEX IF NOT EXISTS idx_workflow_status ON workflows(status);
+CREATE INDEX IF NOT EXISTS idx_workflow_steps_workflow ON workflow_steps(workflow_id);
+
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'workflows_updated_at'
+    ) THEN
+        CREATE TRIGGER workflows_updated_at
+        BEFORE UPDATE ON workflows
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    END IF;
+END $$;
+
+-- ============================================================
+-- ENABLE TIMESCALEDB EXTENSION
+-- ============================================================
+CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+
+-- ============================================================
+-- CONVERT TIME-SERIES TABLES TO HYPERTABLES
+-- Using migrate_data => TRUE to preserve existing records
+-- ============================================================
+
+SELECT create_hypertable('mirac_sensor_data', 'time', if_not_exists => TRUE, migrate_data => TRUE);
+SELECT create_hypertable('vibit_readings', 'time', if_not_exists => TRUE, migrate_data => TRUE);
+SELECT create_hypertable('energy_meter_data', 'time', if_not_exists => TRUE, migrate_data => TRUE);
+SELECT create_hypertable('assembly_station_data', 'time', if_not_exists => TRUE, migrate_data => TRUE);
+SELECT create_hypertable('triac_sensor_data', 'time', if_not_exists => TRUE, migrate_data => TRUE);
+SELECT create_hypertable('amr_sensor_data', 'time', if_not_exists => TRUE, migrate_data => TRUE);
+SELECT create_hypertable('cobot_sensor_data', 'time', if_not_exists => TRUE, migrate_data => TRUE);
