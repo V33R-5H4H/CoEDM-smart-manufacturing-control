@@ -36,9 +36,8 @@ def upgrade() -> None:
         with open(path, 'r', encoding='utf-8') as f:
             sql = f.read()
             if sql.strip():
-                # Split and execute or just execute raw string
-                op.execute(sa.text(sql))
-
+                # Use exec_driver_sql to prevent SQLAlchemy from misinterpreting '::' or ':=' as bind parameters
+                op.get_bind().exec_driver_sql(sql)
 
 def downgrade() -> None:
     pass

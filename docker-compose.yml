@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16
+    image: timescale/timescaledb:latest-pg16
     container_name: coedm_db
     restart: always
     env_file: .env.docker
@@ -22,7 +22,7 @@ services:
     restart: always
     env_file: .env.docker
     # Run migrations automatically, then start FastAPI
-    command: bash -c "alembic -c backend/alembic.ini upgrade head && uvicorn backend.api.main:app --host 0.0.0.0 --port 8000"
+    command: bash -c "cd backend && alembic upgrade head && cd .. && uvicorn backend.api.main:app --host 0.0.0.0 --port 8000"
     ports:
       - "8000:8000"
     depends_on:

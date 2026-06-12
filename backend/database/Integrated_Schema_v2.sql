@@ -488,7 +488,7 @@ COMMENT ON TABLE machine_connections IS 'Sensor connect/disconnect history.';
 --    • Removed bare FOREIGN KEY clauses that referenced wrong PKs
 -- ============================================================
 CREATE TABLE IF NOT EXISTS mirac_sensor_data (
-    id                    BIGSERIAL        PRIMARY KEY,
+    id                    BIGSERIAL,
     time                  TIMESTAMP      NOT NULL DEFAULT NOW(),
     machine_id            TEXT             NOT NULL REFERENCES machines(machine_id)       ON DELETE CASCADE,
     sensor_id             UUID             NOT NULL REFERENCES machine_sensors(sensor_id) ON DELETE CASCADE,
@@ -512,7 +512,8 @@ CREATE TABLE IF NOT EXISTS mirac_sensor_data (
     led_red               BOOLEAN          NOT NULL DEFAULT FALSE,
     led_yellow            BOOLEAN          NOT NULL DEFAULT FALSE,
     led_green             BOOLEAN          NOT NULL DEFAULT FALSE,
-    safety_curtain_status BOOLEAN          NOT NULL DEFAULT FALSE
+    safety_curtain_status BOOLEAN          NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (time, id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_mirac_machine_time ON mirac_sensor_data (machine_id, time DESC);
@@ -613,7 +614,7 @@ COMMENT ON TABLE assembly_station_data IS 'Assembly PLC status time-series. FK �
 
 -- 18a. TRIAC_SENSOR_DATA (future — TRIAC CNC Mill)
 CREATE TABLE IF NOT EXISTS triac_sensor_data (
-    id                    BIGSERIAL        PRIMARY KEY,
+    id                    BIGSERIAL,
     time                  TIMESTAMP      NOT NULL DEFAULT NOW(),
     machine_id            TEXT             NOT NULL REFERENCES machines(machine_id)       ON DELETE CASCADE,
     sensor_id             UUID             NOT NULL REFERENCES machine_sensors(sensor_id) ON DELETE CASCADE,
@@ -632,13 +633,14 @@ CREATE TABLE IF NOT EXISTS triac_sensor_data (
     led_red               BOOLEAN DEFAULT FALSE,
     led_yellow            BOOLEAN DEFAULT FALSE,
     led_green             BOOLEAN DEFAULT FALSE,
-    safety_curtain_status BOOLEAN DEFAULT FALSE
+    safety_curtain_status BOOLEAN DEFAULT FALSE,
+    PRIMARY KEY (time, id)
 );
 COMMENT ON TABLE triac_sensor_data IS 'PLACEHOLDER: TRIAC CNC Mill sensor data. Mirrors mirac_sensor_data. Activate when pipeline is ready.';
 
 -- 18b. AMR_SENSOR_DATA (future — Autonomous Mobile Robot)
 CREATE TABLE IF NOT EXISTS amr_sensor_data (
-    id                BIGSERIAL        PRIMARY KEY,
+    id                BIGSERIAL,
     time              TIMESTAMP      NOT NULL DEFAULT NOW(),
     machine_id        TEXT             NOT NULL REFERENCES machines(machine_id)       ON DELETE CASCADE,
     sensor_id         UUID             NOT NULL REFERENCES machine_sensors(sensor_id) ON DELETE CASCADE,
@@ -648,13 +650,14 @@ CREATE TABLE IF NOT EXISTS amr_sensor_data (
     battery_pct       DOUBLE PRECISION,
     velocity          DOUBLE PRECISION,
     navigation_state  TEXT,
-    obstacle_detected BOOLEAN DEFAULT FALSE
+    obstacle_detected BOOLEAN DEFAULT FALSE,
+    PRIMARY KEY (time, id)
 );
 COMMENT ON TABLE amr_sensor_data IS 'PLACEHOLDER: AMR position/navigation data. Activate when Modbus pipeline is ready.';
 
 -- 18c. COBOT_SENSOR_DATA (future — TM Collaborative Robot)
 CREATE TABLE IF NOT EXISTS cobot_sensor_data (
-    id             BIGSERIAL        PRIMARY KEY,
+    id             BIGSERIAL,
     time           TIMESTAMP      NOT NULL DEFAULT NOW(),
     machine_id     TEXT             NOT NULL REFERENCES machines(machine_id)       ON DELETE CASCADE,
     sensor_id      UUID             NOT NULL REFERENCES machine_sensors(sensor_id) ON DELETE CASCADE,
@@ -668,7 +671,8 @@ CREATE TABLE IF NOT EXISTS cobot_sensor_data (
     tcp_y          DOUBLE PRECISION,
     tcp_z          DOUBLE PRECISION,
     tcp_force      DOUBLE PRECISION,
-    safety_status  TEXT
+    safety_status  TEXT,
+    PRIMARY KEY (time, id)
 );
 COMMENT ON TABLE cobot_sensor_data IS 'PLACEHOLDER: TM Cobot joint/TCP data. Activate when TMSCT TCP pipeline is ready.';
 
