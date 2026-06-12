@@ -385,6 +385,20 @@ const Mirac = () => {
     }
   };
 
+  const handlePulseCommand = async (action) => {
+    try {
+      toast.info(`Sending ${action.toUpperCase()} command...`, { autoClose: 1000 });
+      const res = await MiracControlService.pulseCommand(action);
+      if (res.success) {
+        toast.success(res.message || `${action.toUpperCase()} command pulsed successfully.`);
+      } else {
+        toast.error(res.message || `Failed to send ${action} command.`);
+      }
+    } catch (e) {
+      toast.error(e.message || `Failed to send ${action} command.`);
+    }
+  };
+
   const greenActive = isConnected && plcOnline && (data?.status?.green ?? false) && !(data?.status?.red);
   const orangeActive = isConnected && plcOnline && ((data?.status?.yellow ?? false) || (data?.spindle?.speed > 0) || (data?.status?.cycle_start ?? false)) && !(data?.status?.red);
   const redActive = !isConnected || !plcOnline || (data?.status?.red ?? false);
@@ -917,6 +931,81 @@ const Mirac = () => {
               </div>
 
               {/* Axis Vibration summary */}
+            </div>
+
+            {/* Remote Machine Controls */}
+            <div className="asm-hud-card" style={{ marginTop: "12px" }}>
+              <div className="asm-hud-header">
+                <span><SensorDot connected={isConnected && plcOnline} />Remote CNC Control</span>
+                <span className={`asm-hud-badge ${isConnected && plcOnline ? "asm-hud-badge--active" : ""}`}>
+                  {isConnected && plcOnline ? "READY" : "OFFLINE"}
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
+                <button
+                  type="button"
+                  onClick={() => handlePulseCommand("start")}
+                  className="control-btn control-btn--start"
+                  disabled={!isConnected || !plcOnline}
+                  style={{
+                    flex: 1,
+                    padding: "10px 0",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    borderRadius: "4px",
+                    cursor: (isConnected && plcOnline) ? "pointer" : "not-allowed",
+                    background: (isConnected && plcOnline) ? "rgba(74, 222, 128, 0.15)" : "rgba(255, 255, 255, 0.02)",
+                    color: (isConnected && plcOnline) ? "#4ade80" : "var(--text-disabled)",
+                    border: (isConnected && plcOnline) ? "1px solid rgba(74, 222, 128, 0.3)" : "1px solid rgba(255, 255, 255, 0.05)",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  Start
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePulseCommand("stop")}
+                  className="control-btn control-btn--stop"
+                  disabled={!isConnected || !plcOnline}
+                  style={{
+                    flex: 1,
+                    padding: "10px 0",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    borderRadius: "4px",
+                    cursor: (isConnected && plcOnline) ? "pointer" : "not-allowed",
+                    background: (isConnected && plcOnline) ? "rgba(239, 68, 68, 0.15)" : "rgba(255, 255, 255, 0.02)",
+                    color: (isConnected && plcOnline) ? "#ef4444" : "var(--text-disabled)",
+                    border: (isConnected && plcOnline) ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid rgba(255, 255, 255, 0.05)",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  Stop
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePulseCommand("reset")}
+                  className="control-btn control-btn--reset"
+                  disabled={!isConnected || !plcOnline}
+                  style={{
+                    flex: 1,
+                    padding: "10px 0",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    borderRadius: "4px",
+                    cursor: (isConnected && plcOnline) ? "pointer" : "not-allowed",
+                    background: (isConnected && plcOnline) ? "rgba(234, 179, 8, 0.15)" : "rgba(255, 255, 255, 0.02)",
+                    color: (isConnected && plcOnline) ? "#eab308" : "var(--text-disabled)",
+                    border: (isConnected && plcOnline) ? "1px solid rgba(234, 179, 8, 0.3)" : "1px solid rgba(255, 255, 255, 0.05)",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  Reset
+                </button>
+              </div>
             </div>
           </div>
         </div>

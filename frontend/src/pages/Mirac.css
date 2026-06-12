@@ -376,3 +376,35 @@
     transform: scale(1);
   }
 }
+
+/* Remote control buttons styling states */
+.control-btn {
+  transition: all 0.2s ease;
+}
+
+.control-btn--start:hover:not(:disabled) {
+  background: rgba(74, 222, 128, 0.25) !important;
+  border-color: rgba(74, 222, 128, 0.5) !important;
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.15) !important;
+}
+.control-btn--start:active:not(:disabled) {
+  background: rgba(74, 222, 128, 0.35) !important;
+}
+
+.control-btn--stop:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.25) !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.15) !important;
+}
+.control-btn--stop:active:not(:disabled) {
+  background: rgba(239, 68, 68, 0.35) !important;
+}
+
+.control-btn--reset:hover:not(:disabled) {
+  background: rgba(234, 179, 8, 0.25) !important;
+  border-color: rgba(234, 179, 8, 0.5) !important;
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.15) !important;
+}
+.control-btn--reset:active:not(:disabled) {
+  background: rgba(234, 179, 8, 0.35) !important;
+}

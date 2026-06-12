@@ -41,6 +41,19 @@ class MiracControlService {
             throw new Error("Failed to get MIRAC-PC connection status");
         }
     }
+
+    /**
+     * Pulse start, stop, or reset command to the MIRAC machine
+     */
+    static async pulseCommand(action) {
+        try {
+            const response = await axios.post(`${API_URL}/pulse`, { action });
+            return response.data;
+        } catch (error) {
+            console.error(`MIRAC Pulse Command Error (${action}):`, error);
+            throw new Error(error.response?.data?.detail || `Failed to pulse ${action} command`);
+        }
+    }
 }
 
 export default MiracControlService;

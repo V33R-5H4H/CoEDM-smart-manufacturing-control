@@ -1,6 +1,7 @@
 from backend.communication.opcua_driver import OPCUAConnection
 from backend.config import settings
 import logging
+import asyncio
 
 SERVER_URL = settings.MIRAC_OPCUA_URL
 
@@ -30,6 +31,12 @@ MIRAC_DATA_TAGS = {
     "cycle_start": "ns=4;i=16",
     "cycle_stop": "ns=4;i=17",
     "pneumatic_chuck": "ns=4;i=23"
+}
+
+MIRAC_CONTROL_TAGS = {
+    "cy_start_remote": "ns=4;i=82",
+    "cy_stop_remote": "ns=4;i=93",
+    "cy_reset_remote": "ns=4;i=104"
 }
 
 # Create a shared OPCUAConnection instance but defer connection (lazy)
@@ -69,3 +76,27 @@ def get_mirac_status():
     return {
         "connected": opcua_connection.connected and connection_established
     }
+
+async def pulse_mirac_command(action: str):
+    """Pulse start, stop, or reset command asynchronously."""
+    if action not in ["start", "stop", "reset"]:
+        raise ValueError(f"Invalid action: {action}")
+    
+    if action == "start":
+        tag = MIRAC_CONTROL_TAGS["cy_start_remote"]
+        duration = 0.5
+    elif action == "stop":
+        tag = MIRAC_CONTROL_TAGS["cy_stop_remote"]
+        duration = 0.5
+    else: # reset
+        tag = MIRAC_CONTROL_TAGS["cy_reset_remote"]
+        duration = 0.02
+        
+    try:
+        await asyncio.to_thread(opcua_connection.set_node_state, tag, True)
+        await asyncio.sleep(duration)
+        await asyncio.to_thread(opcua_connection.set_node_state, tag, False)
+        return True, f"Pulsed {action} successfully"
+    except Exception as e:
+        logging.error(f"[MIRAC] Pulse {action} failed: {e}")
+        raise Exception(f"Failed to pulse {action} command: {e}")

@@ -68,7 +68,7 @@ def banner():
 +--------------------------------------------------+{RESET}
   {GREEN}Backend  {RESET}-> http://localhost:8000
   {GREEN}API docs {RESET}-> http://localhost:8000/docs
-  {GREEN}ASRS UI  {RESET}-> http://localhost:5173
+  {GREEN}Control Software UI  {RESET}-> http://localhost:5173
   {GREEN}Ecom UI  {RESET}-> http://localhost:5174
   {DIM}Press Ctrl+C to stop all services{RESET}
 """)
