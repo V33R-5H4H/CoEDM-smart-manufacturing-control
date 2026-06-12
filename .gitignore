@@ -7,10 +7,12 @@ venv/
 *.egg-info/
 dist/
 build/
+.kiro
 
 # Environment secrets — NEVER commit
 .env
 *.env
+.env.docker
 *.key
 *.pem
 
@@ -47,3 +49,19 @@ logs/
 reference/
 # start.py / stop.py runtime
 .pids
+
+#Stitch Designs
+stitch_designs/
+
+*.zip
+
+*.exe
+
+/backend/scratch/
+/.kiro/
+/.kiro/
+/scratch/
+/scripts/
+
+/light_mode.md
+/todo.txt
