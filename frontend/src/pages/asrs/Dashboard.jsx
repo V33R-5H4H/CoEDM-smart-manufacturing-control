@@ -1,302 +1,430 @@
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useEffect, useRef } from "react";
 import BoxesTab from "./components/BoxesTab";
 import ItemsTab from "./components/ItemsTab";
 import TransactionsTab from "./components/TransactionsTab";
-import SystemStatusChip from "./components/SystemStatusChip";
-import StatusPanel from "./components/StatusPanel";
+import TopStatusRibbon from "./components/TopStatusRibbon";
+import PageHeader from "../../components/PageHeader";
 import { useLEDMonitoring } from "./hooks/useLEDMonitoring";
-import { ToastContainer, Flip, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { useTheme } from "../../theme/ThemeContext";
+import { toast } from "react-toastify";
+import "../Assembly.css";
+import SafetyOverlay from "../../components/SafetyOverlay";
+import TutorialOverlay from "./components/TutorialOverlay";
+import OrderFeed from "./components/OrderFeed";
+
+const API_BASE = `${import.meta.env.VITE_API_URL || "/api"}/control/asrs`;
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState("boxes");
   const [isConnected, setIsConnected] = useState(false);
-  const [isStatusExpanded, setIsStatusExpanded] = useState(false);
-  const { ledStates, shuttleState, connected: ledConnected } = useLEDMonitoring();
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [ecomOrders, setEcomOrders] = useState([]);
+  const { shuttleState, connected: ledConnected, ledStates, safetyCurtain } = useLEDMonitoring();
+  const { resolved: theme } = useTheme();
+
+  const prevSafetyCurtainRef = useRef(false);
+
+  // ── Custom Tutorial ──────────────────────────────────────────────────────
+  const [tutorialActive, setTutorialActive] = useState(false);
+  // advanceRef is called by the box-click handler to move past the
+  // "click any box" step without any Joyride controlled-mode complexity.
+  const advanceRef = useRef(null);
+
+  const TUTORIAL_STEPS = [
+    {
+      targetId: 'asrs-cell-DROP_OFF',
+      title: 'Handoff Zone',
+      content: 'This is where AMRs and operators drop off or pick up crates. The shuttle crane services this position first.',
+      placement: 'right',
+    },
+    {
+      targetId: 'asrs-connect-btn',
+      title: 'Connect / Disconnect',
+      content: 'Use this button to connect the AS/RS control system to the OPC-UA server. You must be connected to run store or retrieve operations.',
+      placement: 'bottom',
+    },
+    {
+      targetId: 'asrs-rack-grid',
+      title: 'Storage Matrix',
+      content: 'Each cell is a physical bin. The colour shows occupancy: green = full, red = empty. Click any bin now to open its operations panel.',
+      placement: 'right',
+      waitForClick: true,
+    },
+    {
+      targetId: 'asrs-operations-panel',
+      title: 'Operations Panel',
+      content: 'This panel slides up whenever you select a bin. From here you can inspect the bin\'s contents and choose to Store or Retrieve an item. The left side shows the 6 subcompartment slots; the right side shows the action.',
+      placement: 'top',
+    },
+    {
+      targetId: 'asrs-subcompartment-grid',
+      title: 'Subcompartment Slots',
+      content: 'Each bin has 6 slots labelled A–F. Green slots are occupied; dashed slots are empty. Click a slot to select it — the right panel will automatically show Store or Retrieve based on whether it\'s occupied.',
+      placement: 'right',
+    },
+    {
+      targetId: 'asrs-action-area',
+      title: 'Execute Store or Retrieve',
+      content: 'Once a slot is selected, this area shows the action. For empty slots: pick an inventory item and hit Execute Store. For occupied slots: hit Execute Retrieve to dispatch the shuttle. That\'s it — you\'re ready!',
+      placement: 'top',
+    },
+  ];
+
+  // Listen for box clicks so we can advance past the "click any box" step.
+  // Registered once — reads tutorialActive via ref to avoid stale closures.
+  const tutorialActiveRef = useRef(false);
+  useEffect(() => { tutorialActiveRef.current = tutorialActive; }, [tutorialActive]);
+
+  useEffect(() => {
+    const handleBoxClicked = () => {
+      if (!tutorialActiveRef.current) return;
+      // advanceRef.current is set by TutorialOverlay and moves to the next step.
+      // We wait one rAF so the OperationsPanel has time to mount before the
+      // overlay tries to measure its bounding rect.
+      const tryAdvance = () => {
+        const panel = document.getElementById('asrs-operations-panel');
+        if (panel) {
+          advanceRef.current?.();
+        } else {
+          requestAnimationFrame(tryAdvance);
+        }
+      };
+      requestAnimationFrame(tryAdvance);
+    };
+    window.addEventListener('asrs-box-clicked', handleBoxClicked);
+    return () => window.removeEventListener('asrs-box-clicked', handleBoxClicked);
+  }, []);
+
+  // Trigger edge-triggered toast notifications for ASRS Safety Curtain status
+  useEffect(() => {
+    if (safetyCurtain && !prevSafetyCurtainRef.current) {
+      toast.error("⚠️ SAFETY CURTAIN TRIGGERED — Human presence detected!", {
+        toastId: "asrs-curtain-alert",
+        autoClose: false,
+        closeOnClick: false,
+      });
+    } else if (!safetyCurtain && prevSafetyCurtainRef.current) {
+      toast.dismiss("asrs-curtain-alert");
+    }
+    prevSafetyCurtainRef.current = safetyCurtain;
+  }, [safetyCurtain]);
 
   useEffect(() => {
     const checkConnection = async () => {
       try {
-        const response = await fetch("http://100.97.200.68:8000/api/control/asrs/connection-status");
+        const response = await fetch(`${API_BASE}/connection-status`);
         const result = await response.json();
         setIsConnected(result.connected);
-      } catch (error) {
+      } catch {
         setIsConnected(false);
       }
     };
-
     checkConnection();
   }, []);
 
-  const tabContentVariants = {
-    hidden: { opacity: 0, x: 20 },
-    visible: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: -20 },
-  };
-
-  const handleTabChange = (tab) => {
-    if (tab !== activeTab) {
-      setActiveTab(tab);
-    }
-  };
-
-  const renderTabContent = () => (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={activeTab}
-        initial="hidden"
-        animate="visible"
-        exit="exit"
-        variants={tabContentVariants}
-        transition={{ duration: 0.3 }}
-        className="tab-content-inner"
-      >
-        {{
-          boxes: <BoxesTab isServerConnected={isConnected} />,
-          items: <ItemsTab isServerConnected={isConnected} />,
-          transactions: <TransactionsTab isServerConnected={isConnected} />,
-        }[activeTab] || <BoxesTab isServerConnected={isConnected} />}
-      </motion.div>
-    </AnimatePresence>
-  );
-
-  const createRipple = (event) => {
-    const button = event.currentTarget;
-    const circle = document.createElement("span");
-    const diameter = Math.max(button.clientWidth, button.clientHeight);
-    const radius = diameter / 2;
-
-    circle.style.width = circle.style.height = `${diameter}px`;
-    circle.style.left = `${event.clientX - button.getBoundingClientRect().left - radius}px`;
-    circle.style.top = `${event.clientY - button.getBoundingClientRect().top - radius}px`;
-    circle.classList.add("ripple");
-
-    const ripple = button.getElementsByClassName("ripple")[0];
-    if (ripple) ripple.remove();
-
-    button.appendChild(circle);
-  };
-
   const handleDisconnect = async () => {
+    setStatusLoading(true);
     try {
-      const response = await fetch("http://100.97.200.68:8000/api/control/asrs/disconnect", {
-        method: "POST",
-      });
-
+      const response = await fetch(`${API_BASE}/disconnect`, { method: "POST" });
       const result = await response.json();
-
       if (result.success) {
         setIsConnected(false);
         toast.success(result.message);
       } else {
         toast.error(result.message);
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to disconnect from OPC-UA server.");
+    } finally {
+      setStatusLoading(false);
     }
   };
 
   const handleConnect = async () => {
+    setStatusLoading(true);
     try {
-      const response = await fetch("http://100.97.200.68:8000/api/control/asrs/connect", {
-        method: "POST",
-      });
-
+      const response = await fetch(`${API_BASE}/connect`, { method: "POST" });
       const result = await response.json();
-
       if (result.success) {
         setIsConnected(true);
         toast.success(result.message);
       } else {
         toast.error(result.message);
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to connect to OPC-UA server.");
+    } finally {
+      setStatusLoading(false);
     }
   };
 
+  // Derive status tower light conditions: Green (RUN), Orange (BUSY), Red (FLT)
+  const isSafetyInterrupted = safetyCurtain;
+  const greenActive = isConnected && !isSafetyInterrupted && shuttleState?.state !== "moving" && shuttleState?.state !== "busy";
+  const orangeActive = isConnected && !isSafetyInterrupted && (shuttleState?.state === "moving" || shuttleState?.state === "busy");
+  const redActive = isSafetyInterrupted || shuttleState?.state === "error" || shuttleState?.state === "fault";
+
+  const tabPanels = {
+    boxes: (
+      <BoxesTab
+        isServerConnected={isConnected}
+        ledStates={ledStates}
+        shuttleState={shuttleState}
+        ledConnected={ledConnected}
+        safetyCurtainTriggered={isSafetyInterrupted}
+        activeEcomOrders={ecomOrders}
+      />
+    ),
+    items: <ItemsTab isServerConnected={isConnected} />,
+    transactions: <TransactionsTab isServerConnected={isConnected} />,
+  };
+
   return (
-    <div className="asrs-inventory" style={{
+    <div style={{
       height: '100%',
-      flex: 1,
       display: 'flex',
       flexDirection: 'column',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      background: 'var(--bg-primary)',
     }}>
-      {/* Thin Status Bar - Not a Banner */}
-      <motion.header
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
-        style={{
-          flexShrink: 0,
-          height: '44px',
-          padding: '0 1.5rem',
-          borderBottom: '1px solid var(--border)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          background: 'var(--bg-primary)'
-        }}
-      >
-        {/* Left: Identity - Short Form Only */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-          <span style={{
-            fontSize: '0.9rem',
-            fontWeight: '600',
-            color: 'var(--text-primary)',
-            letterSpacing: '0.02em'
-          }}>
-            AS/RS
-          </span>
-          <span style={{
-            color: 'var(--text-muted)',
-            fontSize: '0.75rem',
-            fontWeight: '500',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em'
-          }}>
-            Inventory
-          </span>
-        </div>
+      {/* Custom tutorial overlay — replaces Joyride */}
+      {tutorialActive && (
+        <TutorialOverlay
+          steps={TUTORIAL_STEPS}
+          advanceRef={advanceRef}
+          onFinish={() => setTutorialActive(false)}
+        />
+      )}
+      {/* Stitch-style top bar */}
+      <PageHeader
+        title="AS/RS"
+        subtitle="Inventory"
+        actions={
+          <>
 
-        {/* Center: Current Mode (Subtle) */}
-        <div style={{
-          fontSize: '0.7rem',
-          fontWeight: '600',
-          color: 'var(--text-muted)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em'
-        }}>
-          {isConnected ? 'SYSTEM ACTIVE' : 'IDLE'}
-        </div>
-
-        <div
-          style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}
-        >
-          {/* Reset Home Button - Always Visible */}
-          {isConnected && (
+            <TopStatusRibbon
+              plcConnected={isConnected}
+              ledConnected={ledConnected}
+              shuttleState={shuttleState}
+            />
+            
+            {/* Tutorial Button */}
             <button
-              onClick={async () => {
-                try {
-                  const res = await fetch('http://100.97.200.68:8000/api/control/asrs/home', { method: 'POST' });
-                  if (res.ok) {
-                    toast.info('Resetting shuttle to Home (A7)...');
-                  }
-                } catch (e) {
-                  toast.error('Failed to reset shuttle');
-                }
-              }}
-              className="btn btn-ghost btn-xs"
+              type="button"
+              onClick={() => setTutorialActive(true)}
               style={{
-                fontSize: '0.75rem',
-                height: '28px',
-                color: 'var(--text-muted)',
-                fontWeight: '500',
-                border: '1px solid var(--border)',
-                marginRight: '0.5rem'
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '14px',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                color: '#38bdf8',
+                background: 'rgba(56, 189, 248, 0.1)',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                padding: '4px 12px',
+                borderRadius: '2px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
               }}
-              title="Force reset shuttle position to A7"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(56, 189, 248, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(56, 189, 248, 0.1)';
+              }}
             >
-              ⟲ Reset A7
+              <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>school</span>
+              Start Tutorial
             </button>
-          )}
+            {isConnected ? (
+              <button
+                id="asrs-connect-btn"
+                type="button"
+                onClick={handleDisconnect}
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: 'var(--text-primary)',
+                  background: 'var(--primary-dark)',
+                  border: 'none',
+                  padding: '4px 12px',
+                  borderRadius: '2px',
+                  cursor: 'pointer',
+                  opacity: statusLoading ? 0.7 : 1,
+                }}
+                disabled={statusLoading}
+              >
+                {statusLoading ? "Disconnecting…" : "Disconnect"}
+              </button>
+            ) : (
+              <button
+                id="asrs-connect-btn"
+                type="button"
+                onClick={handleConnect}
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: 'var(--bg-primary)',
+                  background: 'var(--primary)',
+                  border: 'none',
+                  padding: '4px 12px',
+                  borderRadius: '2px',
+                  cursor: 'pointer',
+                  opacity: statusLoading ? 0.7 : 1,
+                }}
+                disabled={statusLoading}
+              >
+                {statusLoading ? "Connecting…" : "Connect"}
+              </button>
+            )}
+          </>
+        }
+      />
 
-          <div
-            onMouseEnter={() => setIsStatusExpanded(true)}
-            onMouseLeave={() => setIsStatusExpanded(false)}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}
-          >
-
-            <SystemStatusChip
-              plcConnected={isConnected}
-              ledConnected={ledConnected}
-              shuttleState={shuttleState}
-              onMouseEnter={() => setIsStatusExpanded(true)}
-              isExpanded={isStatusExpanded}
-            />
-            <StatusPanel
-              plcConnected={isConnected}
-              ledConnected={ledConnected}
-              shuttleState={shuttleState}
-              isExpanded={isStatusExpanded}
-            />
-          </div>
-          {isConnected ? (
-            <button onClick={handleDisconnect} className="btn btn-error btn-sm" style={{
-              height: '28px',
-              fontSize: '0.75rem',
-              padding: '0 0.75rem'
-            }}>
-              Disconnect
-            </button>
-          ) : (
-            <button onClick={handleConnect} className="btn btn-success btn-sm" style={{
-              height: '28px',
-              fontSize: '0.75rem',
-              padding: '0 0.75rem'
-            }}>
-              Connect
-            </button>
-          )}
-        </div>
-      </motion.header>
-
-      {/* Fixed Tabs Navigation - Never Scrolls */}
-      <div className="tabs" style={{
-        flexShrink: 0,
-        height: '44px',
-        overflow: 'hidden',
+      {/* Sub-nav: Tabs — Stitch pattern */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
         borderBottom: '1px solid var(--border)',
-        background: 'var(--bg-primary)'
+        padding: '0 16px',
+        flexShrink: 0,
+        background: 'var(--bg-primary)',
       }}>
-        {["boxes", "items", "transactions"].map((tab) => (
-          <button
-            key={tab}
-            className={`tab ${activeTab === tab ? "active" : ""}`}
-            onClick={(e) => {
-              createRipple(e);
-              handleTabChange(tab);
-            }}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
+        {/* Flat tabs */}
+        <div style={{ display: 'flex', gap: '24px' }}>
+          {["boxes", "items", "transactions"].map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              style={{
+                fontSize: '16px',
+                fontWeight: activeTab === tab ? 700 : 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                color: activeTab === tab ? 'var(--primary)' : 'var(--text-muted)',
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === tab ? '2px solid var(--primary)' : '2px solid transparent',
+                padding: '10px 0',
+                cursor: 'pointer',
+                transition: 'color 150ms ease-out',
+              }}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* 3-LED Status Tower Indicator */}
+        <div id="asrs-status-tower" style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '0 8px',
+          background: 'rgba(255,255,255,0.01)',
+          borderLeft: '1px solid var(--border)',
+          height: '28px'
+        }}>
+          <span style={{
+            fontSize: '12px',
+            fontFamily: 'var(--font-mono)',
+            fontWeight: 700,
+            color: 'var(--text-muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            marginRight: '2px'
+          }}>STATUS TOWER:</span>
+
+          {/* RUN LED */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }} title="System Connected and Ready">
+            <div style={{
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              border: '1.5px solid var(--border-dark)',
+              background: greenActive ? 'var(--status-ok)' : 'transparent',
+              opacity: greenActive ? 1 : 0.3,
+              boxShadow: greenActive ? '0 0 8px var(--status-ok)' : 'none',
+              transition: 'all 0.3s ease'
+            }} />
+            <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: greenActive ? 'var(--status-ok)' : 'var(--text-disabled)' }}>RUN</span>
+          </div>
+
+          {/* BUSY LED */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }} title="Shuttle Moving or Active">
+            <div style={{
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              border: '1.5px solid var(--border-dark)',
+              background: orangeActive ? 'var(--status-warn)' : 'transparent',
+              opacity: orangeActive ? 1 : 0.3,
+              boxShadow: orangeActive ? '0 0 8px var(--status-warn)' : 'none',
+              transition: 'all 0.3s ease'
+            }} />
+            <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: orangeActive ? 'var(--status-warn)' : 'var(--text-disabled)' }}>BUSY</span>
+          </div>
+
+          {/* FLT LED */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }} title="Safety Curtain Triggered or Fault Active">
+            <div style={{
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              border: '1.5px solid var(--border-dark)',
+              background: redActive ? 'var(--status-error)' : 'transparent',
+              opacity: redActive ? 1 : 0.3,
+              boxShadow: redActive ? '0 0 8px var(--status-error)' : 'none',
+              transition: 'all 0.3s ease'
+            }} />
+            <span style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: redActive ? 'var(--status-error)' : 'var(--text-disabled)' }}>FLT</span>
+          </div>
+        </div>
       </div>
 
-      {/* Workspace - Fills Remaining Height, No Scroll */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        style={{
-          flex: 1,
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column'
-        }}
-      >
-        {renderTabContent()}
-      </motion.div>
+      {/* Workspace — fills remaining space */}
+      <div style={{
+        flex: 1,
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'row',
+        position: 'relative'
+      }}>
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          {tabPanels[activeTab]}
+        </div>
 
-      <ToastContainer
-        position="bottom-right"
-        autoClose={4000}
-        closeOnClick
-        pauseOnHover
-        draggable
-        theme="light"
-        transition={Flip}
-        style={{ fontSize: "0.875rem" }}
-        toastStyle={{
-          background: "var(--bg-elevated)",
-          color: "var(--text-primary)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-lg)",
-          boxShadow: "var(--shadow-lg)",
-        }}
-      />
+        {/* Live E-Com Order Feed sidebar */}
+        <div style={{
+          width: 272,
+          flexShrink: 0,
+          borderLeft: '1px solid var(--border)',
+          overflowY: 'auto',
+          padding: 12,
+          background: 'var(--bg-secondary)',
+        }}>
+          <OrderFeed
+            wsUrl={`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:8000/api/control/asrs/ws/led-status`}
+            onOrdersChange={setEcomOrders}
+          />
+        </div>
+
+        {/* SAFETY INTERRUPT OVERLAY */}
+        <SafetyOverlay
+          isVisible={isSafetyInterrupted}
+          message="Human presence detected in ASRS area (safety curtain breached)."
+          badgeText="ASRS Operations Locked Out"
+        />
+      </div>
+
     </div>
   );
 }

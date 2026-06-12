@@ -8,10 +8,12 @@ venv/
 dist/
 build/
 .kiro
+.kiro
 
 # Environment secrets — NEVER commit
 .env
 *.env
+.env.docker
 .env.docker
 *.key
 *.pem
@@ -30,6 +32,7 @@ dashboard/coedm-dashboard/.env
 .idea/
 *.swp
 *.swo
+/.kiro/
 
 # OS
 .DS_Store

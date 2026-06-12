@@ -88,6 +88,8 @@ class OPCUAConnection:
     def get_node(self, tag_name: str):
         if not self.connected:
             raise Exception("Not connected to OPC UA server")
+        if tag_name.startswith("ns="):
+            return self.client.get_node(tag_name)
         return self.client.get_node(f"ns=4;s={tag_name}")
 
     def pulse_node(self, tag_name: str, duration: float = 0.1):
@@ -95,7 +97,7 @@ class OPCUAConnection:
         if not self.connected:
             raise Exception("Not connected to OPC UA server")
 
-        node = self.client.get_node(f"ns=4;s={tag_name}")
+        node = self.get_node(tag_name)
 
         def _write(val: bool):
             node.write_value(ua.DataValue(ua.Variant(val, ua.VariantType.Boolean)))
@@ -122,7 +124,7 @@ class OPCUAConnection:
             raise Exception("Not connected to OPC UA server")
 
         try:
-            node = self.client.get_node(f"ns=4;s={tag_name}")
+            node = self.get_node(tag_name)
             node.write_value(ua.DataValue(ua.Variant(value, ua.VariantType.Boolean)))
             logging.info(f"[OPC] Wrote {value} to node {tag_name}")
         except Exception as e:
@@ -136,7 +138,7 @@ class OPCUAConnection:
     def _raw_connect(self):
         """Create a fresh sync Client and connect (must hold self._lock)."""
         logging.info(f"[OPC] Connecting to {self.server_url}...")
-        self.client = Client(self.server_url, timeout=60)
+        self.client = Client(self.server_url, timeout=10)
         self.client.connect()
         self.connected = True
         logging.info("[OPC] Connected.")
@@ -155,18 +157,20 @@ class OPCUAConnection:
         """Background thread: periodically checks session health."""
         logging.info("[OPC] Connection monitor started.")
         while self._monitor_running:
-            time.sleep(10)  # check every 10s
+            time.sleep(5)  # check every 5s
 
             if not self.connected:
                 continue
 
-            # Read outside the lock to avoid blocking API threads
+            # Read inside the lock to avoid race conditions with reconnect
             try:
                 with self._lock:
-                    if not self.client:
+                    if not self.client or not self.connected:
                         continue
-                    root = self.client.get_root_node()
-                root.get_children()  # network call outside lock
+                    # Health check: read the server status node (ns=0;i=2259)
+                    # read_value() is the correct sync method in asyncua >= 1.0.x
+                    status_node = self.client.get_node("ns=0;i=2259")
+                    status_node.read_value()
             except Exception as e:
                 logging.warning(f"[OPC] Connection lost: {e}")
                 # reconnect() acquires the lock itself

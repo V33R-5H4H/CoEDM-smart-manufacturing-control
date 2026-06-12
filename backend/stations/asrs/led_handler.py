@@ -41,6 +41,12 @@ class LEDHandler:
                 logging.warning(f"[LED Handler] Unknown node: {node_id}")
                 return
             
+            if tag == "saftey":
+                # Route native safety curtain state change.
+                # Invert logic: True from PLC = Safe (Normally Closed), False = Broken/Interrupted
+                self.led_service.update_safety(not bool(val))
+                return
+            
             # Extract box ID from tag: "ledA1" → "A1"
             box_id = tag.replace("led", "")
             

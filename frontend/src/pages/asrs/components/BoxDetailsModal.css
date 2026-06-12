@@ -30,7 +30,7 @@
 }
 
 .modal-header h3 {
-  font-size: 1.5rem;
+  font-size: 1.7rem;
   font-weight: 700;
   margin: 0;
   color: var(--text-primary);
@@ -40,7 +40,7 @@
 }
 
 .modal-subtitle {
-  font-size: 0.875rem;
+  font-size: 1.075rem;
   color: var(--text-muted);
   margin-top: var(--space-2);
 }
@@ -48,7 +48,7 @@
 .modal-close {
   background: none;
   border: none;
-  font-size: 1.5rem;
+  font-size: 1.7rem;
   cursor: pointer;
   color: var(--text-muted);
   transition: color var(--transition-fast);
@@ -68,7 +68,7 @@
 }
 
 .modal-body h4 {
-  font-size: 0.875rem;
+  font-size: 1.075rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -132,7 +132,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.75rem;
+  font-size: 0.95rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -142,7 +142,7 @@
 /* ================= ITEM TEXT ================= */
 
 .sub-info {
-  font-size: 0.875rem;
+  font-size: 1.075rem;
   font-weight: 500;
   color: var(--text-primary);
 }
@@ -150,7 +150,7 @@
 /* ================= BADGES ================= */
 
 .badge {
-  font-size: 0.65rem;
+  font-size: 0.85rem;
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   font-weight: 600;

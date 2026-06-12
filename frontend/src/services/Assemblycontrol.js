@@ -3,6 +3,7 @@ import axios from "axios";
 // VITE_API_URL defaults to /api (relative) so Vite proxies it to localhost:8000 in dev.
 // Set VITE_API_URL=https://your-server.com/api in frontend/.env for production.
 const API_URL = `${import.meta.env.VITE_API_URL || "/api"}/control/assembly`;
+const TELEMETRY_URL = `${import.meta.env.VITE_API_URL || "/api"}/data/telemetry/assembly`;
 
 class AssemblyControlService {
   /**
@@ -46,6 +47,19 @@ class AssemblyControlService {
   static async getConnectionStatus() {
     const response = await axios.get(`${API_URL}/connection-status`);
     return response.data;
+  }
+
+  /**
+   * Get historical telemetry data for Assembly
+   */
+  static async getHistoricalTelemetry(limit = 100) {
+    try {
+      const response = await axios.get(`${TELEMETRY_URL}?limit=${limit}`);
+      return response.data;
+    } catch (error) {
+      console.error("Failed to fetch historical telemetry:", error);
+      return { success: false, data: [] };
+    }
   }
 }
 

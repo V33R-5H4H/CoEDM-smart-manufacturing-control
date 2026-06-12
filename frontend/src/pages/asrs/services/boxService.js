@@ -1,4 +1,4 @@
-import { boxesAPI } from './api';
+import api, { boxesAPI } from './api';
 
 const BoxService = {
   // Get all boxes
@@ -61,6 +61,17 @@ const BoxService = {
       return response.data;
     } catch (error) {
       console.error(`Error deleting box ${id}:`, error);
+      throw error;
+    }
+  },
+
+  // Return crate to slot physically (without modifying subcompartment contents)
+  returnCrate: async (boxId) => {
+    try {
+      const response = await api.post('/control/asrs/run', { command: `${boxId}S` });
+      return response.data;
+    } catch (error) {
+      console.error(`Error returning crate ${boxId}:`, error);
       throw error;
     }
   }

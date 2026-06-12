@@ -8,6 +8,13 @@ import { toast } from 'react-toastify';
 function AddProductDialog({ open, onClose, onAdd, boxId, subId, items }) {
   const [selectedItem, setSelectedItem] = useState('');
 
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
@@ -57,6 +64,13 @@ function AddProductDialog({ open, onClose, onAdd, boxId, subId, items }) {
 
 // --- Retrieve Product Dialog ---
 function RetrieveProductDialog({ open, onClose, onRetrieve, boxId, subId, itemDetail }) {
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
@@ -73,7 +87,7 @@ function RetrieveProductDialog({ open, onClose, onRetrieve, boxId, subId, itemDe
             <strong>Item:</strong> {itemDetail?.name || 'Unknown'} <br />
             <strong>Quantity:</strong> 1
           </div>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: 16 }}>
+          <p style={{ fontSize: '1.075rem', color: 'var(--text-muted)', marginBottom: 16 }}>
             Click confirm to retrieve this product from storage.
           </p>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -113,6 +127,17 @@ function BoxDetailsModal({ box, onClose, openDeleteModal, operationMode = 'store
 
   // --- All available items for selection ---
   const [allItems, setAllItems] = useState([]);
+
+  // Close on Escape key (only when no sub-dialog is open)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !addDialog.open && !retrieveDialog.open) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, addDialog.open, retrieveDialog.open]);
 
   useEffect(() => {
     let mounted = true;
@@ -272,28 +297,43 @@ function BoxDetailsModal({ box, onClose, openDeleteModal, operationMode = 'store
                   {['a', 'b', 'c', 'd', 'e', 'f'].map((label) => {
                     const sub = subs.find((s) => s.sub_id === label);
                     const hasItem = sub?.item_id;
+                    const isReserved = sub?.status === 'reserved';
                     const itemDetail = hasItem ? items[sub.item_id] : null;
                     
-                    // Determine clickability based on mode
-                    const canStore = operationMode === 'store' && !hasItem;
-                    const canRetrieve = operationMode === 'retrieve' && hasItem;
+                    // Determine clickability based on mode (reserved is never clickable)
+                    const canStore = operationMode === 'store' && !hasItem && !isReserved;
+                    const canRetrieve = operationMode === 'retrieve' && hasItem && !isReserved;
                     const isClickable = canStore || canRetrieve;
                     const isDisabled = !isClickable;
                     
-                    const statusClass = hasItem ? 'occupied' : 'empty';
+                    const statusClass = isReserved ? 'reserved' : hasItem ? 'occupied' : 'empty';
                     
                     // Mode-specific colors - darker shades
-                    const modeColors = operationMode === 'retrieve' 
-                      ? {
+                    let modeColors = {
+                      background: 'var(--bg-800)',
+                      borderColor: 'var(--border)',
+                      boxShadow: 'none'
+                    };
+                    
+                    if (isReserved) {
+                      modeColors = {
+                        background: 'rgba(168, 85, 247, 0.2)', // Purple for reserved/ordering
+                        borderColor: 'rgb(168, 85, 247)',
+                        boxShadow: '0 0 0 1px rgba(168, 85, 247, 0.5)'
+                      };
+                    } else if (operationMode === 'retrieve') {
+                      modeColors = {
                           background: hasItem ? 'rgba(5, 150, 105, 0.2)' : 'var(--bg-800)',
                           borderColor: hasItem ? 'rgb(5, 150, 105)' : 'var(--border)',
                           boxShadow: hasItem ? '0 0 0 1px rgba(5, 150, 105, 0.5)' : 'none'
-                        }
-                      : {
+                      };
+                    } else {
+                      modeColors = {
                           background: !hasItem ? 'rgba(234, 88, 12, 0.2)' : 'var(--bg-800)',
                           borderColor: !hasItem ? 'rgb(234, 88, 12)' : 'var(--border)',
                           boxShadow: !hasItem ? '0 0 0 1px rgba(234, 88, 12, 0.5)' : 'none'
-                        };
+                      };
+                    }
 
                     return (
                       <div
@@ -317,12 +357,14 @@ function BoxDetailsModal({ box, onClose, openDeleteModal, operationMode = 'store
                       >
                         <div className="sub-title">
                           <span>Slot {label.toUpperCase()}</span>
-                          <span className={`badge ${hasItem ? 'badge-success' : 'badge-secondary'}`}>
-                            {hasItem ? 'OCCUPIED' : 'EMPTY'}
+                          <span className={`badge ${isReserved ? 'badge-warning' : hasItem ? 'badge-success' : 'badge-secondary'}`}>
+                            {isReserved ? 'ORDERING' : hasItem ? 'OCCUPIED' : 'EMPTY'}
                           </span>
                         </div>
                         <div className="sub-info">
-                          {hasItem && itemDetail ? (
+                          {isReserved ? (
+                            <span style={{ color: 'var(--warning)', fontWeight: 500 }}>Locked by Ecom Order</span>
+                          ) : hasItem && itemDetail ? (
                             <>
                               <div style={{ fontWeight: 600 }}>{itemDetail.name}</div>
                               <div style={{ fontSize: '0.85em', color: 'var(--text-muted)' }}>

@@ -254,8 +254,8 @@ function SubCompartmentsTab() {
                     <td>{subcom.sub_id}</td>
                     <td>{subcom.item_id ? `${subcom.item_id} - ${itemName}` : 'None'}</td>
                     <td>
-                      <span className={`badge ${subcom.status === 'Occupied' ? 'badge-success' : 'badge-secondary'}`}>
-                        {subcom.status}
+                      <span className={`badge ${subcom.status === 'Occupied' ? 'badge-success' : subcom.status === 'reserved' ? 'badge-warning' : 'badge-secondary'}`}>
+                        {subcom.status === 'reserved' ? 'ORDERING' : subcom.status}
                       </span>
                     </td>
                     <td>
@@ -263,12 +263,14 @@ function SubCompartmentsTab() {
                         <button 
                           className="btn btn-warning btn-sm"
                           onClick={() => handleUpdateStatus(subcom.subcom_place, subcom.status)}
+                          disabled={subcom.status === 'reserved'}
                         >
                           Toggle Status
                         </button>
                         <button 
                           className="btn btn-error btn-sm"
                           onClick={() => openDeleteModal(subcom.subcom_place)}
+                          disabled={subcom.status === 'reserved'}
                         >
                           Delete
                         </button>
