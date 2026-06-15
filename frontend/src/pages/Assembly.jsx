@@ -1052,6 +1052,8 @@ export default function Assembly() {
                   width={1200}
                   height={250}
                   style={{
+                    position: 'absolute',
+                    inset: 0,
                     border: '1px solid var(--border)',
                     borderRadius: '3px',
                     display: 'block',
@@ -1102,6 +1104,8 @@ export default function Assembly() {
                   width={1200}
                   height={250}
                   style={{
+                    position: 'absolute',
+                    inset: 0,
                     border: '1px solid var(--border)',
                     borderRadius: '3px',
                     display: 'block',
