@@ -6,7 +6,6 @@ Registers all routers, CORS, lifecycle events, and the /api/health endpoint.
 
 import asyncio
 import logging
-import logging.config
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,7 +13,7 @@ from fastapi.responses import ORJSONResponse
 from sqlalchemy import text
 
 from backend.config import settings
-from backend.database.db import engine, verify_db
+from backend.database.db import verify_db
 from backend.api.routes.control.asrs import asrs_control
 from backend.api.routes.control.assembly import assembly_control
 from backend.api.routes.control.mirac import mirac_control

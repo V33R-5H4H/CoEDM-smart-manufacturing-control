@@ -12,7 +12,6 @@ import SafetyOverlay from '../components/SafetyOverlay';
 import { deepMerge } from '../utils/deepMerge';
 import { useModal } from '../hooks/useModal';
 import TutorialOverlay from './asrs/components/TutorialOverlay';
-// recharts imports kept for future graph tab (currently commented out in render)
 import {
   LineChart,
   Line,
@@ -23,11 +22,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-
 import { wsCache } from '../utils/wsCache';
-
-// --- Module-level data cache — persists across navigation ---
-let _assemblyDataCache = null;
 
 export default function Assembly() {
   const { resolved: theme } = useTheme();
@@ -256,7 +251,6 @@ export default function Assembly() {
     ws.onclose = () => {
       console.warn('[Assembly] Hydraulic WebSocket closed, reconnecting in 3s...');
       setIsWsConnected(false);
-      // Exponential backoff not needed for a local LAN connection — 3 s flat retry
       reconnectTimerRef.current = setTimeout(() => {
         if (wsRef.current?.readyState !== WebSocket.OPEN) connectWS();
       }, 3000);

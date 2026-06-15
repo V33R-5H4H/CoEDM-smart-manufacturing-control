@@ -1,8 +1,7 @@
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket
 from typing import Set
 import orjson
 import logging
-import asyncio
 
 class LEDWebSocketManager:
     """

@@ -8,18 +8,20 @@ Key design choices:
 - disconnect() always cleans up subscription before dropping the session.
 """
 
-from backend.communication.opcua_driver import OPCUAConnection
-from backend.stations.asrs.shuttle import ShuttleState
-from backend.stations.asrs.led_service import LEDService
-from backend.stations.asrs.led_handler import LEDHandler
-from backend.config import settings
 import logging
-from threading import Lock
-from backend.database.db import SessionLocal
-from sqlalchemy import text
-from backend.core.timezone import ist_now
-from datetime import timedelta
 import orjson
+from datetime import timedelta
+from threading import Lock
+
+from sqlalchemy import text
+
+from backend.communication.opcua_driver import OPCUAConnection
+from backend.config import settings
+from backend.core.timezone import ist_now
+from backend.database.db import SessionLocal
+from backend.stations.asrs.led_handler import LEDHandler
+from backend.stations.asrs.led_service import LEDService
+from backend.stations.asrs.shuttle import ShuttleState
 
 # Grid constants
 LETTERS = ["A", "B", "C", "D", "E"]
@@ -220,21 +222,18 @@ class ASRSController:
 
         # Persist shuttle movement to DB so position survives server restarts
         try:
-            from backend.database.db import SessionLocal as _SessionLocal
-            from sqlalchemy import text as _text
-            from backend.core.timezone import ist_now as _ist_now
-            _session = _SessionLocal()
+            _session = SessionLocal()
             try:
                 snap = self.shuttle.snapshot()
                 _session.execute(
-                    _text("""
+                    text("""
                         INSERT INTO shuttle_movements
                             (machine_id, time, command, to_row, to_col, state, initiated_by)
                         VALUES
                             ('asrs', :time, :command, :to_row, :to_col, :state, 'operator')
                     """),
                     {
-                        "time": _ist_now(),
+                        "time": ist_now(),
                         "command": cmd,
                         "to_row": snap.get("row"),
                         "to_col": snap.get("column"),

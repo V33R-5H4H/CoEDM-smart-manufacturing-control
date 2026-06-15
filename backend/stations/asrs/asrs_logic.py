@@ -1,4 +1,3 @@
-import asyncio
 """
 ASRS Logic Module
 
@@ -14,6 +13,7 @@ This ensures:
 """
 
 from typing import Dict, Any, List, Optional
+import time
 from datetime import datetime
 from sqlalchemy import text
 from backend.database.inventory_db import InventorySessionLocal
@@ -323,7 +323,6 @@ class ASRSLogic:
                 })
 
             # STEP 4: Send PLC commands sequentially for each box
-            import time
             plc_results = []
             plc_status = "OK"
             plc_failed = False

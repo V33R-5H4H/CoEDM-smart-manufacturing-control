@@ -28,13 +28,15 @@ def list_products():
                 si.unit,
                 si.price,
                 si.image_url,
-                COALESCE(SUM(sc.quantity), 0) AS available_qty
+                COALESCE(sc.available_qty, 0) AS available_qty
             FROM storage_items si
-            LEFT JOIN storage_compartments sc
-                ON sc.item_id = si.item_id AND sc.status = 'occupied'
+            LEFT JOIN (
+                SELECT item_id, SUM(quantity) AS available_qty
+                FROM storage_compartments
+                WHERE status = 'occupied'
+                GROUP BY item_id
+            ) sc ON sc.item_id = si.item_id
             WHERE si.item_type = 'finished'
-            GROUP BY si.item_id, si.sku, si.name, si.description,
-                     si.unit, si.price, si.image_url
             ORDER BY si.name
         """)).fetchall()
 
@@ -50,13 +52,15 @@ def get_product(item_id: int):
             SELECT
                 si.item_id, si.sku, si.name, si.description,
                 si.unit, si.price, si.image_url,
-                COALESCE(SUM(sc.quantity), 0) AS available_qty
+                COALESCE(sc.available_qty, 0) AS available_qty
             FROM storage_items si
-            LEFT JOIN storage_compartments sc
-                ON sc.item_id = si.item_id AND sc.status = 'occupied'
+            LEFT JOIN (
+                SELECT item_id, SUM(quantity) AS available_qty
+                FROM storage_compartments
+                WHERE status = 'occupied' AND item_id = :iid
+                GROUP BY item_id
+            ) sc ON sc.item_id = si.item_id
             WHERE si.item_id = :iid AND si.item_type = 'finished'
-            GROUP BY si.item_id, si.sku, si.name, si.description,
-                     si.unit, si.price, si.image_url
         """), {"iid": item_id}).fetchone()
 
         if not row:

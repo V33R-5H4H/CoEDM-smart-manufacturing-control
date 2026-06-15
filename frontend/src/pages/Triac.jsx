@@ -7,32 +7,9 @@ import TriacControlService from "../services/TriacControl";
 import SensorDot from "../components/SensorDot";
 import { deepMerge } from "../utils/deepMerge";
 import { useModal } from "../hooks/useModal";
+import { sensorVal, vibColor } from "../utils/sensorFormatters";
 import "./Assembly.css";
 import "./Triac.css";
-
-/**
- * Helper: render a sensor value or "---" if null/undefined (sensor offline).
- * This ensures the user can distinguish "sensor reads zero" from "sensor disconnected".
- */
-const sensorVal = (value, decimals = 2, fallback = "---") => {
-  if (value === null || value === undefined) return fallback;
-  return Number(value).toFixed(decimals);
-};
-
-/**
- * ISO 10816 vibration severity colour coding (velocity RMS in mm/s):
- * < 2.8  → green  (Zone A — new machinery)
- * 2.8–7.1 → amber  (Zone B — acceptable for long-term)
- * 7.1–18  → orange (Zone C — alarm, short-term only)
- * > 18    → red    (Zone D — danger)
- */
-const vibColor = (value) => {
-  if (value === null || value === undefined) return 'var(--text-muted)';
-  if (value < 2.8) return 'var(--status-ok)';
-  if (value < 7.1) return '#c9922e';
-  if (value < 18)  return '#f97316';
-  return 'var(--status-error)';
-};
 
 /**
  * Helper to convert Float32 to two 16-bit registers (Modbus registers representation)
