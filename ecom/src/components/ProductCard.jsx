@@ -7,12 +7,8 @@ function formatPrice(n) {
   return '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 });
 }
 
-function getProductImage(name) {
-  const lower = name.toLowerCase();
-  if (lower.includes('shaft')) return '/images/shaft.png';
-  if (lower.includes('bearing')) return '/images/bearing.png';
-  if (lower.includes('casing')) return '/images/casing.png';
-  return null; // fallback
+function getProductImage(sku) {
+  return null;
 }
 
 export default function ProductCard({ product, onCartChange, onClick }) {
@@ -20,7 +16,7 @@ export default function ProductCard({ product, onCartChange, onClick }) {
   
   const inStock = product.available_qty > 0;
   const lowStock = product.available_qty > 0 && product.available_qty <= 5;
-  const imageSrc = product.image_url || getProductImage(product.name);
+  const imageSrc = product.image_url;
 
   const handleAdd = (e) => {
     e.stopPropagation();
