@@ -27,7 +27,9 @@ function SubCompartmentsTab() {
     try {
       setLoading(true);
       const response = await SubCompartmentService.getAllSubCompartments();
-      setSubCompartments(Array.isArray(response.data) ? response.data : []);
+      const raw = response.data;
+      const list = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
+      setSubCompartments(list);
     } catch (error) {
       console.error('Error fetching subcompartments:', error);
       toast.error('Failed to fetch subcompartments');

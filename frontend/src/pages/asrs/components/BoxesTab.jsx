@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import BoxDetailsModal from './BoxDetailsModal';
 import BoxService from '../services/boxService';
+import SubCompartmentService from '../services/subCompartmentService';
 import ConfirmModal from './ConfirmModal';
 import ShuttleRail from './ShuttleRail';
 
@@ -65,8 +66,6 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
     setActiveOperationData({ type: 'store', boxId, subId, itemId });
 
     try {
-      const SubCompartmentService = (await import('../services/subCompartmentService')).default;
-
       // 2. Dispatch API request
       await SubCompartmentService.addProduct({
         boxId,
@@ -127,8 +126,6 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
     setActiveOperationData({ type: 'retrieve', boxId, subId, itemId });
 
     try {
-      const SubCompartmentService = (await import('../services/subCompartmentService')).default;
-
       // 2. Dispatch API request
       await SubCompartmentService.retrieveProduct({
         boxId,
@@ -189,8 +186,6 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
     setSelectedBox(null);
 
     try {
-      const BoxService = (await import('../services/boxService')).default;
-
       // 2. Dispatch API request
       await BoxService.returnCrate(boxId);
 
@@ -290,22 +285,28 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
     console.log("fetchBoxes called");
     try {
       setLoading(true);
-      const [boxResponse, subResponse] = await Promise.all([
-        BoxService.getAllBoxes(),
-        import('../services/subCompartmentService').then(m => m.default.getAllSubCompartments())
+      const apiBase = import.meta.env.VITE_API_URL || '/api';
+
+      const [boxRes, subRes] = await Promise.all([
+        fetch(`${apiBase}/asrs-data/boxes`),
+        fetch(`${apiBase}/asrs-data/subcompartments`)
       ]);
 
-      const boxData = boxResponse.data?.data || boxResponse.data || boxResponse;
-      setBoxes(boxData);
+      if (!boxRes.ok) throw new Error(`Boxes HTTP ${boxRes.status}`);
+      if (!subRes.ok) throw new Error(`Subcompartments HTTP ${subRes.status}`);
 
-      const subData = subResponse.data?.data || subResponse.data || subResponse;
+      const boxJson = await boxRes.json();
+      const subJson = await subRes.json();
+
+      const boxData = Array.isArray(boxJson) ? boxJson : (boxJson?.data ?? []);
+      const subData = Array.isArray(subJson) ? subJson : (subJson?.data ?? []);
+
+      setBoxes(boxData);
       setSubcompartments(subData);
     } catch (error) {
-      if (error.response && error.response.status === 503) {
-        toast.error('PLC/OPC UA server is offline or unreachable. Please check the connection.');
-      } else {
-        toast.error('Failed to fetch boxes');
-      }
+      console.error('fetchBoxes error:', error);
+      const msg = error?.message || String(error);
+      toast.error('fetchBoxes failed: ' + msg);
     } finally {
       setLoading(false);
     }

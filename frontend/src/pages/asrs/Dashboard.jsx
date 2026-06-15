@@ -412,7 +412,7 @@ function Dashboard() {
           background: 'var(--bg-secondary)',
         }}>
           <OrderFeed
-            wsUrl={`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:8000/api/control/asrs/ws/led-status`}
+            wsUrl={`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/control/asrs/ws/led-status`}
             onOrdersChange={setEcomOrders}
           />
         </div>
