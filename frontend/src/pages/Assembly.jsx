@@ -71,7 +71,7 @@ export default function Assembly() {
       targetId: 'asm-controls',
       title: 'Press Controls',
       content: 'Use these buttons to send commands to the PLC. "Bearing ON" starts a bearing press cycle; "Shaft ON" starts a shaft cycle. The Vice toggle opens or closes the fixture clamp that holds the workpiece. All commands are disabled during a safety fault.',
-      placement: 'top',
+      placement: 'right',
     },
     {
       targetId: 'asm-plots-tab',
@@ -116,13 +116,15 @@ export default function Assembly() {
       const response = await AssemblyControlService.getHistoricalTelemetry(250);
       if (response && response.success && response.data && response.data.length > 0) {
         // The data is returned newest first (DESC), so reverse it for the plot (oldest to newest)
-        const historyData = response.data.reverse().map((row, index) => {
+        const now = Date.now();
+        const historyData = response.data.reverse().map((row, index, arr) => {
           // Normalize the raw displacement to match the frontend calculation
           const rawDisp = row.displacement_mm !== null ? row.displacement_mm : 43;
           const dispFloat = Math.max(0, rawDisp - 43);
           return {
             time: index,
-            displacement: Math.round(dispFloat)
+            displacement: Math.round(dispFloat),
+            ts: now - (arr.length - index) * 100 // Approximate timestamp so trimming works
           };
         });
 
@@ -220,9 +222,11 @@ export default function Assembly() {
       };
 
       // Continuously collect data points for plotting
+      const rawDisp = data.position?.displacement_mm !== undefined ? data.position.displacement_mm : 43;
+      const dispFloat = Math.max(0, rawDisp - 43);
       const newPoint = {
         time: plotTimestampRef.current,
-        displacement: data.position?.displacement_mm || 0,
+        displacement: Math.round(dispFloat),
         bearing: data.assembly?.bearing ? 1 : 0,
         shaft: data.assembly?.shaft ? 1 : 0,
       };
@@ -239,6 +243,14 @@ export default function Assembly() {
 
       if (now - lastUpdateRef.current > 100) {
         setPlotData([...plotDataPointsRef.current]);
+        
+        // Also update the Raw Signal canvas buffer so it records time continuously
+        setRawDataPoints(points => [...points.slice(-99), {
+          value: newPoint.displacement,
+          workpiece: data.assembly?.bearing ? 'bearing' : 'shaft',
+          timestamp: now60
+        }]);
+        
         lastUpdateRef.current = now;
       }
     };
@@ -342,17 +354,6 @@ export default function Assembly() {
       }
     };
   }, []);
-
-  // Track raw data points for debugging
-  useEffect(() => {
-    if (!plantData?.position?.displacement_mm) return;
-    const workpiece = plantData?.assembly?.bearing ? 'bearing' : 'shaft';
-    setRawDataPoints(points => [...points.slice(-99), {
-      value: Math.max(0, plantData.position.displacement_mm - 43),
-      workpiece,
-      timestamp: Date.now()
-    }]);
-  }, [plantData?.position?.displacement_mm, plantData?.assembly?.bearing]);
 
   // Real-time canvas plotting for raw data
   useEffect(() => {
@@ -677,7 +678,7 @@ export default function Assembly() {
           </div>
 
           {/* Action controls panel moved to sidebar */}
-          <div className="asm-side__section" style={{ marginTop: '24px' }}>
+          <div id="asm-controls" className="asm-side__section" style={{ marginTop: '24px' }}>
             <h3>Machine Controls</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
               <button
@@ -1163,7 +1164,7 @@ export default function Assembly() {
           <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             {plotData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={plotData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                <LineChart data={plotData} margin={{ top: 5, right: 30, left: 0, bottom: 25 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                   <XAxis
                     dataKey="time"
