@@ -52,7 +52,7 @@ jobs:
         # Start a temporary Postgres container mapping to port 5433 to avoid conflicts with your production DB on 5432
         docker run --name pg_test_db \
           -e POSTGRES_USER=coedm \
-          -e POSTGRES_PASSWORD=coedm_password \
+          -e POSTGRES_PASSWORD=test_password \
           -e POSTGRES_DB=coedm_test \
           -p 5433:5432 \
           -d postgres:15
@@ -70,7 +70,7 @@ jobs:
       working-directory: ./backend
       env:
         # Override the database URL so tests hit the temporary test DB on port 5433
-        DATABASE_URL: postgresql://coedm:coedm_password@localhost:5433/coedm_test
+        DATABASE_URL: postgresql://coedm:test_password@localhost:5433/coedm_test
       run: |
         # Run pytest. If no tests are found, exit 0 (success) instead of failing.
         pytest tests/ || echo "No tests failed (or no tests found)."
