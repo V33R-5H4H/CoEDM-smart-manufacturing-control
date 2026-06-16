@@ -21,6 +21,28 @@ class AmrControlService {
       return { success: false, message: message };
     }
   }
+
+  async connectAMR() {
+    try {
+      const response = await axios.post(`${API_URL}/connect`);
+      return response.data;
+    } catch (error) {
+      console.error("AMR Connect Error:", error);
+      const message = error.response?.data?.detail || "Failed to connect AMR";
+      return { success: false, message: message };
+    }
+  }
+
+  async disconnectAMR() {
+    try {
+      const response = await axios.post(`${API_URL}/disconnect`);
+      return response.data;
+    } catch (error) {
+      console.error("AMR Disconnect Error:", error);
+      const message = error.response?.data?.detail || "Failed to disconnect AMR";
+      return { success: false, message: message };
+    }
+  }
 }
 
 export default new AmrControlService();

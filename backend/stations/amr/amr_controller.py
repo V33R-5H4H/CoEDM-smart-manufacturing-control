@@ -15,6 +15,9 @@ from backend.config import settings
 
 logger = logging.getLogger(__name__)
 
+# To add more stations in the future, simply append them to this list
+VALID_STATIONS = ["HOME", "ASRS", "MIRAC", "TRIAC", "ASSEMBLY", "TESTING", "INSPECTION"]
+
 class AmrConnectionManager:
     """Manages raw TCP socket connection to AMR with retry logic"""
     
@@ -104,7 +107,12 @@ amr_manager = AmrConnectionManager()
 
 async def dispatch_amr_to_station(station: str) -> tuple[bool, str]:
     """Helper function to dispatch using the global manager"""
-    if station not in ["A", "B", "C"]:
-        return False, "Invalid station. Must be A, B, or C."
+    if station not in VALID_STATIONS:
+        return False, f"Invalid station. Must be one of: {', '.join(VALID_STATIONS)}"
         
-    return await amr_manager.send_dispatch_command(station)
+    from backend.stations.amr.amr_station import amr_station
+    success = await amr_station.send_command(station)
+    if success:
+        return True, f"AMR dispatched to station {station} successfully."
+    else:
+        return False, "Failed to send dispatch command. Is the AMR connected?"

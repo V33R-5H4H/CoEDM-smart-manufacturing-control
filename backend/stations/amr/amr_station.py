@@ -60,24 +60,49 @@ class AMRStation:
             # Check connection every 5 seconds
             await asyncio.sleep(5.0)
 
-    def _handle_message(self, msg: str):
+    async def _handle_message(self, msg: str):
         """Callback when the TCP client receives a message."""
         self.state["last_message"] = msg
         self.state["last_seen"] = datetime.now().isoformat()
         
-        # NOTE: Add custom parsing logic here based on the exact AMR protocol format
-        # Example: 
-        # if msg.startswith("BATT:"): 
-        #     self.state["battery"] = int(msg.split(":")[1])
+        # Parse based on actual AMR protocol format
+        if msg.startswith("POSE,"):
+            try:
+                parts = msg.split(",")
+                self.state["position"] = {
+                    "x": float(parts[1]),
+                    "y": float(parts[2])
+                }
+            except Exception as e:
+                logger.error(f"Error parsing POSE message {msg}: {e}")
+        elif msg == "ACCEPTED":
+            self.state["status"] = "navigating"
+            self.state["error"] = None
+        elif msg == "SUCCESS":
+            self.state["status"] = "idle"
+            self.state["error"] = None
+        elif msg == "REJECTED":
+            self.state["status"] = "idle"
+            self.state["error"] = "Goal rejected by Nav2"
+        elif msg.startswith("ERROR:"):
+            self.state["status"] = "error"
+            self.state["error"] = msg.split(":", 1)[1] if ":" in msg else msg
+        elif msg == "BUSY":
+            self.state["status"] = "busy"
+            self.state["error"] = "AMR is busy with another goal"
+
+        from backend.websockets.amr_broadcaster import amr_ws_manager
+        await amr_ws_manager.broadcast_state(self.get_state())
         
     def get_state(self) -> Dict[str, Any]:
         """Return the current known state of the AMR."""
         # Refresh the status field based on actual socket state
         if self.client.is_connected:
-            self.state["status"] = "connected"
+            # Keep navigating/busy state if it's already set
+            if self.state["status"] not in ["navigating", "busy", "idle"]:
+                self.state["status"] = "connected"
         else:
-            if self.state["status"] == "connected":
-                self.state["status"] = "disconnected"
+            self.state["status"] = "disconnected"
                 
         return self.state
 
@@ -85,6 +110,9 @@ class AMRStation:
         """Send a command to the AMR."""
         if not self.client.is_connected:
             return False
+        # Append \n if not already present
+        if not cmd.endswith("\n"):
+            cmd += "\n"
         return await self.client.send_command(cmd)
 
 # Global singleton instance

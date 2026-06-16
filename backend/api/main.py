@@ -152,9 +152,8 @@ async def startup_event():
     asrs_controller.led_service.register_safety_callback(_safety_callback)
     logger.info("[Startup] ✓ Safety broadcast callback registered")
 
-    # 6. Start AMR Station
-    await amr_station.start()
-    logger.info("[Startup] ✓ AMR station connection initiated")
+    # 6. AMR Station start removed from startup to connect only when requested from UI
+    logger.info("[Startup] AMR station manual connect mode active")
 
     logger.info(
         "[Startup] Application ready  host=%s  port=%s  debug=%s  log=%s",
