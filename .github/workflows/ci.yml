@@ -23,14 +23,14 @@ jobs:
     - name: Build & Lint Frontend
       working-directory: ./frontend
       run: |
-        npm ci
+        npm install
         npm run lint || true
         npm run build || echo "Linting warnings found, but continuing..."
 
-    - name: Build & Lint E-commerce
+    - name: Build & Lint Ecom
       working-directory: ./ecom
       run: |
-        npm ci
+        npm install
         npm run lint || true
         npm run build || echo "Linting warnings found, but continuing..."
 
