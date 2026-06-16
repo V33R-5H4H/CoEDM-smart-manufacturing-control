@@ -194,7 +194,7 @@ export default function App() {
               fontFamily: 'var(--font-mono)',
               fontSize: '12px',
               color: 'var(--text-muted)'
-            }}>v4.2.0-STABLE</span>
+            }}>v4.3.0-CI-DEPLOYED</span>
           </div>
         </div>
 
