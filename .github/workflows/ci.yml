@@ -87,5 +87,7 @@ jobs:
       run: |
         # NOTE: For this to work without hanging, the user running the GitHub Action 
         # must have passwordless Docker permissions: `sudo usermod -aG docker $USER`
+        # Copy the hidden .env.docker file from the original server folder into this GitHub Actions workspace
+        cp ~/coedm-prod/.env.docker . || echo "Warning: .env.docker not found in ~/coedm-prod"
         docker compose build --no-cache
         docker compose up -d --force-recreate
