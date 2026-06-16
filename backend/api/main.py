@@ -18,6 +18,7 @@ from backend.api.routes.control.asrs import asrs_control
 from backend.api.routes.control.assembly import assembly_control
 from backend.api.routes.control.mirac import mirac_control
 from backend.api.routes.control.triac import triac_control
+from backend.api.routes.control.amr.amr_router import router as amr_router
 from backend.api.routes.control.cobot import router as cobot_router
 from backend.api.routes.control.asrs.shuttle import router as shuttle_router
 from backend.api.routes.data.asrs.asrs_data import router as asrs_data_router
@@ -26,6 +27,8 @@ from backend.api.routes.data.users import router as users_router
 from backend.api.routes.data.events import router as events_router
 from backend.api.routes.data.telemetry import router as telemetry_router
 from backend.api.routes.ecom import ecom_router
+from backend.api.routes import amr_routes
+
 from backend.stations.asrs.asrs_singleton import asrs_controller
 from backend.websockets.assembly_broadcaster import hydraulic_broadcaster
 from backend.websockets.mirac_broadcaster import mirac_broadcaster
@@ -33,6 +36,7 @@ from backend.websockets.asrs_broadcaster import led_ws_manager
 from backend.stations.assembly.hydraulic_station import opcua_connection as hydraulic_opcua_connection
 from backend.stations.mirac.cnc_mirac_station import opcua_connection as mirac_opcua_connection
 from backend.stations.triac import triac_opcua_connection
+from backend.stations.amr.amr_station import amr_station
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -75,6 +79,7 @@ app.include_router(asrs_control.router)
 app.include_router(assembly_control.router)
 app.include_router(mirac_control.router)
 app.include_router(triac_control.router)
+app.include_router(amr_router)
 app.include_router(cobot_router)
 app.include_router(shuttle_router)
 app.include_router(asrs_data_router)
@@ -83,6 +88,7 @@ app.include_router(users_router)
 app.include_router(events_router)
 app.include_router(telemetry_router)
 app.include_router(ecom_router)
+app.include_router(amr_routes.router)
 
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -94,6 +100,7 @@ async def startup_event():
     1. Verify PostgreSQL connectivity.
     2. Inject event loop into LED service for async callbacks.
     3. Register LED and shuttle state-change → WebSocket broadcast callbacks.
+    4. Start AMR persistent connection.
     """
     loop = asyncio.get_event_loop()
 
@@ -144,6 +151,9 @@ async def startup_event():
     asrs_controller.led_service.register_safety_callback(_safety_callback)
     logger.info("[Startup] ✓ Safety broadcast callback registered")
 
+    # 6. AMR Station start removed from startup to connect only when requested from UI
+    logger.info("[Startup] AMR station manual connect mode active")
+
     logger.info(
         "[Startup] Application ready  host=%s  port=%s  debug=%s  log=%s",
         settings.API_HOST, settings.API_PORT, settings.DEBUG, settings.LOG_LEVEL,
@@ -152,7 +162,7 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Gracefully disconnect all OPC-UA sessions on shutdown."""
+    """Gracefully disconnect all OPC-UA and TCP sessions on shutdown."""
     logger.info("[Shutdown] Cleaning up connections...")
 
     for name, conn in [
@@ -169,6 +179,13 @@ async def shutdown_event():
             logger.info("[Shutdown] ✓ %s disconnected", name)
         except Exception as exc:
             logger.error("[Shutdown] %s disconnect error: %s", name, exc)
+            
+    # Disconnect AMR
+    try:
+        await amr_station.stop()
+        logger.info("[Shutdown] ✓ AMR disconnected")
+    except Exception as exc:
+        logger.error("[Shutdown] AMR disconnect error: %s", exc)
 
 
 # ── Health endpoint ───────────────────────────────────────────────────────────
@@ -184,6 +201,7 @@ async def health_check():
     - Hydraulic OPC-UA connection
     - MIRAC OPC-UA connection
     - TRIAC OPC-UA connection
+    - AMR TCP connection
     """
     db = verify_db()
 
@@ -211,6 +229,13 @@ async def health_check():
                 "connected": triac_opcua_connection.connected,
                 "url": settings.TRIAC_OPCUA_URL,
             },
+        },
+        "tcp": {
+            "amr": {
+                "connected": amr_station.client.is_connected,
+                "host": settings.AMR_HOST,
+                "port": settings.AMR_PORT,
+            }
         },
         "modbus": {
             "vibit": {
