@@ -7,7 +7,6 @@ venv/
 *.egg-info/
 dist/
 build/
-.kiro
 
 # Environment secrets — NEVER commit
 .env
@@ -28,6 +27,8 @@ dashboard/coedm-dashboard/.env
 # IDE
 .vscode/
 .idea/
+.kiro/
+.trae/
 *.swp
 *.swo
 
@@ -45,25 +46,18 @@ coverage.xml
 *.log
 logs/
 
-# Extras
+# Project-specific
 reference/
-# start.py / stop.py runtime
-.pids
-
-#Stitch Designs
 stitch_designs/
-
-*.zip
-
-*.exe
-
+.pids
 /backend/scratch/
-/.kiro/
-/.kiro/
 /scratch/
 /scripts/
+/actions-runner/
 
+
+# Misc
+*.zip
+*.exe
 /light_mode.md
 /todo.txt
-/actions-runner/
-.trae/
