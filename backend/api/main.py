@@ -19,6 +19,7 @@ from backend.api.routes.control.asrs import asrs_control
 from backend.api.routes.control.assembly import assembly_control
 from backend.api.routes.control.mirac import mirac_control
 from backend.api.routes.control.triac import triac_control
+from backend.api.routes.control.amr.amr_router import router as amr_router
 from backend.api.routes.control.cobot import router as cobot_router
 from backend.api.routes.control.asrs.shuttle import router as shuttle_router
 from backend.api.routes.data.asrs.asrs_data import router as asrs_data_router
@@ -79,6 +80,7 @@ app.include_router(asrs_control.router)
 app.include_router(assembly_control.router)
 app.include_router(mirac_control.router)
 app.include_router(triac_control.router)
+app.include_router(amr_router)
 app.include_router(cobot_router)
 app.include_router(shuttle_router)
 app.include_router(asrs_data_router)
