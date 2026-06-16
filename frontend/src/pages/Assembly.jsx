@@ -99,6 +99,7 @@ export default function Assembly() {
   const smoothedCanvasRef = useRef(null);
   const lastUpdateRef = useRef(0);
   const lastRenderUpdateRef = useRef(0);
+  const smoothedZeroesRef = useRef(0);
 
   // Track previous safety state for edge-triggered toast alerts
   const prevSafetyRef = useRef({ curtain: false, buzzer: false });
@@ -224,34 +225,45 @@ export default function Assembly() {
       // Continuously collect data points for plotting
       const rawDisp = data.position?.displacement_mm !== undefined ? data.position.displacement_mm : 43;
       const dispFloat = Math.max(0, rawDisp - 43);
-      const newPoint = {
-        time: plotTimestampRef.current,
-        displacement: Math.round(dispFloat),
-        bearing: data.assembly?.bearing ? 1 : 0,
-        shaft: data.assembly?.shaft ? 1 : 0,
-      };
-      // Keep only the last 60 seconds of data
-      const now60 = Date.now();
-      plotDataPointsRef.current.push({ ...newPoint, ts: now60 });
-      // Trim points older than 60s
-      while (plotDataPointsRef.current.length > 0 && now60 - plotDataPointsRef.current[0].ts > 60000) {
-        plotDataPointsRef.current.shift();
-      }
-      // Re-index time for Recharts
-      plotDataPointsRef.current.forEach((point, index) => { point.time = index; });
-      plotTimestampRef.current = plotDataPointsRef.current.length;
 
-      if (now - lastUpdateRef.current > 100) {
-        setPlotData([...plotDataPointsRef.current]);
+      // Determine if machine is idle to freeze plots
+      if (!wsRef.current._consecutiveZeroes) wsRef.current._consecutiveZeroes = 0;
+      if (dispFloat < 0.5) {
+        wsRef.current._consecutiveZeroes++;
+      } else {
+        wsRef.current._consecutiveZeroes = 0;
+      }
+
+      // Only record data if machine is active or just recently became idle (pad with 10 zeroes)
+      if (wsRef.current._consecutiveZeroes < 10) {
+        const newPoint = {
+          time: plotTimestampRef.current,
+          displacement: Math.round(dispFloat),
+          bearing: data.assembly?.bearing ? 1 : 0,
+          shaft: data.assembly?.shaft ? 1 : 0,
+        };
         
-        // Also update the Raw Signal canvas buffer so it records time continuously
-        setRawDataPoints(points => [...points.slice(-99), {
-          value: newPoint.displacement,
-          workpiece: data.assembly?.bearing ? 'bearing' : 'shaft',
-          timestamp: now60
-        }]);
+        // Keep exactly 250 points instead of using timestamps, so frozen charts don't delete data
+        plotDataPointsRef.current.push(newPoint);
+        if (plotDataPointsRef.current.length > 250) {
+          plotDataPointsRef.current.shift();
+        }
         
-        lastUpdateRef.current = now;
+        // Re-index time for Recharts
+        plotDataPointsRef.current.forEach((point, index) => { point.time = index; });
+        plotTimestampRef.current = plotDataPointsRef.current.length;
+
+        if (now - lastUpdateRef.current > 100) {
+          setPlotData([...plotDataPointsRef.current]);
+          
+          // Also update the Raw Signal canvas buffer
+          setRawDataPoints(points => [...points.slice(-99), {
+            value: newPoint.displacement,
+            workpiece: data.assembly?.bearing ? 'bearing' : 'shaft'
+          }]);
+          
+          lastUpdateRef.current = now;
+        }
       }
     };
 
@@ -331,13 +343,20 @@ export default function Assembly() {
 
       setSmoothedPosition(newVal);
 
+      // Determine if smoothed data is idle to freeze plot
+      const currentDisp = Math.max(0, newVal - 43);
+      if (currentDisp < 0.5 && Math.abs(nextV) < 0.5) {
+        smoothedZeroesRef.current++;
+      } else {
+        smoothedZeroesRef.current = 0;
+      }
+
       // Throttled debug points collection for raw/smoothed canvas graphs
-      if (now - lastRenderUpdateRef.current > 60) {
+      if (now - lastRenderUpdateRef.current > 60 && smoothedZeroesRef.current < 20) {
         const workpiece = isBearingRef.current ? 'bearing' : 'shaft';
         setSmoothedDataPoints(points => [...points.slice(-99), {
-          value: Math.max(0, newVal - 43),
-          workpiece,
-          timestamp: Date.now()
+          value: currentDisp,
+          workpiece
         }]);
         lastRenderUpdateRef.current = now;
       }
@@ -396,11 +415,7 @@ export default function Assembly() {
     }
     ctx.setLineDash([]);
 
-    // Determine time range and dynamic max limits
-    const timeRange = rawDataPoints[rawDataPoints.length - 1].timestamp - rawDataPoints[0].timestamp;
-    const startTime = rawDataPoints[0].timestamp;
-    
-    // Add 10% headroom to prevent going outside the box
+    // Determine dynamic max limits
     const theoreticalMax = rawDataPoints[rawDataPoints.length - 1].workpiece === 'bearing' ? 185 : 135;
     const highestVal = Math.max(...rawDataPoints.map(p => p.value));
     const maxVal = Math.max(theoreticalMax, highestVal) * 1.1;
@@ -413,8 +428,9 @@ export default function Assembly() {
     ctx.strokeStyle = rawDataPoints[rawDataPoints.length - 1].workpiece === 'bearing' ? '#ff6b6b' : '#4dabf7';
     ctx.lineWidth = 2 * dpr;
     ctx.beginPath();
+    const len = rawDataPoints.length;
     rawDataPoints.forEach((point, idx) => {
-      const x = timeRange > 0 ? ((point.timestamp - startTime) / timeRange) * width : 0;
+      const x = len > 1 ? (idx / (len - 1)) * width : 0;
       const y = paddingY + drawHeight - (point.value / maxVal) * drawHeight;
       if (idx === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
@@ -464,11 +480,7 @@ export default function Assembly() {
     }
     ctx.setLineDash([]);
 
-    // Determine time range and dynamic max limits
-    const timeRange = smoothedDataPoints[smoothedDataPoints.length - 1].timestamp - smoothedDataPoints[0].timestamp;
-    const startTime = smoothedDataPoints[0].timestamp;
-    
-    // Add 10% headroom to prevent going outside the box
+    // Determine dynamic max limits
     const theoreticalMax = smoothedDataPoints[smoothedDataPoints.length - 1].workpiece === 'bearing' ? 185 : 135;
     const highestVal = Math.max(...smoothedDataPoints.map(p => p.value));
     const maxVal = Math.max(theoreticalMax, highestVal) * 1.1;
@@ -481,8 +493,9 @@ export default function Assembly() {
     ctx.strokeStyle = smoothedDataPoints[smoothedDataPoints.length - 1].workpiece === 'bearing' ? '#ff6b6b' : '#4dabf7';
     ctx.lineWidth = 2 * dpr;
     ctx.beginPath();
+    const len = smoothedDataPoints.length;
     smoothedDataPoints.forEach((point, idx) => {
-      const x = timeRange > 0 ? ((point.timestamp - startTime) / timeRange) * width : 0;
+      const x = len > 1 ? (idx / (len - 1)) * width : 0;
       const y = paddingY + drawHeight - (point.value / maxVal) * drawHeight;
       if (idx === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
