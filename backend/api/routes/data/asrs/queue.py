@@ -155,9 +155,6 @@ async def clear_queue():
             restored_count += 1
             
         if not queue_ids:
-            session.execute(
-                text("UPDATE orders SET order_status = 'cancelled' WHERE order_status IN ('pending', 'processing', 'shipped')")
-            )
             session.commit()
             return {"success": True, "message": "Queue is already empty and no stock to restore"}
 
@@ -167,9 +164,19 @@ async def clear_queue():
             {"qids": list(queue_ids)}
         )
 
-        # 4. Cancel associated e-commerce orders
+        # 4. Cancel only the e-commerce orders that are directly linked to the cleared queue entries,
+        #    and only if they are still pending or processing. Never touch shipped/delivered orders.
         session.execute(
-            text("UPDATE orders SET order_status = 'cancelled' WHERE order_status IN ('pending', 'processing', 'shipped')")
+            text("""
+                UPDATE orders
+                SET order_status = 'cancelled'
+                WHERE order_id IN (
+                    SELECT DISTINCT order_id FROM retrieval_queue
+                    WHERE queue_id = ANY(:qids) AND order_id IS NOT NULL
+                )
+                AND order_status IN ('pending', 'processing')
+            """),
+            {"qids": list(queue_ids)}
         )
 
         session.commit()
