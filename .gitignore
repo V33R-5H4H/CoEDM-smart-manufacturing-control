@@ -54,6 +54,8 @@ stitch_designs/
 /scratch/
 /scripts/
 /actions-runner/
+/initdb/
+integrated_Schema_v2.sql
 
 
 # Misc
