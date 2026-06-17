@@ -689,7 +689,7 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
           return (
             <div
               key={label}
-              title={`Sub ${label.toUpperCase()}: ${isOccupied ? 'Occupied' : 'Empty'}${targetedOrder ? ` (Order #${targetedOrder.sub_id})` : ''}`}
+              title={`Sub ${label.toUpperCase()}: ${isOccupied ? 'Occupied' : 'Empty'}${targetedOrder ? ` (Order #${targetedOrder.order_id})` : ''}`}
               style={{
                 borderRadius: '1px',
                 background: targetedOrder ? 'var(--status-warn)' : cellColor,
@@ -703,13 +703,16 @@ function BoxCard({ box, boxSubs = [], active, rawLED, onClick, isSourceBlinking,
             >
               {targetedOrder && (
                 <span style={{
-                  fontSize: '11px',
+                  fontSize: '9px',
                   fontFamily: 'var(--font-mono)',
                   color: '#fff',
                   fontWeight: 800,
-                  textShadow: '0px 1px 2px rgba(0,0,0,0.8)'
+                  textShadow: '0px 1px 2px rgba(0,0,0,0.8)',
+                  lineHeight: 1,
+                  textAlign: 'center',
+                  wordBreak: 'break-all'
                 }}>
-                  {targetedOrder.sub_id}
+                  #{String(targetedOrder.order_id).slice(0, 6)}
                 </span>
               )}
             </div>
