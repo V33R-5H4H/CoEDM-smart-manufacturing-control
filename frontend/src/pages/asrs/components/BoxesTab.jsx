@@ -233,6 +233,116 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
     }
   };
 
+  const handleEmptyStoreOperation = async (boxId) => {
+    setShowDetails(false);
+    setSelectedBox(null);
+    setActiveOperationData({ type: 'store', boxId, subId: 'a', itemId: 1 });
+
+    try {
+      const API_BASE = `${import.meta.env.VITE_API_URL || "/api"}/control/asrs`;
+      const response = await fetch(`${API_BASE}/run`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ command: `${boxId}S` })
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.detail || "Failed to execute machine store command");
+      }
+
+      toast.info('Empty Store operation initiated. Shuttle dispatching...', { autoClose: false, toastId: 'store-wait' });
+
+      const startTime = Date.now();
+      const timeoutMs = 90000;
+      const checkIntervalMs = 500;
+      let hasTurnedOn = false;
+
+      const intervalId = setInterval(() => {
+        const isLedOn = ledStatesRef.current[boxId];
+        if (isLedOn) {
+          hasTurnedOn = true;
+        }
+        const elapsed = Date.now() - startTime;
+        if (hasTurnedOn && !isLedOn) {
+          clearInterval(intervalId);
+          toast.dismiss('store-wait');
+          toast.success('Machine store completed successfully');
+          fetchBoxes();
+        }
+        if (elapsed > timeoutMs) {
+          clearInterval(intervalId);
+          toast.dismiss('store-wait');
+          toast.error('Timeout: LED did not confirm completion');
+          setActiveOperationData(null);
+        }
+      }, checkIntervalMs);
+
+    } catch (error) {
+      console.error('Empty Store operation error:', error);
+      toast.dismiss('store-wait');
+      toast.error(error.message || 'Failed to execute store command');
+      setActiveOperationData(null);
+    }
+  };
+
+  const handleEmptyRetrieveOperation = async (boxId) => {
+    setShowDetails(false);
+    setSelectedBox(null);
+    setActiveOperationData({ type: 'retrieve', boxId, subId: 'a', itemId: 1 });
+
+    try {
+      const API_BASE = `${import.meta.env.VITE_API_URL || "/api"}/control/asrs`;
+      const response = await fetch(`${API_BASE}/run`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ command: boxId })
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.detail || "Failed to execute machine retrieve command");
+      }
+
+      toast.info('Empty Retrieve operation initiated. Shuttle dispatching...', { autoClose: false, toastId: 'retrieve-wait' });
+
+      const startTime = Date.now();
+      const timeoutMs = 90000;
+      const checkIntervalMs = 500;
+      let hasTurnedOn = false;
+
+      const intervalId = setInterval(() => {
+        const isLedOn = ledStatesRef.current[boxId];
+        if (isLedOn) {
+          hasTurnedOn = true;
+        }
+        const elapsed = Date.now() - startTime;
+        if (hasTurnedOn && !isLedOn) {
+          clearInterval(intervalId);
+          toast.dismiss('retrieve-wait');
+          toast.success('Machine retrieve completed successfully');
+          fetchBoxes();
+        }
+        if (elapsed > timeoutMs) {
+          clearInterval(intervalId);
+          toast.dismiss('retrieve-wait');
+          toast.error('Timeout: LED did not confirm completion');
+          setActiveOperationData(null);
+        }
+      }, checkIntervalMs);
+
+    } catch (error) {
+      console.error('Empty Retrieve operation error:', error);
+      toast.dismiss('retrieve-wait');
+      toast.error(error.message || 'Failed to execute retrieve command');
+      setActiveOperationData(null);
+    }
+  };
+
   const handleHomeShuttle = async () => {
     if (safetyCurtainTriggered) {
       toast.warning("Homing operation locked due to safety curtain alert.");
@@ -384,6 +494,8 @@ function BoxesTab({ isServerConnected = false, ledStates = {}, shuttleState = nu
           onRefresh={fetchBoxes}
           onStore={handleStoreOperation}
           onRetrieve={handleRetrieveOperation}
+          onEmptyStore={handleEmptyStoreOperation}
+          onEmptyRetrieve={handleEmptyRetrieveOperation}
           onReturnCrate={handleReturnCrateOperation}
         />
       )}
@@ -729,7 +841,7 @@ function RackView({
       <div style={{
         flex: 1,
         padding: '16px',
-        paddingBottom: selectedBoxId ? '370px' : '16px',
+        paddingBottom: selectedBoxId ? '340px' : '16px',
         overflow: 'auto',
         background: 'var(--bg-secondary)',
         backgroundImage: 'radial-gradient(var(--bg-hover) 1px, transparent 0)',
@@ -895,7 +1007,7 @@ function RackView({
   );
 }
 
-function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrieve, onReturnCrate }) {
+function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrieve, onEmptyStore, onEmptyRetrieve, onReturnCrate }) {
   const [selectedSubId, setSelectedSubId] = useState(null);
   const [subCompartments, setSubCompartments] = useState([]);
   const [items, setItems] = useState([]);
@@ -1004,10 +1116,10 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
   return (
     <div id="asrs-operations-panel" style={{
       position: 'absolute',
-      bottom: 0,
+      bottom: '8px',
       left: 0,
       right: 0,
-      height: '350px',
+      height: '320px',
       background: 'var(--bg-elevated)',
       borderTop: '1px solid var(--border)',
       boxShadow: '0 -8px 24px rgba(0,0,0,0.4)',
@@ -1043,25 +1155,79 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
           </span>
         </div>
         
-        <button
-          onClick={onClose}
-          style={{
-            color: 'inherit',
-            background: 'rgba(0,0,0,0.08)',
-            border: 'none',
-            padding: '4px',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'background 150ms ease-out'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.15)'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.08)'}
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: '21px' }}>close</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+            Master Control:
+          </span>
+          <button
+            onClick={async () => {
+              setLoading(true);
+              await onEmptyStore(box.box_id);
+              setLoading(false);
+            }}
+            disabled={loading}
+            style={{
+              background: 'rgba(255,255,255,0.15)',
+              border: '1px solid rgba(255,255,255,0.3)',
+              color: 'inherit',
+              padding: '4px 8px',
+              borderRadius: '3px',
+              fontSize: '11px',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'background 150ms ease-out'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+          >
+            Empty Store
+          </button>
+          <button
+            onClick={async () => {
+              setLoading(true);
+              await onEmptyRetrieve(box.box_id);
+              setLoading(false);
+            }}
+            disabled={loading}
+            style={{
+              background: 'rgba(255,255,255,0.15)',
+              border: '1px solid rgba(255,255,255,0.3)',
+              color: 'inherit',
+              padding: '4px 8px',
+              borderRadius: '3px',
+              fontSize: '11px',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'background 150ms ease-out'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+          >
+            Empty Retrieve
+          </button>
+          
+          <button
+            onClick={onClose}
+            style={{
+              color: 'inherit',
+              background: 'rgba(0,0,0,0.08)',
+              border: 'none',
+              padding: '4px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 150ms ease-out'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.15)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.08)'}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '21px' }}>close</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Panel Content */}
@@ -1074,7 +1240,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
         {/* Left Side: 2x3 Grid of Subcompartments */}
         <div id="asrs-subcompartment-grid" style={{
           flex: '1 1 50%',
-          padding: '16px',
+          padding: '8px 16px',
           borderRight: '1px solid var(--border)',
           display: 'flex',
           flexDirection: 'column',
@@ -1128,7 +1294,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    height: '80px',
+                    height: '62px',
                     cursor: 'pointer',
                     transition: 'all 150ms ease-out',
                     position: 'relative',
@@ -1178,7 +1344,7 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
         {/* Right Side: Binary Tab Changing UI */}
         <div style={{
           flex: '1 1 50%',
-          padding: '20px',
+          padding: '10px 16px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',

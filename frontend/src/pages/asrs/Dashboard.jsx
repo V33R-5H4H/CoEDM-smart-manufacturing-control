@@ -14,10 +14,19 @@ import OrderFeed from "./components/OrderFeed";
 
 const API_BASE = `${import.meta.env.VITE_API_URL || "/api"}/control/asrs`;
 
+const STATUS_COLORS = {
+  pending:    { bg: 'rgba(217,119,6,0.12)',   color: '#d97706' },
+  processing: { bg: 'rgba(37,99,235,0.12)',   color: '#2563eb' },
+  shipped:    { bg: 'rgba(22,163,74,0.12)',    color: '#16a34a' },
+  delivered:  { bg: 'rgba(22,163,74,0.12)',    color: '#16a34a' },
+  cancelled:  { bg: 'rgba(220,38,38,0.12)',    color: '#dc2626' },
+};
+
 function Dashboard() {
   const [activeTab, setActiveTab] = useState("boxes");
   const [isConnected, setIsConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
+  const [isQueueCollapsed, setIsQueueCollapsed] = useState(false);
   const [ecomOrders, setEcomOrders] = useState([]);
   const { shuttleState, connected: ledConnected, ledStates, safetyCurtain } = useLEDMonitoring();
   const { resolved: theme } = useTheme();
@@ -120,6 +129,8 @@ function Dashboard() {
       }
     };
     checkConnection();
+    const interval = setInterval(checkConnection, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleDisconnect = async () => {
@@ -404,17 +415,85 @@ function Dashboard() {
 
         {/* Live E-Com Order Feed sidebar */}
         <div style={{
-          width: 272,
+          width: isQueueCollapsed ? 64 : 272,
           flexShrink: 0,
           borderLeft: '1px solid var(--border)',
-          overflowY: 'auto',
-          padding: 12,
+          overflow: 'visible',
+          padding: isQueueCollapsed ? '12px 4px' : 12,
           background: 'var(--bg-secondary)',
+          position: 'relative',
+          transition: 'width 250ms ease-in-out, padding 250ms ease-in-out',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'stretch'
         }}>
-          <OrderFeed
-            wsUrl={`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/control/asrs/ws/led-status`}
-            onOrdersChange={setEcomOrders}
-          />
+          {/* Collapse Button */}
+          <button
+            onClick={() => setIsQueueCollapsed(!isQueueCollapsed)}
+            style={{
+              position: 'absolute',
+              top: '12px',
+              left: '-14px',
+              width: '28px',
+              height: '28px',
+              borderRadius: '50%',
+              background: 'var(--primary)',
+              color: 'var(--bg-primary)',
+              border: '2px solid var(--bg-secondary)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 150,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)',
+              transition: 'transform 0.2s ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            title={isQueueCollapsed ? "Expand Queue" : "Collapse Queue"}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '18px', fontWeight: 'bold' }}>
+              {isQueueCollapsed ? "keyboard_double_arrow_left" : "keyboard_double_arrow_right"}
+            </span>
+          </button>
+          
+          {isQueueCollapsed ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '48px', alignItems: 'center', flex: 1, overflowY: 'auto' }}>
+              <span style={{ fontSize: '20px' }} title="Ecom Orders">🛒</span>
+              <div style={{ width: '100%', height: '1px', background: 'var(--border)', margin: '4px 0' }} />
+              {ecomOrders.slice(0, 10).map((order, i) => (
+                <div
+                  key={`${order.order_id}-${order.sub_id}-${i}`}
+                  title={`Order #${order.order_id}-${order.sub_id} (${order.status})`}
+                  style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg-elevated)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    fontFamily: 'monospace',
+                    color: STATUS_COLORS[order.status]?.color || '#d97706',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  #{order.order_id}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              <OrderFeed
+                wsUrl={`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/control/asrs/ws/led-status`}
+                onOrdersChange={setEcomOrders}
+              />
+            </div>
+          )}
         </div>
 
         {/* SAFETY INTERRUPT OVERLAY */}
