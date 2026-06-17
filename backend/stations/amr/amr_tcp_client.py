@@ -63,9 +63,10 @@ class AMRTCPClient:
             return False
             
         try:
-            self.writer.write(cmd.encode('utf-8'))
+            cmd_str = cmd if cmd.endswith('\n') else cmd + '\n'
+            self.writer.write(cmd_str.encode('utf-8'))
             await self.writer.drain()
-            logger.debug(f"AMRTCPClient sent: {cmd}")
+            logger.debug(f"AMRTCPClient sent: {cmd_str.strip()}")
             return True
         except Exception as e:
             logger.error(f"AMRTCPClient send error: {e}")
