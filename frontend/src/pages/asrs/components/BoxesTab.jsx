@@ -1503,26 +1503,6 @@ function OperationsPanel({ box, ledStates, onClose, onRefresh, onStore, onRetrie
                     >
                       {loading ? 'Executing Store...' : 'Execute Store'}
                     </button>
-                    <button
-                      onClick={handleReturnCrate}
-                      disabled={loading}
-                      style={{
-                        background: 'var(--bg-tertiary)',
-                        color: 'var(--text-primary)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '4px',
-                        padding: '10px',
-                        fontSize: '14px',
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        width: '100%',
-                        cursor: loading ? 'not-allowed' : 'pointer',
-                        opacity: loading ? 0.5 : 1,
-                        transition: 'all 150ms ease-out'
-                      }}
-                    >
-                      {loading ? 'Returning Crate...' : 'Return Empty Crate to Slot'}
-                    </button>
                   </div>
                 ) : (
                   <button
