@@ -1,0 +1,25 @@
+[tool.pytest.ini_options]
+# Run from the project root: pytest backend/tests/
+testpaths = ["backend/tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+
+# Custom markers
+markers = [
+    "integration: marks tests that require a live PostgreSQL database (deselect with -m 'not integration')",
+    "hardware: marks tests that require real OPC-UA/PLC hardware",
+    "unit: marks pure unit tests with no external dependencies",
+]
+
+# Default output: show individual test names, short tracebacks
+addopts = [
+    "--tb=short",
+    "-v",
+    "--no-header",
+]
+
+# Suppress asyncio deprecation warnings
+filterwarnings = [
+    "ignore::DeprecationWarning:asyncio",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
+]

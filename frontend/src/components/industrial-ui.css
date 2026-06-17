@@ -1,0 +1,294 @@
+/* Industrial Panel System - Matches ASRS */
+.panel {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 0;
+}
+.panel-section {
+  border-bottom: 1px solid var(--border);
+  padding: 1.2rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+}
+.panel-section:last-child {
+  border-bottom: none;
+}
+
+/* Instrumentation Values */
+.value {
+  display: flex;
+  align-items: baseline;
+}
+.value .number {
+  font-size: 2.4rem;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.value .unit {
+  font-size: 0.9rem;
+  margin-left: 4px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Status Pills - Industrial */
+.status-pill {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: var(--radius-sm);
+  border: 1px solid;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  background: var(--bg-elevated);
+}
+.status-pill.on {
+  color: var(--success);
+  border-color: var(--success);
+  background: rgba(207, 219, 213, 0.08);
+}
+.status-pill.off {
+  color: var(--text-muted);
+  border-color: var(--border);
+  background: var(--bg-secondary);
+}
+
+/* Stack Lights - Physical Metaphor */
+.lamp {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--border-dark);
+  background: var(--bg-secondary);
+  margin-right: 6px;
+  display: inline-block;
+  transition: all var(--transition-fast);
+}
+.lamp.on.red { 
+  background: #dc2626; 
+  border-color: #dc2626;
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.4);
+}
+.lamp.on.orange { 
+  background: var(--primary); 
+  border-color: var(--primary);
+  box-shadow: 0 0 8px rgba(245, 203, 92, 0.4);
+}
+.lamp.on.green { 
+  background: #2f9e44; 
+  border-color: #2f9e44;
+  box-shadow: 0 0 8px rgba(47, 158, 68, 0.4);
+}
+
+/* Operation Indicators - Industrial Mode Selectors */
+.operation-indicators {
+  display: flex;
+  gap: 8px;
+}
+
+.op-pill {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.op-pill.active {
+  border-color: var(--success);
+  color: var(--success);
+  background: rgba(207, 219, 213, 0.08);
+}
+
+.op-pill.idle {
+  color: var(--text-secondary);
+}
+
+/* Activity Log Terminal */
+.log-terminal {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  padding: 1rem;
+  border-top: 1px solid var(--border);
+  max-height: 220px;
+  overflow-y: auto;
+  line-height: 1.5;
+  width: 100%;
+}
+
+/* Assembly Layout - 2-Column Machine Cabinet */
+.assembly-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  height: 100%;
+}
+
+.assembly-sidebar {
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.assembly-main {
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-section {
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 1.25rem;
+}
+
+.sidebar-section:last-child {
+  border-bottom: none;
+}
+
+.main-section {
+  border-bottom: 1px solid var(--border);
+  padding: 1.2rem 1.5rem;
+}
+
+.main-section:last-child {
+  border-bottom: none;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Vertical Stack Light - Industrial Indicator */
+.assembly-panel {
+  position: relative;
+}
+
+.stack-light {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.lamp {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  transition: none;
+}
+
+.lamp.on.green {
+  background: #2f9e44;
+  border-color: #2f9e44;
+}
+
+.lamp.on.yellow {
+  background: #f08c00;
+  border-color: #f08c00;
+}
+
+.lamp.on.red {
+  background: #e03131;
+  border-color: #e03131;
+}
+
+/* Button controls — unified with new palette */
+.asm-btn-control {
+  flex: 1;
+  height: 36px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.asm-btn-control:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--border-lighter);
+  color: var(--text-primary);
+}
+
+.asm-btn-control:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.asm-btn-control--connect {
+  color: var(--success);
+  border-color: rgba(207, 219, 213, 0.4);
+}
+
+.asm-btn-control--connect:hover:not(:disabled) {
+  border-color: var(--success);
+  background: rgba(207, 219, 213, 0.08);
+  color: var(--success);
+}
+
+.asm-btn-control--disconnect {
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.4);
+}
+
+.asm-btn-control--disconnect:hover:not(:disabled) {
+  border-color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.08);
+  color: #ff6b6b;
+}
+
+.asm-btn-control--demo {
+  color: var(--primary);
+  border-color: rgba(245, 203, 92, 0.4);
+}
+
+.asm-btn-control--demo:hover:not(:disabled) {
+  border-color: var(--primary);
+  background: rgba(245, 203, 92, 0.08);
+  color: var(--primary);
+}
+
+.asm-btn-control--demo.active {
+  border-color: var(--primary);
+  color: var(--bg-primary);
+  background: var(--primary);
+}

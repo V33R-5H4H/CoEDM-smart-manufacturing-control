@@ -1,0 +1,114 @@
+.triac-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Glass and Glow Effects by State */
+.triac-icon-container.state-running {
+}
+
+.triac-icon-container.state-idle {
+  animation: triac-breathe 4s ease-in-out infinite alternate;
+}
+
+.triac-icon-container.state-error {
+  animation: triac-shake 0.5s infinite ease-in-out;
+}
+
+.triac-icon-container.state-offline {
+  filter: grayscale(100%);
+  opacity: 0.5;
+}
+
+/* Colors */
+.triac-frame, .triac-base, .triac-table {
+  fill: var(--bg-hover);
+  stroke: var(--text-muted);
+  stroke-width: 1;
+}
+
+.triac-spindle-arm, .triac-spindle-head {
+  fill: var(--bg-hover);
+  stroke: var(--text-muted);
+  stroke-width: 1;
+}
+
+.triac-tool-bit {
+  fill: var(--text-disabled);
+  stroke: var(--text-muted);
+  stroke-width: 0.5;
+  transform-origin: 50px 33px; /* Center of the tool bit */
+}
+
+.triac-workpiece {
+  stroke: var(--text-muted);
+  stroke-width: 0.5;
+}
+
+.triac-sparks {
+  opacity: 0;
+}
+
+/* Animations */
+@keyframes triac-breathe {
+  0% { box-shadow: inset 0 0 10px color-mix(in srgb, var(--primary) 5%, transparent); }
+  100% { box-shadow: inset 0 0 25px color-mix(in srgb, var(--primary) 25%, transparent), 0 0 15px color-mix(in srgb, var(--primary) 15%, transparent); }
+}
+
+@keyframes triac-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+@keyframes triac-mill-table {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+@keyframes triac-spindle-down {
+  0%, 100% { transform: translateY(0); }
+  10%, 90% { transform: translateY(3px); }
+}
+
+@keyframes triac-spin-tool {
+  0% { transform: scaleX(1); }
+  50% { transform: scaleX(0.3); filter: brightness(1.5); }
+  100% { transform: scaleX(1); }
+}
+
+@keyframes triac-sparks-fly {
+  0%, 10% { opacity: 0; }
+  11%, 89% { opacity: 1; }
+  90%, 100% { opacity: 0; }
+}
+
+@keyframes triac-spark-flicker {
+  0% { opacity: 1; transform: translate(0, 0); }
+  100% { opacity: 0; transform: translate(0, -6px) scale(0.5); }
+}
+
+.state-running .triac-table-group {
+  animation: triac-mill-table 4s ease-in-out infinite;
+}
+
+.state-running .triac-spindle-group {
+  animation: triac-spindle-down 4s ease-in-out infinite;
+}
+
+.state-running .triac-tool-bit {
+  animation: triac-spin-tool 0.1s linear infinite;
+}
+
+.state-running .triac-sparks {
+  animation: triac-sparks-fly 4s ease-in-out infinite;
+}
+
+.state-running .spark-1 { animation: triac-spark-flicker 0.2s infinite alternate; }
+.state-running .spark-2 { animation: triac-spark-flicker 0.3s infinite alternate; animation-delay: 0.1s; }
+.state-running .spark-3 { animation: triac-spark-flicker 0.25s infinite alternate; animation-delay: 0.05s; }

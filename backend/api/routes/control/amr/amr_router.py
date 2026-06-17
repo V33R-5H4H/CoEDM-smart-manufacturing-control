@@ -1,0 +1,50 @@
+from fastapi import APIRouter, HTTPException, Body, WebSocket, WebSocketDisconnect
+from backend.stations.amr.amr_controller import dispatch_amr_to_station
+from backend.stations.amr.amr_station import amr_station
+from backend.websockets.amr_broadcaster import amr_ws_manager
+
+router = APIRouter(prefix="/api/control/amr", tags=["AMR"])
+
+@router.post("/dispatch")
+async def dispatch_amr(
+    station: str = Body(..., embed=True, description="The station identifier (e.g. 'A', 'B', 'C')")
+):
+    """
+    Dispatch the AMR to a specific station.
+    """
+    success, message = await dispatch_amr_to_station(station)
+    if not success:
+        raise HTTPException(status_code=500, detail=message)
+        
+    return {"success": True, "message": message, "station": station}
+
+@router.post("/connect")
+async def connect_amr():
+    """Start the AMR station connection and auto-reconnect loop."""
+    await amr_station.start()
+    return {"success": True, "message": "AMR connection initiated"}
+
+@router.post("/disconnect")
+async def disconnect_amr():
+    """Stop the AMR station and close connections."""
+    await amr_station.stop()
+    return {"success": True, "message": "AMR connection stopped"}
+
+@router.websocket("/ws")
+async def amr_websocket(websocket: WebSocket):
+    """
+    WebSocket endpoint for real-time AMR status/telemetry streaming.
+    """
+    await amr_ws_manager.connect(websocket)
+    try:
+        # Send initial state sync
+        await websocket.send_json({
+            "type": "amr_state",
+            "payload": amr_station.get_state()
+        })
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        amr_ws_manager.disconnect(websocket)
+    except Exception:
+        amr_ws_manager.disconnect(websocket)

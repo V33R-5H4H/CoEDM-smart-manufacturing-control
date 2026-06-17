@@ -11,6 +11,7 @@ build/
 # Environment secrets — NEVER commit
 .env
 *.env
+.env.docker
 *.key
 *.pem
 
@@ -26,6 +27,8 @@ dashboard/coedm-dashboard/.env
 # IDE
 .vscode/
 .idea/
+.kiro/
+.trae/
 *.swp
 *.swo
 
@@ -42,3 +45,19 @@ coverage.xml
 # Logs
 *.log
 logs/
+
+# Project-specific
+reference/
+stitch_designs/
+.pids
+/backend/scratch/
+/scratch/
+/scripts/
+/actions-runner/
+
+
+# Misc
+*.zip
+*.exe
+/light_mode.md
+/todo.txt
