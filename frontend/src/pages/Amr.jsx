@@ -19,16 +19,20 @@ export default function Amr() {
   });
   const [posHistory, setPosHistory] = useState([]);
 
+  // Single source of truth for station real-world coords → screen % positions
+  // Must match STATIONS in tcp_nav_bridge/tcp_nav_bridge/tcp_nav_node.py on the robot
+  const STATION_MAP = {
+    ASRS:       { x: -4.000000, y:  0.200000, sx: 10, sy: 50 },
+    INSPECTION: { x: -3.000000, y:  0.200000, sx: 90, sy: 50 },
+    TESTING:    { x: -2.000000, y:  0.200000, sx: 70, sy: 83 },
+    HOME:       { x:  0.000000, y:  0.000000, sx: 50, sy: 50 },
+    TRIAC:      { x:  1.476023, y:  0.405875, sx: 50, sy: 17 },
+    MIRAC:      { x:  4.148900, y:  0.427600, sx: 30, sy: 17 },
+    ASSEMBLY:   { x:  5.630868, y:  1.215410, sx: 75, sy: 17 },  // updated to active robot coordinates
+  };
+
   const getScreenCoords = (amrX, amrY) => {
-    const stations = {
-      ASRS: { x: -4.000000, y: 0.200000, sx: 10, sy: 50 },
-      INSPECTION: { x: -3.000000, y: 0.200000, sx: 90, sy: 50 },
-      TESTING: { x: -2.000000, y: 0.200000, sx: 70, sy: 83 },
-      ASSEMBLY: { x: -1.389239, y: 0.101845, sx: 70, sy: 17 },
-      HOME: { x: 0.000000, y: 0.000000, sx: 50, sy: 50 },
-      TRIAC: { x: 1.476023, y: 0.405875, sx: 50, sy: 17 },
-      MIRAC: { x: 4.148900, y: 0.427600, sx: 30, sy: 17 }
-    };
+    const stations = STATION_MAP;
 
     let totalWeight = 0;
     let screenX = 0;
@@ -190,26 +194,46 @@ export default function Amr() {
               robotStatus={isConnected ? telemetry.status.toUpperCase() : "OFFLINE"}
             />
             {isConnected ? (
-              <button
-                type="button"
-                onClick={handleDisconnect}
-                style={{
-                  fontSize: '14px',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: 'var(--text-primary)',
-                  background: 'var(--primary-dark)',
-                  border: 'none',
-                  padding: '4px 12px',
-                  borderRadius: '2px',
-                  cursor: 'pointer',
-                  opacity: statusLoading ? 0.7 : 1,
-                }}
-                disabled={statusLoading}
-              >
-                {statusLoading ? 'Disconnecting…' : 'Disconnect'}
-              </button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => handleDispatch("HOME", "HOME")}
+                  style={{
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    color: 'var(--bg-primary)',
+                    background: 'var(--primary)',
+                    border: 'none',
+                    padding: '4px 12px',
+                    borderRadius: '2px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Return Home
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDisconnect}
+                  style={{
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    color: 'var(--text-primary)',
+                    background: 'var(--primary-dark)',
+                    border: 'none',
+                    padding: '4px 12px',
+                    borderRadius: '2px',
+                    cursor: 'pointer',
+                    opacity: statusLoading ? 0.7 : 1,
+                  }}
+                  disabled={statusLoading}
+                >
+                  {statusLoading ? 'Disconnecting…' : 'Disconnect'}
+                </button>
+              </div>
             ) : (
               <button
                 type="button"
@@ -564,41 +588,8 @@ export default function Amr() {
           {(() => {
             const pos = (() => {
               if (!telemetry.position) return { x: 50, y: 50 };
-              const amrX = telemetry.position.x;
-              const amrY = telemetry.position.y;
-              
-              const stations = {
-                ASRS: { x: -4.000000, y: 0.200000, sx: 10, sy: 50 },
-                INSPECTION: { x: -3.000000, y: 0.200000, sx: 90, sy: 50 },
-                TESTING: { x: -2.000000, y: 0.200000, sx: 70, sy: 83 },
-                ASSEMBLY: { x: -1.389239, y: 0.101845, sx: 70, sy: 17 },
-                HOME: { x: 0.000000, y: 0.000000, sx: 50, sy: 50 },
-                TRIAC: { x: 1.476023, y: 0.405875, sx: 50, sy: 17 },
-                MIRAC: { x: 4.148900, y: 0.427600, sx: 30, sy: 17 }
-              };
-
-              let totalWeight = 0;
-              let screenX = 0;
-              let screenY = 0;
-
-              for (const name in stations) {
-                const s = stations[name];
-                const dx = amrX - s.x;
-                const dy = amrY - s.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                if (dist < 0.05) {
-                  return { x: s.sx, y: s.sy };
-                }
-
-                const w = 1 / (dist * dist);
-                totalWeight += w;
-                screenX += s.sx * w;
-                screenY += s.sy * w;
-              }
-
-              if (totalWeight === 0) return { x: 50, y: 50 };
-              return { x: screenX / totalWeight, y: screenY / totalWeight };
+              // Reuse the same function that drives posHistory — single source of truth
+              return getScreenCoords(telemetry.position.x, telemetry.position.y);
             })();
 
             return (
