@@ -27,38 +27,69 @@ class AMRStation:
         }
         self._reconnect_task: Optional[asyncio.Task] = None
 
-    async def start(self):
-        """Start the AMR station connection and auto-reconnect loop."""
+    async def start(self) -> bool:
+        """Attempt connection to AMR. Returns True if actually connected, False otherwise."""
+        if self.client.is_connected:
+            logger.info("AMR Station already connected.")
+            self.state["status"] = "connected"
+            self.state["error"] = None
+            return True
+
         logger.info("Starting AMR Station...")
         self.state["status"] = "connecting"
-        
-        if self._reconnect_task is None or self._reconnect_task.done():
-            self._reconnect_task = asyncio.create_task(self._reconnect_loop())
+
+        # Cancel any stale reconnect loop first
+        if self._reconnect_task and not self._reconnect_task.done():
+            self._reconnect_task.cancel()
+            try:
+                await self._reconnect_task
+            except asyncio.CancelledError:
+                pass
+            self._reconnect_task = None
+
+        # Attempt the first connection synchronously so the caller gets real feedback
+        try:
+            await self.client.connect()
+            self.state["status"] = "connected"
+            self.state["error"] = None
+            logger.info("AMR Station connected.")
+        except Exception as e:
+            self.state["status"] = "error"
+            self.state["error"] = str(e)
+            logger.error(f"AMR Station initial connect failed: {e}")
+            return False
+
+        # Start background reconnect loop only after initial success
+        self._reconnect_task = asyncio.create_task(self._reconnect_loop())
+        return True
 
     async def stop(self):
         """Stop the AMR station and close connections."""
         logger.info("Stopping AMR Station...")
         if self._reconnect_task and not self._reconnect_task.done():
             self._reconnect_task.cancel()
+            try:
+                await self._reconnect_task
+            except asyncio.CancelledError:
+                pass
         await self.client.disconnect()
         self.state["status"] = "disconnected"
 
     async def _reconnect_loop(self):
-        """Background loop to ensure the client stays connected."""
+        """Background loop: reconnects if connection drops after initial connect."""
         while True:
+            await asyncio.sleep(5.0)
             if not self.client.is_connected:
                 self.state["status"] = "connecting"
                 try:
                     await self.client.connect()
                     self.state["status"] = "connected"
                     self.state["error"] = None
+                    logger.info("AMR reconnected successfully.")
                 except Exception as e:
                     self.state["status"] = "error"
                     self.state["error"] = str(e)
                     logger.warning(f"AMR reconnect failed. Retrying in 5s... ({e})")
-            
-            # Check connection every 5 seconds
-            await asyncio.sleep(5.0)
 
     async def _handle_message(self, msg: str):
         """Callback when the TCP client receives a message."""
@@ -107,13 +138,19 @@ class AMRStation:
         return self.state
 
     async def send_command(self, cmd: str) -> bool:
-        """Send a command to the AMR."""
+        """Send a command to the AMR over TCP.
+        
+        The robot node (tcp_nav_node.py) accepts full station names directly:
+        HOME, ASRS, MIRAC, TRIAC, ASSEMBLY, TESTING, INSPECTION
+        """
         if not self.client.is_connected:
             return False
-        # Append \n if not already present
-        if not cmd.endswith("\n"):
-            cmd += "\n"
-        return await self.client.send_command(cmd)
+        
+        # Normalize: strip whitespace, uppercase, ensure newline terminator
+        clean_cmd = cmd.strip().upper()
+        if not clean_cmd.endswith("\n"):
+            clean_cmd += "\n"
+        return await self.client.send_command(clean_cmd)
 
 # Global singleton instance
 amr_station = AMRStation()

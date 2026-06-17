@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 # Trigger workflow test
 on:
   push:
-    branches: [ "develop", "main" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "develop", "main" ]
+    branches: [ "main" ]
 
 jobs:
   build-and-deploy:
@@ -63,7 +63,8 @@ jobs:
           sleep 2
         done
         
-        # Load the base schema into the test DB
+        # Load the base schema into the test DB (file is not in git — copy from server's local prod folder)
+        cp ~/coedm-prod/backend/database/Integrated_Schema_v2.sql backend/database/Integrated_Schema_v2.sql || echo "Warning: Schema file not found in ~/coedm-prod"
         docker exec -i pg_test_db psql -U coedm -d coedm_test < backend/database/Integrated_Schema_v2.sql
 
     - name: Run Backend Pytest
@@ -83,7 +84,7 @@ jobs:
 
     - name: Deploy Docker Compose
       # Only deploy if we pushed to develop or main, not for pull requests
-      if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       run: |
         # NOTE: For this to work without hanging, the user running the GitHub Action 
         # must have passwordless Docker permissions: `sudo usermod -aG docker $USER`

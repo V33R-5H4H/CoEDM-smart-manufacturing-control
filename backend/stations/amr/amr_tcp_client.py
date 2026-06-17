@@ -21,7 +21,10 @@ class AMRTCPClient:
     async def connect(self):
         """Establish connection and start listener task."""
         try:
-            self.reader, self.writer = await asyncio.open_connection(self.host, self.port)
+            self.reader, self.writer = await asyncio.wait_for(
+                asyncio.open_connection(self.host, self.port),
+                timeout=5.0
+            )
             self.is_connected = True
             logger.info(f"AMRTCPClient connected to {self.host}:{self.port}")
             
@@ -29,6 +32,10 @@ class AMRTCPClient:
             if self._listen_task is None or self._listen_task.done():
                 self._listen_task = asyncio.create_task(self._listen_loop())
                 
+        except asyncio.TimeoutError:
+            logger.error(f"AMRTCPClient connection timed out after 5s ({self.host}:{self.port})")
+            self.is_connected = False
+            raise ConnectionError(f"Connection to {self.host}:{self.port} timed out")
         except Exception as e:
             logger.error(f"AMRTCPClient failed to connect to {self.host}:{self.port}: {e}")
             self.is_connected = False
@@ -66,10 +73,10 @@ class AMRTCPClient:
             return False
 
     async def _listen_loop(self):
-        """Continuously read from the socket."""
+        """Continuously read newline-terminated messages from the socket."""
         while self.is_connected and self.reader:
             try:
-                data = await self.reader.read(1024)
+                data = await self.reader.readline()
                 if not data:
                     logger.warning("AMRTCPClient: Connection closed by remote host")
                     self.is_connected = False

@@ -7,7 +7,7 @@ router = APIRouter(prefix="/api/control/amr", tags=["AMR"])
 
 @router.post("/dispatch")
 async def dispatch_amr(
-    station: str = Body(..., embed=True, description="The station identifier (e.g. 'A', 'B', 'C')")
+    station: str = Body(..., embed=True, description="The station identifier (e.g. 'MIRAC', 'TRIAC', 'ASSEMBLY', 'HOME', 'ASRS', 'TESTING', 'INSPECTION')")
 ):
     """
     Dispatch the AMR to a specific station.
@@ -20,9 +20,15 @@ async def dispatch_amr(
 
 @router.post("/connect")
 async def connect_amr():
-    """Start the AMR station connection and auto-reconnect loop."""
-    await amr_station.start()
-    return {"success": True, "message": "AMR connection initiated"}
+    """Start the AMR station connection. Returns 503 if the robot is unreachable."""
+    connected = await amr_station.start()
+    if not connected:
+        state = amr_station.get_state()
+        raise HTTPException(
+            status_code=503,
+            detail=state.get("error") or "Failed to connect to AMR. Is the robot online?"
+        )
+    return {"success": True, "message": "AMR connected"}
 
 @router.post("/disconnect")
 async def disconnect_amr():
