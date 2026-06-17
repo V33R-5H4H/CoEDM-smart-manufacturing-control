@@ -63,7 +63,8 @@ jobs:
           sleep 2
         done
         
-        # Load the base schema into the test DB
+        # Load the base schema into the test DB (file is not in git — copy from server's local prod folder)
+        cp ~/coedm-prod/backend/database/Integrated_Schema_v2.sql backend/database/Integrated_Schema_v2.sql || echo "Warning: Schema file not found in ~/coedm-prod"
         docker exec -i pg_test_db psql -U coedm -d coedm_test < backend/database/Integrated_Schema_v2.sql
 
     - name: Run Backend Pytest
