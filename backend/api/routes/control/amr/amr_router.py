@@ -36,6 +36,12 @@ async def disconnect_amr():
     await amr_station.stop()
     return {"success": True, "message": "AMR connection stopped"}
 
+@router.get("/connection-status")
+async def get_amr_connection_status():
+    """Get the current connection status of the AMR."""
+    state = amr_station.get_state()
+    return {"connected": state.get("status") != "disconnected", "status": state.get("status")}
+
 @router.websocket("/ws")
 async def amr_websocket(websocket: WebSocket):
     """

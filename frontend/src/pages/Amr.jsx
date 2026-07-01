@@ -78,10 +78,10 @@ export default function Amr() {
   }, [telemetry.position]);
 
   const wsRef = useRef(null);
+  const reconnectTimerRef = useRef(null);
 
   const connectWS = () => {
     if (wsRef.current) return;
-    setStatusLoading(true);
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = import.meta.env.VITE_WS_URL || window.location.host;
     const wsUrl = `${protocol}//${host}/api/control/amr/ws`;
@@ -92,9 +92,7 @@ export default function Amr() {
 
     ws.onopen = () => {
       console.log("[AMR] WebSocket connected");
-      setIsConnected(true);
       setStatusLoading(false);
-      toast.success("Connected to AMR Fleet Manager");
     };
 
     ws.onmessage = (event) => {
@@ -102,6 +100,7 @@ export default function Amr() {
         const data = JSON.parse(event.data);
         if (data.type === "amr_state") {
           setTelemetry(data.payload);
+          setIsConnected(data.payload.status !== "disconnected");
         }
       } catch (err) {
         console.error("[AMR] Error parsing WS message:", err);
@@ -113,7 +112,7 @@ export default function Amr() {
     };
 
     ws.onclose = () => {
-      console.log("[AMR] WebSocket closed");
+      console.log("[AMR] WebSocket closed, reconnecting in 3s...");
       setIsConnected(false);
       setStatusLoading(false);
       wsRef.current = null;
@@ -126,6 +125,12 @@ export default function Amr() {
         error: null
       });
       setPosHistory([]);
+
+      reconnectTimerRef.current = setTimeout(() => {
+        if (wsRef.current?.readyState !== WebSocket.OPEN) {
+          connectWS();
+        }
+      }, 3000);
     };
   };
 
@@ -150,6 +155,7 @@ export default function Amr() {
     setStatusLoading(true);
     const res = await AmrControlService.disconnectAMR();
     if (res.success) {
+      clearTimeout(reconnectTimerRef.current);
       disconnectWS();
     } else {
       toast.error(res.message);
@@ -158,7 +164,22 @@ export default function Amr() {
   };
 
   useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const res = await AmrControlService.getConnectionStatus();
+        setIsConnected(!!res.connected);
+      } catch (e) {
+        console.error("[AMR] Error getting connection status:", e);
+        setIsConnected(false);
+      } finally {
+        setStatusLoading(false);
+      }
+    };
+
+    checkStatus();
+    connectWS();
     return () => {
+      clearTimeout(reconnectTimerRef.current);
       if (wsRef.current) {
         wsRef.current.close();
       }
