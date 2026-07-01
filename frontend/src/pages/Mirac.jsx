@@ -557,7 +557,7 @@ const Mirac = () => {
         <div className="mirac-grid-container">
           {/* COLUMN 1: LEFT HUD (Status LEDs, Vibit Sensors) */}
           <div className="mirac-column">
-            {/* Status Tower Lights */}
+            {/* Machine Status Indicators */}
             <div className="asm-hud-card">
               <div className="asm-hud-header">
                 <span><SensorDot connected={plcOnline} />Machine Status Indicators</span>
@@ -698,7 +698,7 @@ const Mirac = () => {
                       </div>
                     </div>
                   </div>
-                  {energyHistory.length > 1 && (
+                  {energyHistory.length >= 1 && (
                   <div style={{ marginTop: '6px' }}>
                     <div className="asm-val__label">Power Trend</div>
                     <svg width="100%" height="28" viewBox="0 0 100 28" preserveAspectRatio="none" style={{ display: 'block', marginTop: '4px' }}>
@@ -706,11 +706,13 @@ const Mirac = () => {
                         const max = Math.max(...energyHistory, 0.001);
                         const min = Math.min(...energyHistory);
                         const range = max - min || 1;
-                        const pts = energyHistory.map((v, i) => {
-                          const x = (i / (energyHistory.length - 1)) * 100;
-                          const y = 24 - ((v - min) / range) * 20;
-                          return x + ',' + y;
-                        }).join(' ');
+                        const pts = energyHistory.length === 1 
+                          ? `0,${24 - ((energyHistory[0] - min) / range) * 20} 100,${24 - ((energyHistory[0] - min) / range) * 20}`
+                          : energyHistory.map((v, i) => {
+                              const x = (i / (energyHistory.length - 1)) * 100;
+                              const y = 24 - ((v - min) / range) * 20;
+                              return x + ',' + y;
+                            }).join(' ');
                         const lastX = 100;
                         const lastY = 24 - ((energyHistory[energyHistory.length - 1] - min) / range) * 20;
                         return (

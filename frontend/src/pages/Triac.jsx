@@ -614,6 +614,20 @@ export default function Triac() {
     }
   };
 
+  const handlePulseCommand = async (action) => {
+    try {
+      toast.info(`Sending ${action.toUpperCase()} command...`, { autoClose: 1000 });
+      const res = await TriacControlService.pulseCommand(action);
+      if (res.success) {
+        toast.success(res.message || `${action.toUpperCase()} command pulsed successfully.`);
+      } else {
+        toast.error(res.message || `Failed to send ${action} command.`);
+      }
+    } catch (e) {
+      toast.error(e.message || `Failed to send ${action} command.`);
+    }
+  };
+
   const greenActive = isConnected && plcOnline && (data?.status?.green ?? false) && !(data?.status?.red);
   const orangeActive = isConnected && plcOnline && ((data?.status?.yellow ?? false) || (data?.spindle?.speed > 0) || (data?.status?.cycle_start ?? false)) && !(data?.status?.red);
   const redActive = !isConnected || !plcOnline || (data?.status?.red ?? false);
@@ -936,7 +950,7 @@ export default function Triac() {
                       </div>
                     </div>
                   </div>
-                  {energyHistory.length > 1 && (
+                  {energyHistory.length >= 1 && (
                   <div style={{ marginTop: '6px' }}>
                     <div className="asm-val__label">Power Trend</div>
                     <svg width="100%" height="28" viewBox="0 0 100 28" preserveAspectRatio="none" style={{ display: 'block', marginTop: '4px' }}>
@@ -944,11 +958,13 @@ export default function Triac() {
                         const max = Math.max(...energyHistory, 0.001);
                         const min = Math.min(...energyHistory);
                         const range = max - min || 1;
-                        const pts = energyHistory.map((v, i) => {
-                          const x = (i / (energyHistory.length - 1)) * 100;
-                          const y = 24 - ((v - min) / range) * 20;
-                          return x + ',' + y;
-                        }).join(' ');
+                        const pts = energyHistory.length === 1 
+                          ? `0,${24 - ((energyHistory[0] - min) / range) * 20} 100,${24 - ((energyHistory[0] - min) / range) * 20}`
+                          : energyHistory.map((v, i) => {
+                              const x = (i / (energyHistory.length - 1)) * 100;
+                              const y = 24 - ((v - min) / range) * 20;
+                              return x + ',' + y;
+                            }).join(' ');
                         const lastX = 100;
                         const lastY = 24 - ((energyHistory[energyHistory.length - 1] - min) / range) * 20;
                         return (
@@ -982,35 +998,6 @@ export default function Triac() {
                   </span>
                 </div>
               )}
-            </div>
-
-            {/* Safety Integrity Diagnostics */}
-            <div className="asm-hud-card">
-              <div className="asm-hud-header">
-                <span>Safety Integrity Diagnostics</span>
-                <span className={`asm-hud-badge ${isConnected && plcOnline && !data?.status?.red ? "asm-hud-badge--active" : ""}`}>
-                  {isConnected && plcOnline ? (data?.status?.red ? "FAULT / ALARM" : "SECURE") : "UNKNOWN"}
-                </span>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "4px" }}>
-                <div className={`asm-safety-item ${isConnected && plcOnline && data?.status?.red ? "asm-safety-item--danger" : ""}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", border: "1px solid var(--border)", borderRadius: "4px", fontSize: "14px", fontWeight: 600 }}>
-                  <span>Main Safety Loop</span>
-                  <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    {isConnected && plcOnline && data?.status?.red && <span className="asm-pulse-dot" />}
-                    <span style={{ color: !isConnected || !plcOnline ? "#94a3b8" : data?.status?.red ? "#ef4444" : "#10b981" }}>
-                      {!isConnected || !plcOnline ? "UNKNOWN" : data?.status?.red ? "INTERRUPTED" : "SECURE"}
-                    </span>
-                  </span>
-                </div>
-                <div className={`asm-safety-item ${!isConnected || !plcOnline ? "" : data?.spindle?.speed > 0 ? "asm-safety-item--warn" : ""}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", border: "1px solid var(--border)", borderRadius: "4px", fontSize: "14px", fontWeight: 600 }}>
-                  <span>Spindle Guard Door</span>
-                  <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <span style={{ color: !isConnected || !plcOnline ? "#94a3b8" : data?.spindle?.speed > 0 ? "#fbbf24" : "#10b981" }}>
-                      {!isConnected || !plcOnline ? "UNKNOWN" : data?.spindle?.speed > 0 ? "LOCKED (AUTO)" : "UNLOCKED"}
-                    </span>
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -1199,6 +1186,81 @@ export default function Triac() {
                     <span>0</span><span>200mm</span>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Remote Machine Controls */}
+            <div className="asm-hud-card" style={{ marginTop: "12px" }}>
+              <div className="asm-hud-header">
+                <span><SensorDot connected={isConnected && plcOnline} />Remote CNC Control</span>
+                <span className={`asm-hud-badge ${isConnected && plcOnline ? "asm-hud-badge--active" : ""}`}>
+                  {isConnected && plcOnline ? "READY" : "OFFLINE"}
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
+                <button
+                  type="button"
+                  onClick={() => handlePulseCommand("start")}
+                  className="control-btn control-btn--start"
+                  disabled={!isConnected || !plcOnline}
+                  style={{
+                    flex: 1,
+                    padding: "10px 0",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    borderRadius: "4px",
+                    cursor: (isConnected && plcOnline) ? "pointer" : "not-allowed",
+                    background: (isConnected && plcOnline) ? "rgba(74, 222, 128, 0.15)" : "rgba(255, 255, 255, 0.02)",
+                    color: (isConnected && plcOnline) ? "#4ade80" : "var(--text-disabled)",
+                    border: (isConnected && plcOnline) ? "1px solid rgba(74, 222, 128, 0.3)" : "1px solid rgba(255, 255, 255, 0.05)",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  Start
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePulseCommand("stop")}
+                  className="control-btn control-btn--stop"
+                  disabled={!isConnected || !plcOnline}
+                  style={{
+                    flex: 1,
+                    padding: "10px 0",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    borderRadius: "4px",
+                    cursor: (isConnected && plcOnline) ? "pointer" : "not-allowed",
+                    background: (isConnected && plcOnline) ? "rgba(239, 68, 68, 0.15)" : "rgba(255, 255, 255, 0.02)",
+                    color: (isConnected && plcOnline) ? "#ef4444" : "var(--text-disabled)",
+                    border: (isConnected && plcOnline) ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid rgba(255, 255, 255, 0.05)",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  Stop
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePulseCommand("reset")}
+                  className="control-btn control-btn--reset"
+                  disabled={!isConnected || !plcOnline}
+                  style={{
+                    flex: 1,
+                    padding: "10px 0",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    borderRadius: "4px",
+                    cursor: (isConnected && plcOnline) ? "pointer" : "not-allowed",
+                    background: (isConnected && plcOnline) ? "rgba(234, 179, 8, 0.15)" : "rgba(255, 255, 255, 0.02)",
+                    color: (isConnected && plcOnline) ? "#eab308" : "var(--text-disabled)",
+                    border: (isConnected && plcOnline) ? "1px solid rgba(234, 179, 8, 0.3)" : "1px solid rgba(255, 255, 255, 0.05)",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  Reset
+                </button>
               </div>
             </div>
           </div>

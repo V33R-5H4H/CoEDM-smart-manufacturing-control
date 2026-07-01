@@ -30,6 +30,7 @@ MIRAC_DATA_TAGS = {
     # Controls / state
     "cycle_start": "ns=4;i=16",
     "cycle_stop": "ns=4;i=17",
+    "cycle_reset": "ns=4;i=18",
     "pneumatic_chuck": "ns=4;i=23"
 }
 
@@ -90,8 +91,7 @@ async def pulse_mirac_command(action: str):
         duration = 0.5
     else: # reset
         tag = MIRAC_CONTROL_TAGS["cy_reset_remote"]
-        duration = 0.02
-        
+        duration = 0.5        
     try:
         await asyncio.to_thread(opcua_connection.set_node_state, tag, True)
         await asyncio.sleep(duration)

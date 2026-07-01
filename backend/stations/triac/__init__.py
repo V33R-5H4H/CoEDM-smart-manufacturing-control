@@ -4,4 +4,5 @@ from .cnc_triac_station import (
     connect_triac,
     disconnect_triac,
     get_triac_status,
+    pulse_triac_command,
 )
