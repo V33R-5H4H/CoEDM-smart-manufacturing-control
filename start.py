@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 start.py — CoEDM Smart Manufacturing Control
 =============================================

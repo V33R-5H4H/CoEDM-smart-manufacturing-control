@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     MIRAC_OPCUA_URL: str = "opc.tcp://10.10.14.102:4840"
 
     # ── TRIAC CNC Station OPC-UA ─────────────────────────────────────────────
-    TRIAC_OPCUA_URL: str = "opc.tcp://10.10.14.124:4840"
+    TRIAC_OPCUA_URL: str = "opc.tcp://10.10.14.125:4840"
 
     # ── VIBIT Vibration Sensor (Modbus TCP) — on MIRAC ───────────────────────
     VIBIT_HOST: str = "10.10.14.103"
@@ -79,9 +79,11 @@ class Settings(BaseSettings):
     COBOT_HOST: str = "10.10.14.106"
     COBOT_PORT: int = 5890
 
-    # ── AMR Autonomous Mobile Robot (Raw TCP) ───────────────────────────────────
+    # ── AMR Autonomous Mobile Robot (Modbus TCP) ───────────────────────────────
     AMR_HOST: str = "10.10.14.122"
-    AMR_PORT: int = 5000
+    AMR_PORT: int = 502
+    AMR_UNIT_ID: int = 1            # Modbus slave/unit ID
+    
 
     # ── FastAPI Application ───────────────────────────────────────────────────
     API_HOST: str = "0.0.0.0"

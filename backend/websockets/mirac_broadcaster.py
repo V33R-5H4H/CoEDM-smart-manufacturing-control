@@ -74,24 +74,28 @@ class MiracBroadcaster:
         
     async def connect(self, websocket: WebSocket):
         """Register a new WebSocket connection"""
-        await websocket.accept()
-        # Yield to event loop to ensure ASGI server completes the 101 Upgrade response
-        await asyncio.sleep(0.1)
-        self.active_connections.add(websocket)
-        logger.info(f"Mirac WebSocket connected. Total connections: {len(self.active_connections)}")
+        try:
+            await websocket.accept()
+            # Yield to event loop to ensure ASGI server completes the 101 Upgrade response
+            await asyncio.sleep(0.1)
+            self.active_connections.add(websocket)
+            logger.info(f"Mirac WebSocket connected. Total connections: {len(self.active_connections)}")
 
-        # Immediately send the last known full state so the new client isn't blank
-        if self._last_broadcast_payload:
-            try:
-                await websocket.send_text(build_snapshot_message(self._last_broadcast_payload))
-            except Exception as e:
-                logger.warning(f"Could not send initial snapshot to new Mirac client: {e}")
+            # Immediately send the last known full state so the new client isn't blank
+            if self._last_broadcast_payload:
+                try:
+                    await websocket.send_text(build_snapshot_message(self._last_broadcast_payload))
+                except Exception as e:
+                    logger.warning(f"Could not send initial snapshot to new Mirac client: {e}")
 
-        # Start broadcasting if this is the first connection
-        if not self.is_broadcasting:
-            self.is_broadcasting = True  # Set before creating tasks so poll loop doesn't exit immediately
-            self.broadcast_task = asyncio.create_task(self._broadcast_loop())
-            self._modbus_task = asyncio.create_task(self._modbus_poll_loop())
+            # Start broadcasting if this is the first connection
+            if not self.is_broadcasting:
+                self.is_broadcasting = True  # Set before creating tasks so poll loop doesn't exit immediately
+                self.broadcast_task = asyncio.create_task(self._broadcast_loop())
+                self._modbus_task = asyncio.create_task(self._modbus_poll_loop())
+        except Exception as e:
+            logger.error(f"Error in Mirac WebSocket connect: {e}")
+            self.disconnect(websocket)
     
     def disconnect(self, websocket: WebSocket):
         """Unregister a WebSocket connection"""
