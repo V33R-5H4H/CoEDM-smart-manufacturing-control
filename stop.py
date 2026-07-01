@@ -258,6 +258,5 @@ def main():
         print(f"{YELLOW}No running services found on expected ports.{RESET}\n")
         print(f"{DIM}Tip: run  python stop.py --force  or check Task Manager{RESET}\n")
 
-
 if __name__ == "__main__":
     main()
