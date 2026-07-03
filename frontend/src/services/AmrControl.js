@@ -43,6 +43,16 @@ class AmrControlService {
       return { success: false, message: message };
     }
   }
+
+  async getConnectionStatus() {
+    try {
+      const response = await axios.get(`${API_URL}/connection-status`);
+      return response.data;
+    } catch (error) {
+      console.error("AMR Connection Status Error:", error);
+      return { success: false, connected: false };
+    }
+  }
 }
 
 export default new AmrControlService();

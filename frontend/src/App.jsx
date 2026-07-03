@@ -175,7 +175,7 @@ export default function App() {
       </main>
 
       {/* Global Toast Notifications — single instance for all lazy-loaded pages */}
-      <ToastContainer position="bottom-right" autoClose={4000} closeOnClick pauseOnHover draggable theme={resolved} />
+      <ToastContainer position="top-right" autoClose={4000} closeOnClick pauseOnHover draggable theme={resolved} />
 
       {/* Bottom Navigation Bar */}
       <nav className="bottom-nav">

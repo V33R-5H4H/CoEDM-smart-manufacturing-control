@@ -26,11 +26,14 @@ export default function Dashboard() {
   const [triacSpindle, setTriacSpindle] = useState(wsCache.dashboard.triacSpindle);
   const [triacFeed, setTriacFeed] = useState(wsCache.dashboard.triacFeed);
 
+  const [amrConnected, setAmrConnected] = useState(false);
+  const [amrTelemetry, setAmrTelemetry] = useState(null);
+
   const [transactions, setTransactions] = useState(wsCache.dashboard.transactions);
   const [lastUpdated, setLastUpdated] = useState(wsCache.dashboard.lastUpdated);
 
   // Track the exact timestamp of the last actual data change (delta)
-  const [activity, setActivity] = useState({ asrs: 0, assembly: 0, mirac: 0, triac: 0 });
+  const [activity, setActivity] = useState({ asrs: 0, assembly: 0, mirac: 0, triac: 0, amr: 0 });
   
   // Force a re-render every second to smoothly transition from "running" to "idle"
   const [now, setNow] = useState(Date.now());
@@ -267,10 +270,35 @@ export default function Dashboard() {
       };
     };
 
+    const connectAmr = () => {
+      const amrUrl = `${wsBase}/api/control/amr/ws`;
+      const amrWs = new WebSocket(amrUrl);
+      sockets.push(amrWs);
+      amrWs.onopen = () => {};
+      amrWs.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.type === "amr_state") {
+            const isConnected = msg.payload.status !== "disconnected";
+            setAmrConnected(isConnected);
+            setAmrTelemetry(msg.payload);
+            const ts = new Date().toTimeString().slice(0, 8);
+            wsCache.dashboard.lastUpdated = { ...wsCache.dashboard.lastUpdated, amr: ts };
+            setLastUpdated(prev => ({ ...prev, amr: ts }));
+            setActivity(prev => ({ ...prev, amr: Date.now() }));
+          }
+        } catch { }
+      };
+      amrWs.onclose = () => {
+        setAmrConnected(false);
+      };
+    };
+
     connectAsrs();
     connectAssembly();
     connectMirac();
     connectTriac();
+    connectAmr();
 
     return () => {
       sockets.forEach((s) => {
@@ -374,6 +402,41 @@ export default function Dashboard() {
     return "idle";
   };
 
+  const getAmrState = () => {
+    if (forceAnimations) return "running";
+    if (!amrConnected) return "offline";
+    if (amrTelemetry?.status === "navigating" || amrTelemetry?.status === "busy") return "running";
+    if (now - activity.amr < ACTIVITY_TIMEOUT) return "running";
+    return "idle";
+  };
+
+  const STATION_MAP = {
+    ASRS:       { x: -4.000000, y:  0.200000 },
+    INSPECTION: { x: -3.000000, y:  0.200000 },
+    TESTING:    { x: -2.000000, y:  0.200000 },
+    HOME:       { x:  0.000000, y:  0.000000 },
+    TRIAC:      { x:  1.476023, y:  0.405875 },
+    MIRAC:      { x:  4.148900, y:  0.427600 },
+    ASSEMBLY:   { x:  5.630868, y:  1.215410 },
+  };
+
+  const getAmrLocationString = () => {
+    if (!amrConnected || !amrTelemetry || !amrTelemetry.position) return "---";
+    const { x, y } = amrTelemetry.position;
+    if (x === undefined || y === undefined || x === null || y === null) return "---";
+
+    for (const name in STATION_MAP) {
+      const s = STATION_MAP[name];
+      const dx = x - s.x;
+      const dy = y - s.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 0.25) {
+        return name;
+      }
+    }
+    return `${x.toFixed(1)}, ${y.toFixed(1)}`;
+  };
+
   const stations = [
     {
       name: "Smart MIRAC",
@@ -439,10 +502,10 @@ export default function Dashboard() {
       name: "AMR",
       key: "amr",
       to: "/amr",
-      emoticonState: forceAnimations ? "running" : "offline",
+      emoticonState: getAmrState(),
       metrics: [
-        { label: "FLEET", value: "---" },
-        { label: "BATT", value: "---", unit: "%" },
+        { label: "FLEET", value: amrConnected && amrTelemetry?.status ? amrTelemetry.status.toUpperCase() : "---" },
+        { label: "LOC", value: getAmrLocationString() },
       ]
     },
     {

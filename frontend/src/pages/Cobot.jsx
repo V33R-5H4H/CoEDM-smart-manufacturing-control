@@ -6,7 +6,7 @@ import "./Assembly.css";
 import "./Triac.css";
 
 export default function Cobot() {
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(() => sessionStorage.getItem("cobot_connected") === "true");
   const [statusLoading, setStatusLoading] = useState(false);
 
   // Physical robot hardware states
@@ -51,6 +51,7 @@ export default function Cobot() {
           autoClose: 3000
         });
         setIsConnected(true);
+        sessionStorage.setItem("cobot_connected", "true");
       } else {
         toast.update(toastId, {
           render: `Error: ${data.detail || data.message || "Failed to trigger"}`,
@@ -75,6 +76,7 @@ export default function Cobot() {
     setStatusLoading(true);
     setTimeout(() => {
       setIsConnected(true);
+      sessionStorage.setItem("cobot_connected", "true");
       setStatusLoading(false);
       toast.success("Connected to Omron TM5 Cobot TCP Server (Port 5890)");
     }, 800);
@@ -84,6 +86,7 @@ export default function Cobot() {
     setStatusLoading(true);
     setTimeout(() => {
       setIsConnected(false);
+      sessionStorage.setItem("cobot_connected", "false");
       setStatusLoading(false);
       toast.warning("Disconnected from Cobot Controller");
     }, 500);
