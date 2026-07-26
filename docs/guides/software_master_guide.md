@@ -122,11 +122,11 @@ The repository uses GitHub Actions. Pushing directly to `main` is restricted.
 
 For deeper dives into specific areas, consult the `docs/` folder:
 
-- [Project Overview](file:///d:/CoEDM/docs/PROJECT_OVERVIEW.md)
-- [Setup & Deployment Guide](file:///d:/CoEDM/docs/guides/setup_and_deployment_guide.md)
-- [Database Schema & Migrations](file:///d:/CoEDM/docs/guides/database_schema_and_migration.md)
-- [Architecture Diagrams](file:///d:/CoEDM/docs/architecture/) (ERDs, Sequence Diagrams, DFDs)
-- [API Reference](file:///d:/CoEDM/docs/api/)
+- [Platform Handover & Status](HANDOVER.md)
+- [Setup & Deployment Guide](setup_and_deployment_guide.md)
+- [Database Schema & Migrations](database_schema_and_migration.md)
+- [Architecture Diagrams](../architecture/) (ERDs, Sequence Diagrams, DFDs)
+- [API Reference](../api/API_README.md)
 
 ---
 

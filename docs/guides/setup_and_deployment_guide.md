@@ -9,6 +9,30 @@ The platform is composed of four main services:
 - **Admin Frontend (`frontend`)**: React/Vite dashboard for lab operators to monitor and control the ASRS and other machines. Exposed on `3000` (or `80` in prod).
 - **E-Commerce Storefront (`ecom`)**: React/Vite storefront for customers to place orders directly into the manufacturing queue. Exposed on `81` (or `80` in prod).
 
+```mermaid
+graph TD
+    subgraph Client_Layer ["Client Access"]
+        AdminUI["Operator HMI (Port 5173 / 3000)"]
+        EcomUI["Customer Store (Port 81)"]
+    end
+
+    subgraph App_Layer ["Application Stack"]
+        Backend["FastAPI Backend (Port 8000)<br/>Python 3.11 / Uvicorn"]
+        DB[("PostgreSQL 15 + TimescaleDB<br/>Port 5432 / CoEDM_db")]
+    end
+
+    subgraph Factory_Layer ["OT Subnet (10.10.14.0/24)"]
+        PLCs["OPC-UA PLCs<br/>ASRS (.104), Assembly (.113), MIRAC (.102), TRIAC (.124)"]
+        Modbus["Modbus TCP Gateways<br/>VibIT Sensors (.103 / .129)"]
+    end
+
+    AdminUI <-->|HTTP / WS 10 Hz| Backend
+    EcomUI <-->|HTTP REST| Backend
+    Backend <-->|SQL Connection Pool| DB
+    Backend <-->|opc.tcp:// :4840| PLCs
+    Backend <-->|Modbus TCP :502| Modbus
+```
+
 ---
 
 ## 2. Prerequisites

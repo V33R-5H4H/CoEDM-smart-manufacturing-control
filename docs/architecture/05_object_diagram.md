@@ -21,31 +21,33 @@ classDiagram
 
     class opc_conn {
         <<OPCUAConnection>>
-        server_url = "opc.tcp://192.168.10.20:4840"
+        server_url = "opc.tcp://10.10.14.102:4840"
         connected = True
     }
 
     class vibit_reader_1 {
         <<VibitModbusReader>>
         device_id = 1
-        host = "192.168.10.50"
+        host = "10.10.14.103"
+        port = 502
     }
 
     class vibit_reader_2 {
         <<VibitModbusReader>>
         device_id = 2
-        host = "192.168.10.50"
+        host = "10.10.14.103"
+        port = 502
     }
 
     class ws_client_operator_A {
         <<WebSocket>>
-        client_ip = "192.168.10.101"
+        client_ip = "10.10.14.0/24 — Lab Tablet"
         connection_state = CONNECTED
     }
 
     class ws_client_operator_B {
         <<WebSocket>>
-        client_ip = "192.168.10.105"
+        client_ip = "localhost — Dev Workstation"
         connection_state = CONNECTED
     }
 

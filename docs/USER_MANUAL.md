@@ -1,6 +1,11 @@
-# CoEDM Smart Manufacturing - User Manual
+# CoEDM Smart Manufacturing — Operator Manual
 
-This manual provides step-by-step instructions for operating the CoEDM Smart Manufacturing platform. It is designed for customers placing orders, as well as factory operators monitoring the physical hardware via the dashboard.
+> **Platform Status (July 2026):**
+> - **Live Hardware:** ASRS, Assembly Press, MIRAC CNC, TRIAC CNC
+> - **Simulated (Frontend Only):** AMR, Cobot, Testing/Inspection Station
+> - **Access:** HMI Dashboard at `http://localhost:5173` | API Swagger at `http://localhost:8000/docs`
+
+This manual provides step-by-step instructions for operating the CoEDM Smart Manufacturing platform — both as a factory floor operator and as an e-commerce admin.
 
 ---
 
@@ -9,11 +14,11 @@ This manual provides step-by-step instructions for operating the CoEDM Smart Man
 This section outlines how customers can use the E-Commerce storefront to browse products, place manufacturing orders, and track their production status in real-time.
 
 ### 1.1 Account Creation & Logging In
-Before placing an order, you must create a customer account.
-1. Navigate to the E-Commerce Storefront (usually `http://<server-ip>:81`).
-2. Click on the **Login / Register** button in the top navigation bar.
-3. If you are a new user, switch to the **Sign Up** tab, enter your details (Name, Email, Password), and submit.
-4. Once registered, log in with your credentials to access the Catalogue and your personal Order History.
+Before placing an order, you must create an account on the e-commerce portal.
+1. Navigate to the E-Commerce Storefront at `http://localhost:81` (or the server IP if accessed remotely).
+2. Click **Login / Register** in the top navigation bar.
+3. Switch to **Sign Up**, enter your Name, Email, and Password, then submit.
+4. Once registered, log in to access the Catalogue and your Order History.
 
 ### 1.2 Browsing the Catalogue
 1. Click on **Catalogue** in the top navigation.
@@ -28,17 +33,14 @@ Before placing an order, you must create a customer account.
 5. The system will process your request and immediately send a **Manufacturing Job** directly into the factory's production queue. You will receive an **Order ID**.
 
 ### 1.4 Tracking Order Status
-The CoEDM platform provides live updates directly from the factory floor to your screen.
-1. Navigate to the **Order Tracking** or **My Orders** page from the top menu.
+The CoEDM platform provides live updates from the factory floor.
+1. Navigate to **My Orders** from the top menu.
 2. Find your specific order by its **Order ID**.
-3. You will see the current live status of your item as it moves through the automated line:
-   - **Pending:** Order received, waiting in the digital queue.
-   - **ASRS Retrieval:** The raw material is being fetched from storage.
-   - **AMR Transit:** A robot is transporting the material.
-   - **Machining/Assembly:** The item is actively being manufactured.
-   - **Inspection:** The item is undergoing quality control.
-   - **Completed:** The item is finished and ready for dispatch.
-   - **Rejected:** The item failed inspection and has been routed to the scrap bin.
+3. Current live statuses:
+   - **Pending:** Order received, waiting to be processed.
+   - **Processing:** ASRS retrieval in progress — the compartment is reserved and the shuttle is being commanded.
+   - **Completed:** Item physically retrieved from ASRS and ready for dispatch.
+   - **Cancelled / Failed:** Retrieval was attempted but failed (e.g., PLC connection lost).
 
 ---
 
@@ -74,67 +76,62 @@ The CoEDM platform bridges the gap between digital storefronts and physical manu
 This chapter is intended for Lab Operators managing the physical factory floor. The Admin Dashboard is the central command center for the entire manufacturing line.
 
 ### 3.1 Accessing the Factory Dashboard
-1. Open a browser on a lab computer and navigate to the dashboard URL (usually `http://<server-ip>:3000`).
-2. You will be greeted by the **Main Overview** page, which gives a bird's-eye view of the factory's health, active alarms, and the production queue.
+1. Open a browser and navigate to `http://localhost:5173` (or the server IP if accessed remotely).
+2. The **Main Overview** page shows 4 station cards (ASRS, Assembly, MIRAC, TRIAC) with status badges and key metrics.
 
-### 3.2 The Live Production Queue
-On the left side of the Main Overview, you will find the Live Production Queue.
-- This queue pulls directly from the PostgreSQL database, showing orders placed via the E-Commerce store.
-- **Queue Logic:** The central dispatcher automatically assigns the top-most "Pending" job to an available AMR and the ASRS. 
-- You can monitor the live state of every active job as it progresses through the line.
+> **Note:** Dashboard metric cards currently show last-known values. The ASRS, Assembly, MIRAC, and TRIAC station pages show live real-time data via WebSocket.
 
-### 3.3 ASRS (Automated Storage & Retrieval System) Operations
-Click on the **ASRS** tab in the sidebar to enter the inventory management screen.
+### 3.2 ASRS (Automated Storage & Retrieval System) Operations
+Click on the **ASRS** tab in the sidebar to enter the inventory and shuttle control page.
 
-#### Reading the Inventory View
-- The dashboard provides a visual map of the physical rack.
-- Each box slot can contain a crate with up to **6 sub-compartments** (A to F).
-- **Empty:** Gray slots.
-- **Occupied:** Blue slots indicating raw material is present.
-- **Reserved:** Orange slots indicating an active order is claiming that material.
+#### Reading the Inventory Grid
+- The dashboard shows the live 5×7 LED grid (boxes A1–E7).
+- Each box has 6 sub-compartments (a–f) visible in the **Box Detail Modal** (click any box).
+- **LED Off (grey):** Shuttle idle at this slot
+- **LED On (amber):** Shuttle currently moving to/from this box
+- **LED Flash (green→off):** Operation just completed
 
 #### Manual Store / Retrieve Commands
 If you need to manually override the system (e.g., restocking raw materials):
-1. Click on a specific Box slot on the visual map.
-2. An **Operations Panel** will slide up from the bottom.
-3. Select a specific sub-compartment (A-F).
-4. **To Store:** Select "Execute Store". The physical ASRS crane will pick up the box at the loading bay and store it in the designated slot.
-5. **To Retrieve:** Select "Execute Retrieve". The crane will fetch the box and bring it to the loading bay.
-6. Always ensure the physical safety light curtains are clear before executing manual commands, or the operation will be blocked by the safety PLC.
+1. In the ASRS page, use the command buttons: **Store**, **Retrieve**, or **Home**.
+2. For box-specific commands, type the box address (e.g., `A3`) and select Store or Retrieve.
+3. The PLC command (Boolean pulse on `ns=4, s=A3S` or `ns=4, s=A3R`) is sent immediately.
+4. Monitor the LED grid — the target box LED lights amber during shuttle motion and turns off on completion.
+
+> [!CAUTION]
+> Always ensure the physical safety light curtain is clear before executing manual commands. A curtain interruption will generate an alarm event and a browser notification.
 
 ---
 
-## Chapter 4: Factory Dashboard — AMR & Assembly Control
+## Chapter 4: Factory Dashboard — Assembly Press
 
-This chapter covers the mobile robots and the static assembly station.
+This chapter covers the hydraulic assembly press station.
 
-### 4.1 AMR (Autonomous Mobile Robot) Fleet Monitoring
-Click on the **AMR Fleet** tab in the sidebar. This page connects directly to the AMR Fleet Manager.
+### 4.1 Hydraulic Press Monitoring
+Click on the **Assembly** tab in the sidebar. The page shows:
+- **Animated piston cylinder visualization** — smooth spring-interpolated movement following actual `displacement_mm` from the PLC
+- **Vice state** — Open / Closed
+- **Stack light LEDs** — Red / Yellow / Green matching the physical stack light on the press
+- **Safety curtain status** — with edge-triggered alarm toast notification on interruption
+- **Canvas graph** — real-time displacement history (raw + spring-smoothed)
 
-#### Monitoring Robot Status
-- **Robot State:** See if the AMR is Idle, Navigating, Charging, or Faulted.
-- **Battery Level:** A live percentage is shown. If the battery drops below the critical threshold, the robot will automatically navigate to its charging dock.
-- **Location:** The dashboard displays the robot's current (X, Y) coordinates relative to the lab map.
+### 4.2 Assembly Commands
+Issue commands from the bottom control bar:
 
-#### Dispatching AMRs (Manual Override)
-Normally, AMRs are dispatched automatically by the central order queue. However, an operator can manually dispatch a robot if necessary:
-1. Select an idle AMR from the list.
-2. Choose a destination from the drop-down menu (e.g., "ASRS Loading Bay", "Hydraulic Press", "CNC Station").
-3. Click **Dispatch**. The AMR will calculate its path and begin moving.
+| Button | OPC-UA Write | Effect |
+|--------|-------------|--------|
+| **Bearing ON** | BEARING_ON = True, SHAFT_ON = False | Piston extends for bearing press |
+| **Shaft ON** | SHAFT_ON = True, BEARING_ON = False | Piston extends for shaft press |
+| **Vice Open** | Relay3 = True | Opens the pneumatic vice jaws |
+| **Vice Close** | Relay4 = True | Closes the pneumatic vice jaws |
 
-### 4.2 Assembly & Inspection Station
-Click on the **Assembly** tab in the sidebar. This station typically handles hydraulic pressing, riveting, or final vision inspection.
+> [!CAUTION]
+> Always ensure no hands or objects are under the press head before issuing BEARING_ON or SHAFT_ON commands. BEARING_ON and SHAFT_ON are mutually exclusive — the system enforces this in software.
 
-#### Monitoring the Hydraulic Press
-- The dashboard shows the live telemetry from the assembly PLC.
-- **Press State:** Moving Up, Moving Down, Idle, or Faulted.
-- **Pressure Sensor:** Real-time hydraulic pressure readout (if equipped).
+### 4.3 AMR & Cobot Monitoring & Control
 
-#### Vision Inspection Results
-Once an item is assembled, it moves to the inspection camera.
-- The dashboard will display the result of the last scanned item: **Pass** or **Fail**.
-- Failed items are automatically routed by the conveyor to the Scrap/Rework bin.
-- Operators can view a counter of Total Passed vs. Total Failed items for the day to monitor yield rates.
+> [!NOTE]
+> The `/amr` and `/cobot` pages display live hardware telemetry and operational status. The AMR (`10.10.14.122:502`) and Cobot (`10.10.14.106:5890`) are fully integrated and actively communicating over Modbus TCP and raw TCP/TMSCT protocols respectively.
 
 ---
 

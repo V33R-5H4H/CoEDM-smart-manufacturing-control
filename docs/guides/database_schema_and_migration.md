@@ -10,6 +10,46 @@ The database serves two primary purposes:
 
 The master schema definition is located at `backend/database/Integrated_Schema_v2.sql`.
 
+```mermaid
+graph TD
+    subgraph Core_Domain ["1. Core Machine Registry"]
+        M["machines (root)"]
+        MS["machine_sensors"]
+        ME["machine_events"]
+        MC["machine_connections"]
+        U["users"]
+    end
+
+    subgraph ASRS_Domain ["2. ASRS Inventory & E-Commerce"]
+        SI["storage_items"]
+        SB["storage_boxes (35)"]
+        SC["storage_compartments (210)"]
+        RQ["retrieval_queue"]
+        ST["storage_transactions"]
+        O["orders & order_items"]
+    end
+
+    subgraph Telemetry_Domain ["3. TimescaleDB Telemetry"]
+        MIRAC_TS["mirac_sensor_data"]
+        TRIAC_TS["triac_sensor_data"]
+        VIBIT_TS["vibit_readings"]
+        ASSY_TS["assembly_station_data"]
+        ENG_TS["energy_meter_data"]
+    end
+
+    M --> MS
+    M --> ME
+    M --> SB
+    SB --> SC
+    SI --> SC
+    SC --> ST
+    O --> SI
+    M --> MIRAC_TS
+    M --> VIBIT_TS
+    M --> ASSY_TS
+    MS --> VIBIT_TS
+```
+
 ---
 
 ## 2. Core Schema Entities

@@ -13,9 +13,9 @@ graph TD
     %% ---- Operator Nodes ----
     subgraph Operator_Network [Corporate / Office Network]
         direction TB
-        Admin_PC[Admin Workstation<br/>Web Browser]
-        Floor_Tablet[Shop Floor Tablet<br/>Web Browser]
-        Ecom_Server[External E-Commerce Server<br/>REST Client]
+        Admin_PC["Admin Workstation<br/>Web Browser"]
+        Floor_Tablet["Shop Floor Tablet<br/>Web Browser"]
+        Ecom_Server["External E-Commerce Server<br/>REST Client"]
     end
 
     %% ---- Server Node ----
@@ -23,34 +23,45 @@ graph TD
         direction TB
         
         subgraph FE_Host [Frontend Server]
-            Vite[Vite Dev Server / Nginx<br/>Port: 5173 / 80]
+            Vite["Vite Dev Server / Nginx<br/>Port: 5173 / 80"]
         end
         
         subgraph BE_Host [Backend Application Server]
-            Uvicorn[Uvicorn ASGI Server<br/>Port: 8000]
+            Uvicorn["Uvicorn ASGI Server<br/>Port: 8000"]
         end
         
         subgraph DB_Host [Database Server]
-            PGSQL[(PostgreSQL Service<br/>Port: 5432)]
+            PGSQL[("PostgreSQL Service<br/>Port: 5432")]
         end
     end
 
     %% ---- Factory Network ----
-    subgraph Factory_Network [OT Network - Factory Floor]
+    subgraph Factory_Network [OT Network - 10.10.14.0/24 Factory Floor]
         direction TB
-        ASRS[ASRS PLC<br/>IP: 192.168.10.x<br/>Port: 4840]
-        Assembly[Assembly Press PLC<br/>IP: 192.168.10.y<br/>Port: 4840]
-        CNCs[MIRAC/TRIAC PLCs<br/>IP: 192.168.10.z<br/>Port: 4840]
+        ASRS["ASRS PLC — Omron NX102<br/>IP: 10.10.14.104<br/>Port: 4840"]
+        Assembly["Assembly Press PLC — CODESYS<br/>IP: 10.10.14.113<br/>Port: 4840"]
+        CNCs["MIRAC CNC Lathe (S7-1200)<br/>IP: 10.10.14.102:4840<br/>TRIAC CNC Mill (Smart PC)<br/>IP: 10.10.14.124:4840"]
         
-        subgraph VibIT_Ring [VibIT RS-485 Daisy Chain]
-            ModbusGW[Modbus TCP Gateway<br/>IP: 192.168.10.w<br/>Port: 502]
-            S1((Sensor 1))
-            S2((Sensor 2))
-            S3((Sensor 3))
+        subgraph VibIT_Ring [VibIT RS-485 Daisy Chain — MIRAC Gateway]
+            ModbusGW["Modbus TCP Gateway<br/>IP: 10.10.14.103<br/>Port: 502"]
+            S1(("VibIT U1<br/>Spindle"))
+            S2(("VibIT U2<br/>Tool"))
+            S3(("Energy Meter<br/>U3 — Selec EM4M"))
             ModbusGW -- "RS-485 (Serial)" --- S1
             S1 --- S2
             S2 --- S3
         end
+
+        subgraph VibIT_Ring2 [VibIT RS-485 Daisy Chain — TRIAC Gateway]
+            ModbusGW2["Modbus TCP Gateway<br/>IP: 10.10.14.129<br/>Port: 502 ✅ ONLINE"]
+            T1(("VibIT U1<br/>Spindle"))
+            T2(("VibIT U2<br/>Tool"))
+            ModbusGW2 -- "RS-485 (Serial)" --- T1
+            T1 --- T2
+        end
+
+        AMR["AMR Robot<br/>IP: 10.10.14.122:502<br/>Modbus TCP — Communicating"]
+        Cobot["TM Cobot<br/>IP: 10.10.14.106:5890<br/>TMSCT — Communicating"]
     end
 
     %% ---- Connections ----
@@ -65,11 +76,14 @@ graph TD
 
     Uvicorn -- "TCP (SQL Queries)" --> PGSQL
 
-    Uvicorn -- "OPC-UA (TCP)" --> ASRS
-    Uvicorn -- "OPC-UA (TCP)" --> Assembly
-    Uvicorn -- "OPC-UA (TCP)" --> CNCs
+    Uvicorn -- "OPC-UA (opc.tcp://)" --> ASRS
+    Uvicorn -- "OPC-UA (opc.tcp://)" --> Assembly
+    Uvicorn -- "OPC-UA (opc.tcp://)" --> CNCs
     
-    Uvicorn -- "Modbus TCP" --> ModbusGW
+    Uvicorn -- "Modbus TCP FC3/FC4" --> ModbusGW
+    Uvicorn -- "Modbus TCP FC3/FC4" --> ModbusGW2
+    Uvicorn -- "Modbus TCP" --> AMR
+    Uvicorn -- "TMSCT Raw TCP" --> Cobot
 
     %% Styling
     classDef client fill:#1e293b,stroke:#94a3b8,color:#fff
@@ -88,7 +102,7 @@ graph TD
 ### 1. Network Segmentation
 The deployment relies on strict network separation to ensure security and performance:
 *   **Corporate/IT Network**: This is where the Admin PCs, tablets, and external e-commerce servers live. They do *not* have direct access to the PLCs.
-*   **OT (Operational Technology) Network**: This is the restricted factory floor network (e.g., `192.168.10.x`). Only the Central Edge Server is permitted to route traffic into this subnet. This prevents external actors from directly communicating with industrial machinery.
+*   **OT (Operational Technology) Network**: This is the restricted factory floor network (`10.10.14.0/24`). Only the Central Edge Server is permitted to route traffic into this subnet. This prevents external actors from directly communicating with industrial machinery.
 
 ### 2. Node Explanations
 
