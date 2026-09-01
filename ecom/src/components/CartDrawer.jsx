@@ -2,20 +2,9 @@ import { getCart, removeFromCart, updateQty, cartTotal } from '../store/cartStor
 import { useNavigate } from 'react-router-dom';
 import { getUser } from '../store/cartStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Trash2, ShoppingBag, ArrowRight, PackageOpen } from 'lucide-react';
+import { X, Trash2, ShoppingBag, ArrowRight, PackageOpen, Layers } from 'lucide-react';
 import { useEffect } from 'react';
-
-function formatPrice(n) {
-  return '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 });
-}
-
-function getProductImage(name) {
-  const lower = name.toLowerCase();
-  if (lower.includes('shaft')) return '/images/shaft.png';
-  if (lower.includes('bearing')) return '/images/bearing.png';
-  if (lower.includes('casing')) return '/images/casing.png';
-  return null;
-}
+import { getProductAsset, formatPrice } from '../utils/productImages';
 
 export default function CartDrawer({ open, onClose, onCartChange }) {
   const cart = getCart();
@@ -95,7 +84,7 @@ export default function CartDrawer({ open, onClose, onCartChange }) {
                 </div>
               ) : (
                 cart.map(item => {
-                  const imageSrc = getProductImage(item.name);
+                  const imageSrc = getProductAsset(item.name, item.sku, item.image_url);
                   return (
                     <motion.div layout key={item.item_id} style={{
                       display: 'flex', alignItems: 'center', gap: 16,

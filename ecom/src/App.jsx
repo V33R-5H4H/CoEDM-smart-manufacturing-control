@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import CartDrawer from './components/CartDrawer';
 import Catalogue from './pages/Catalogue';
+import Configurator from './pages/Configurator';
 import Auth from './pages/Auth';
 import ResetPassword from './pages/ResetPassword';
 import Checkout from './pages/Checkout';
@@ -47,6 +48,7 @@ export default function App() {
 
       <Routes>
         <Route path="/" element={<Catalogue onCartChange={refreshCart} />} />
+        <Route path="/configure" element={<Configurator onCartChange={refreshCart} />} />
         <Route path="/login"    element={<Auth mode="login" onAuthChange={refreshCart} />} />
         <Route path="/register" element={<Auth mode="register" onAuthChange={refreshCart} />} />
         <Route path="/reset-password" element={<ResetPassword />} />
