@@ -354,8 +354,8 @@ DATE GENERATED: ${new Date().toLocaleString('en-IN')}
                       {housingType === 'bracket' ? (
                         /* Bracket_40mm Drawing: Asymmetric 3-hole bracket with R10 nose and 40mm bore */
                         <svg width="250" height="130" viewBox="0 0 250 130">
-                          <line x1="10" y1="65" x2="240" y2="65" stroke="#a1a1aa" strokeDasharray="5,3" strokeWidth="1" />
-                          <line x1="155" y1="10" x2="155" y2="120" stroke="#a1a1aa" strokeDasharray="5,3" strokeWidth="1" />
+                          <line x1="10" y1="65" x2="240" y2="65" stroke="var(--border)" strokeDasharray="5,3" strokeWidth="1" />
+                          <line x1="155" y1="10" x2="155" y2="120" stroke="var(--border)" strokeDasharray="5,3" strokeWidth="1" />
                           {/* Bracket outline */}
                           <path d="M 30,65 C 30,45 50,25 70,25 L 180,25 C 205,25 205,105 180,105 L 70,105 C 50,105 30,85 30,65 Z" fill="none" stroke="currentColor" strokeWidth="2" />
                           {/* 3x Ø9 Mounting Holes */}
@@ -363,7 +363,7 @@ DATE GENERATED: ${new Date().toLocaleString('en-IN')}
                           <circle cx="85" cy="40" r="7" fill="none" stroke="currentColor" strokeWidth="1.5" />
                           <circle cx="85" cy="90" r="7" fill="none" stroke="currentColor" strokeWidth="1.5" />
                           {/* Center 40mm Bore & 18mm through hole */}
-                          <circle cx="155" cy="65" r="28" fill="rgba(59, 130, 246, 0.1)" stroke="var(--primary)" strokeWidth="2" />
+                          <circle cx="155" cy="65" r="28" fill="var(--warning-bg, rgba(245, 203, 92, 0.18))" stroke="var(--primary)" strokeWidth="2" />
                           <circle cx="155" cy="65" r="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4,2" />
                           {/* Dimension labels */}
                           <text x="155" y="70" textAnchor="middle" fontSize="10" fill="var(--primary)" fontWeight="800">Ø40 H7</text>
@@ -372,25 +372,25 @@ DATE GENERATED: ${new Date().toLocaleString('en-IN')}
                       ) : housingType === 'oval' ? (
                         /* oval_40mm Drawing: Symmetrical 2-bolt rhombic oval with 104mm length */
                         <svg width="250" height="130" viewBox="0 0 250 130">
-                          <line x1="10" y1="65" x2="240" y2="65" stroke="#a1a1aa" strokeDasharray="5,3" strokeWidth="1" />
-                          <line x1="125" y1="10" x2="125" y2="120" stroke="#a1a1aa" strokeDasharray="5,3" strokeWidth="1" />
+                          <line x1="10" y1="65" x2="240" y2="65" stroke="var(--border)" strokeDasharray="5,3" strokeWidth="1" />
+                          <line x1="125" y1="10" x2="125" y2="120" stroke="var(--border)" strokeDasharray="5,3" strokeWidth="1" />
                           {/* Symmetrical Oval outline (104mm length, R31 body, R10 ends) */}
                           <path d="M 25,65 C 25,45 65,25 125,25 C 185,25 225,45 225,65 C 225,85 185,105 125,105 C 65,105 25,85 25,65 Z" fill="none" stroke="currentColor" strokeWidth="2" />
                           {/* 2x Ø9 Mounting Holes on 84mm centers */}
                           <circle cx="45" cy="65" r="7" fill="none" stroke="currentColor" strokeWidth="1.5" />
                           <circle cx="205" cy="65" r="7" fill="none" stroke="currentColor" strokeWidth="1.5" />
                           {/* Center 40mm Bore & 18mm through hole */}
-                          <circle cx="125" cy="65" r="28" fill="rgba(59, 130, 246, 0.1)" stroke="var(--primary)" strokeWidth="2" />
+                          <circle cx="125" cy="65" r="28" fill="var(--warning-bg, rgba(245, 203, 92, 0.18))" stroke="var(--primary)" strokeWidth="2" />
                           <circle cx="125" cy="65" r="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4,2" />
                           {/* Dimension labels */}
                           <text x="125" y="70" textAnchor="middle" fontSize="10" fill="var(--primary)" fontWeight="800">Ø40 H7</text>
                           <text x="125" y="120" textAnchor="middle" fontSize="8.5" fill="currentColor" fontWeight="700">L = 104 mm | 2x Ø9</text>
                         </svg>
-                      ) : (
+                      ) : housingType === 'square' || product.name.toLowerCase().includes('casing') || product.name.toLowerCase().includes('housing') ? (
                         /* 70sq_40mmdia Drawing: 70x70 square with 4x Ø7 corner holes */
                         <svg width="250" height="130" viewBox="0 0 250 130">
-                          <line x1="20" y1="65" x2="230" y2="65" stroke="#a1a1aa" strokeDasharray="5,3" strokeWidth="1" />
-                          <line x1="125" y1="10" x2="125" y2="120" stroke="#a1a1aa" strokeDasharray="5,3" strokeWidth="1" />
+                          <line x1="20" y1="65" x2="230" y2="65" stroke="var(--border)" strokeDasharray="5,3" strokeWidth="1" />
+                          <line x1="125" y1="10" x2="125" y2="120" stroke="var(--border)" strokeDasharray="5,3" strokeWidth="1" />
                           {/* 70x70 Square Flange (R7 corners) */}
                           <rect x="65" y="15" width="120" height="100" rx="12" fill="none" stroke="currentColor" strokeWidth="2" />
                           {/* 4x Ø7 Corner Mounting Holes (35x35 pitch, PCD 75) */}
@@ -399,11 +399,49 @@ DATE GENERATED: ${new Date().toLocaleString('en-IN')}
                           <circle cx="80" cy="100" r="6" fill="none" stroke="currentColor" strokeWidth="1.5" />
                           <circle cx="170" cy="100" r="6" fill="none" stroke="currentColor" strokeWidth="1.5" />
                           {/* Center 40mm Bore & 18mm through hole */}
-                          <circle cx="125" cy="65" r="28" fill="rgba(59, 130, 246, 0.1)" stroke="var(--primary)" strokeWidth="2" />
+                          <circle cx="125" cy="65" r="28" fill="var(--warning-bg, rgba(245, 203, 92, 0.18))" stroke="var(--primary)" strokeWidth="2" />
                           <circle cx="125" cy="65" r="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4,2" />
                           {/* Dimension labels */}
                           <text x="125" y="70" textAnchor="middle" fontSize="10" fill="var(--primary)" fontWeight="800">Ø40 H7</text>
                           <text x="125" y="125" textAnchor="middle" fontSize="8.5" fill="currentColor" fontWeight="700">70×70 mm | 4x Ø7 (PCD Ø75)</text>
+                        </svg>
+                      ) : product.name.toLowerCase().includes('bearing') || (product.sku || '').toLowerCase().includes('brg') ? (
+                        /* Deep Groove Radial Ball Bearing Orthographic Section */
+                        <svg width="250" height="130" viewBox="0 0 250 130">
+                          <line x1="20" y1="65" x2="230" y2="65" stroke="var(--border)" strokeDasharray="5,3" strokeWidth="1" />
+                          <line x1="125" y1="10" x2="125" y2="120" stroke="var(--border)" strokeDasharray="5,3" strokeWidth="1" />
+                          {/* Outer Ring (Ø40mm) */}
+                          <circle cx="125" cy="65" r="48" fill="none" stroke="currentColor" strokeWidth="2" />
+                          <circle cx="125" cy="65" r="38" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="3,2" />
+                          {/* Rolling Ball Elements */}
+                          {[0, 45, 90, 135, 180, 225, 270, 315].map((ang, i) => {
+                            const rad = (ang * Math.PI) / 180;
+                            const bx = 125 + 29 * Math.cos(rad);
+                            const by = 65 + 29 * Math.sin(rad);
+                            return <circle key={i} cx={bx} cy={by} r="7" fill="var(--warning-bg, rgba(245, 203, 92, 0.25))" stroke="var(--primary)" strokeWidth="1.5" />;
+                          })}
+                          {/* Inner Ring (Ø18mm) */}
+                          <circle cx="125" cy="65" r="20" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="3,2" />
+                          <circle cx="125" cy="65" r="14" fill="var(--bg-secondary)" stroke="currentColor" strokeWidth="2" />
+                          <text x="125" y="68" textAnchor="middle" fontSize="9" fill="var(--primary)" fontWeight="800">Ø18 d</text>
+                          <text x="210" y="30" fontSize="8.5" fill="currentColor" fontWeight="700">OD: Ø40mm</text>
+                          <text x="210" y="44" fontSize="8" fill="var(--text-muted)">B = 12mm</text>
+                        </svg>
+                      ) : (
+                        /* Stepped Ground Shaft Blueprint */
+                        <svg width="250" height="130" viewBox="0 0 250 130">
+                          <line x1="10" y1="65" x2="240" y2="65" stroke="var(--primary)" strokeDasharray="6,3" strokeWidth="1.2" />
+                          {/* Stepped Shaft Profile */}
+                          <rect x="25" y="50" width="45" height="30" fill="var(--bg-secondary)" stroke="currentColor" strokeWidth="1.5" />
+                          <rect x="70" y="42" width="70" height="46" fill="var(--warning-bg, rgba(245, 203, 92, 0.15))" stroke="var(--primary)" strokeWidth="2" />
+                          <rect x="140" y="48" width="85" height="34" fill="var(--bg-secondary)" stroke="currentColor" strokeWidth="1.5" />
+                          {/* Chamfers */}
+                          <line x1="25" y1="50" x2="30" y2="50" stroke="currentColor" strokeWidth="2" />
+                          <line x1="220" y1="48" x2="225" y2="53" stroke="currentColor" strokeWidth="1.5" />
+                          {/* Dimension labels */}
+                          <text x="105" y="69" textAnchor="middle" fontSize="9.5" fill="var(--primary)" fontWeight="800">Ø18 h6 Journal</text>
+                          <text x="105" y="112" textAnchor="middle" fontSize="8.5" fill="currentColor" fontWeight="700">L = 120 mm | EN8 Steel</text>
+                          <text x="182" y="42" textAnchor="middle" fontSize="7.5" fill="var(--text-muted)">Ra 0.8 µm</text>
                         </svg>
                       )}
                     </div>

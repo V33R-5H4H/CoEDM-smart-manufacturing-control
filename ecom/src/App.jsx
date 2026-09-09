@@ -25,7 +25,7 @@ export default function App() {
 
   // Apply saved theme on mount
   useEffect(() => {
-    const saved = localStorage.getItem('ecom_theme') || 'light';
+    const saved = localStorage.getItem('ecom_theme') || 'scada-industrial';
     document.documentElement.setAttribute('data-theme', saved);
   }, []);
 

@@ -17,7 +17,7 @@ On POST /api/ecom/orders:
 import logging
 import asyncio
 from datetime import datetime
-from typing import List
+from typing import List, Optional, Union
 
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel
@@ -39,7 +39,7 @@ asrs_logic = ASRSLogic()
 # ── Pydantic Schemas ─────────────────────────────────────────────────────────
 
 class CartItem(BaseModel):
-    item_id: int
+    item_id: Union[int, str]
     quantity: int
 
 
@@ -100,8 +100,9 @@ def _log_transaction(session, item_id: int, compartment_id: str,
     })
 
 
-async def _broadcast_order_event(order_id: int, item_id: int, sub_id: int, status: str, compartments: list, plc_ok: bool):
-    """Broadcast an ecom order status update to the ASRS dashboard."""
+async def _broadcast_ecom_order(order_id: int, item_id: int, sub_id: str,
+                                status: str, plc_ok: bool, compartments: list):
+    """Notify WebSocket subscribers of an ecom order event."""
     try:
         from backend.websockets.asrs_broadcaster import led_ws_manager
         import orjson
@@ -134,34 +135,55 @@ async def place_order(body: PlaceOrderRequest, background_tasks: BackgroundTasks
     ecom_user_id = user["user_id"]
     plc_connected = asrs_controller.is_connected()
 
-    # ── Step 1: Validate all items have sufficient stock ──────────────────────
+    # ── Normalize item IDs (handles service items like 'SVC-PRESS-ASSY' or string IDs)
+    normalized_items = []
+    for ci in body.items:
+        raw_id = ci.item_id
+        if isinstance(raw_id, str):
+            if raw_id.upper() in ('SVC-PRESS-ASSY', 'SVC-ASSY-PRESS', 'SERVICE'):
+                iid = 201
+            else:
+                try:
+                    iid = int(raw_id)
+                except ValueError:
+                    iid = 201
+        else:
+            iid = int(raw_id)
+        normalized_items.append({"item_id": iid, "quantity": max(1, ci.quantity)})
+
+    # ── Step 1: Validate physical stock in ASRS (skip services) ─────────────────
     session = InventorySessionLocal()
     try:
-        for ci in body.items:
+        for ci in normalized_items:
+            iid = ci["item_id"]
+            qty = ci["quantity"]
+            if iid == 201:
+                continue
+
             rows = session.execute(text("""
                 SELECT quantity
                 FROM storage_compartments
                 WHERE item_id = :iid AND status = 'occupied'
                 FOR UPDATE
-            """), {"iid": ci.item_id}).fetchall()
+            """), {"iid": iid}).fetchall()
             avail = sum(row[0] for row in rows)
 
-            if avail < ci.quantity:
+            if avail < qty:
                 raise HTTPException(status_code=400,
-                    detail=f"Insufficient stock for item {ci.item_id}. "
-                           f"Available: {avail}, Requested: {ci.quantity}")
+                    detail=f"Insufficient stock for item {iid}. Available: {avail}, Requested: {qty}")
 
         # ── Step 2: Fetch prices from storage_items ───────────────────────────
         prices = {}
-        for ci in body.items:
+        for ci in normalized_items:
+            iid = ci["item_id"]
             row = session.execute(text("""
-                SELECT price, name FROM storage_items
-                WHERE item_id = :iid AND item_type = 'finished'
-            """), {"iid": ci.item_id}).fetchone()
+                SELECT price, name, item_type FROM storage_items
+                WHERE item_id = :iid
+            """), {"iid": iid}).fetchone()
             if not row:
                 raise HTTPException(status_code=404,
-                    detail=f"Product {ci.item_id} not found or not a finished product")
-            prices[ci.item_id] = {"price": float(row[0]), "name": row[1]}
+                    detail=f"Product {iid} not found in catalog")
+            prices[iid] = {"price": float(row[0]), "name": row[1], "item_type": row[2]}
 
         # ── Step 3: Fetch ecom_user details ───────────────────────────────────
         ecom_row = session.execute(text("""
@@ -190,81 +212,85 @@ async def place_order(body: PlaceOrderRequest, background_tasks: BackgroundTasks
 
         # ── Step 5: Create order_items + retrieval_queue entries ──────────────
         queue_map = {}   # item_id → list of queue_ids
-        for ci in body.items:
-            price = prices[ci.item_id]["price"]
+        for ci in normalized_items:
+            iid = ci["item_id"]
+            qty = ci["quantity"]
+            price = prices[iid]["price"]
             session.execute(text("""
                 INSERT INTO order_items (order_id, item_id, quantity, unit_price)
                 VALUES (:oid, :iid, :qty, :price)
-            """), {"oid": order_id, "iid": ci.item_id,
-                   "qty": ci.quantity, "price": price})
+            """), {"oid": order_id, "iid": iid,
+                   "qty": qty, "price": price})
 
-            # Fetch subcompartments for this item
+            if iid == 201:
+                # Service item — logged in order_items but no physical ASRS bin retrieval
+                continue
+
+            # Fetch subcompartments for this physical item
             available_comps = session.execute(text("""
-                SELECT compartment_id, box_id, sub_slot
+                SELECT compartment_id, quantity
                 FROM storage_compartments
-                WHERE item_id = :iid AND status = 'occupied'
+                WHERE item_id = :iid AND quantity > 0
                 ORDER BY box_id, sub_slot
                 FOR UPDATE SKIP LOCKED
-                LIMIT :qty
-            """), {"iid": ci.item_id, "qty": ci.quantity}).fetchall()
+            """), {"iid": iid}).fetchall()
 
-            if len(available_comps) < ci.quantity:
-                raise HTTPException(status_code=400, detail=f"Insufficient stock for item {ci.item_id} during allocation.")
+            total_avail = sum(c[1] for c in available_comps)
+            if total_avail < qty:
+                raise HTTPException(status_code=400, detail=f"Insufficient stock for item {iid} during allocation.")
 
-            queue_map[ci.item_id] = []
-            for i in range(ci.quantity):
-                comp_id = available_comps[i][0]
-                
-                # Mark as reserved immediately
+            queue_map[iid] = []
+            remaining_to_deduct = qty
+
+            for comp_id, comp_qty in available_comps:
+                if remaining_to_deduct <= 0:
+                    break
+                deduct = min(remaining_to_deduct, comp_qty)
+                new_qty = comp_qty - deduct
+                new_status = 'occupied' if new_qty > 0 else 'unoccupied'
+
                 session.execute(text("""
                     UPDATE storage_compartments 
-                    SET status = 'reserved', updated_at = :now 
+                    SET quantity = :nqty, status = :nst, updated_at = :now 
                     WHERE compartment_id = :cid
-                """), {"cid": comp_id, "now": ist_now()})
-                
-                # Enqueue with the assigned compartment
-                queue_id = _enqueue_retrieval(session, ci.item_id, ecom_user_id, order_id, comp_id)
-                queue_map[ci.item_id].append(queue_id)
-                
-                # Broadcast immediately so frontend sees the reserved compartment
-                background_tasks.add_task(
-                    _broadcast_order_event,
-                    order_id, ci.item_id, queue_id, "pending", [comp_id], True
-                )
+                """), {"nqty": new_qty, "nst": new_status, "cid": comp_id, "now": ist_now()})
+
+                # Enqueue retrieval for each deducted unit
+                for _ in range(deduct):
+                    queue_id = _enqueue_retrieval(session, iid, ecom_user_id, order_id, comp_id)
+                    queue_map[iid].append(queue_id)
+                    
+                    background_tasks.add_task(
+                        _broadcast_ecom_order,
+                        order_id, iid, str(queue_id), "reserved", False, [comp_id]
+                    )
+
+                remaining_to_deduct -= deduct
 
         session.commit()
-        logger.info(f"[ECOM] Order #{order_id} created, queue_ids={queue_map}")
+
+        # Launch physical ASRS hardware retrieval in background
+        background_tasks.add_task(
+            _process_retrievals_background,
+            normalized_items, queue_map, plc_connected, order_id
+        )
+
+        return {
+            "order_id": order_id,
+            "status": "pending",
+            "message": f"Order #{order_id} placed successfully.",
+            "plc_connected": plc_connected,
+        }
 
     except HTTPException:
         session.rollback()
         raise
     except Exception as e:
         session.rollback()
-        logger.error(f"[ECOM] Order creation failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"[ECOM] Error placing order: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to place order: {str(e)}")
     finally:
         session.close()
-
-    # ── Step 6: Trigger ASRS PLC retrieval in the background ─────────────────
-    background_tasks.add_task(
-        _process_retrievals_background,
-        body.items,
-        queue_map,
-        plc_connected,
-        order_id
-    )
-
-    return {
-        "order_id": order_id,
-        "status": "pending" if plc_connected else "pending",
-        "plc_connected": plc_connected,
-        "retrieval": [],  # Retrieved asynchronously
-        "message": (
-            "Order placed and ASRS retrieval queued in background."
-            if plc_connected else
-            "Order placed. ASRS is offline — stock reserved for physical pickup."
-        )
-    }
 
 
 def _process_retrievals_background(items, queue_map, plc_connected, order_id):
@@ -276,7 +302,8 @@ def _process_retrievals_background(items, queue_map, plc_connected, order_id):
     all_ok = True
 
     for ci in items:
-        queue_ids = queue_map[ci.item_id]
+        iid = ci["item_id"] if isinstance(ci, dict) else ci.item_id
+        queue_ids = queue_map.get(iid, [])
         
         for queue_id in queue_ids:
             compartments_cleared = []
@@ -300,19 +327,19 @@ def _process_retrievals_background(items, queue_map, plc_connected, order_id):
                     sub_id = comp_id[-1]
                     
                     # ── Actually run the ASRS PLC for 1 item (this blocks and waits sequentially)
-                    result = asrs_logic.retrieve_from_specific_location(box_id, sub_id, ci.item_id)
+                    result = asrs_logic.retrieve_from_specific_location(box_id, sub_id, iid)
                     plc_ok = result.get("success", False)
                     plc_commands = [result.get("plc_command", "")] if plc_ok else []
 
                     if plc_ok:
-                        _log_transaction(s2, ci.item_id, comp_id,
+                        _log_transaction(s2, iid, comp_id,
                                          queue_id, box_id, "ecom_ok")
                         compartments_cleared.append(comp_id)
                         _mark_queue_completed(s2, queue_id)
                         s2.commit()
                     else:
                         # PLC failed — keep queue as processing
-                        logger.warning(f"[ECOM BACKGROUND] PLC retrieval failed for item {ci.item_id} sub {queue_id}")
+                        logger.warning(f"[ECOM BACKGROUND] PLC retrieval failed for item {iid} sub {queue_id}")
                         all_ok = False
 
                 else:
@@ -323,13 +350,13 @@ def _process_retrievals_background(items, queue_map, plc_connected, order_id):
 
             except Exception as e:
                 s2.rollback()
-                logger.error(f"[ECOM BACKGROUND] Retrieval error for item {ci.item_id} sub {queue_id}: {e}")
+                logger.error(f"[ECOM BACKGROUND] Retrieval error for item {iid} sub {queue_id}: {e}")
                 all_ok = False
             finally:
                 s2.close()
 
             retrieval_results.append({
-                "item_id": ci.item_id,
+                "item_id": iid,
                 "sub_id": queue_id,
                 "plc_ok": plc_ok,
                 "compartments_cleared": compartments_cleared,
@@ -340,10 +367,10 @@ def _process_retrievals_background(items, queue_map, plc_connected, order_id):
                 new_loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(new_loop)
                 new_loop.run_until_complete(
-                    _broadcast_order_event(
-                        order_id, ci.item_id, queue_id,
+                    _broadcast_ecom_order(
+                        order_id, iid, str(queue_id),
                         "shipped" if plc_ok else "pending",
-                        compartments_cleared, plc_ok
+                        plc_ok, compartments_cleared
                     )
                 )
                 new_loop.close()

@@ -321,6 +321,36 @@ def get_all_orders(admin_user: dict = Depends(get_current_admin_user)):
     return orders
 
 
+class ItemCreateRequest(BaseModel):
+    sku: str
+    name: str
+    description: Optional[str] = ""
+    price: float
+    item_type: str = "finished"
+    unit: str = "pcs"
+    image_url: Optional[str] = None
+    box_id: Optional[str] = None
+    sub_slot: Optional[str] = "a"
+    initial_qty: Optional[int] = 0
+
+
+class ItemUpdateRequest(BaseModel):
+    sku: Optional[str] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[float] = None
+    item_type: Optional[str] = None
+    unit: Optional[str] = None
+    image_url: Optional[str] = None
+
+
+class CompartmentAllocationRequest(BaseModel):
+    box_id: str
+    sub_slot: str = "a"
+    quantity: int
+    status: str = "occupied"
+
+
 @router.get("/inventory")
 def get_inventory_details(admin_user: dict = Depends(get_current_admin_user)):
     """Fetch all items and their exact ASRS bin locations."""
@@ -328,11 +358,10 @@ def get_inventory_details(admin_user: dict = Depends(get_current_admin_user)):
         rows = session.execute(
             text("""
                 SELECT i.item_id, i.sku, i.name, i.price, i.item_type,
-                       c.compartment_id, c.status, c.quantity, i.image_url
+                       c.compartment_id, c.status, c.quantity, i.image_url, i.description, i.unit
                 FROM storage_items i
                 LEFT JOIN storage_compartments c ON c.item_id = i.item_id
-                WHERE i.item_type = 'finished'
-                ORDER BY i.name ASC, c.compartment_id ASC
+                ORDER BY i.item_id ASC, c.compartment_id ASC
             """)
         ).fetchall()
         
@@ -347,15 +376,17 @@ def get_inventory_details(admin_user: dict = Depends(get_current_admin_user)):
                 "price": float(r[3]),
                 "item_type": r[4],
                 "image_url": r[8],
+                "description": r[9] or "",
+                "unit": r[10] or "pcs",
                 "total_quantity": 0,
                 "locations": []
             }
             
         comp_id = r[5]
         status = r[6]
-        qty = r[7]
+        qty = r[7] or 0
         
-        if comp_id and status in ('occupied', 'reserved'):
+        if comp_id and status in ('occupied', 'reserved') and qty > 0:
             items_map[item_id]["total_quantity"] += qty
             items_map[item_id]["locations"].append({
                 "compartment_id": comp_id,
@@ -364,4 +395,163 @@ def get_inventory_details(admin_user: dict = Depends(get_current_admin_user)):
             })
             
     return list(items_map.values())
+
+
+@router.get("/items")
+def get_all_items(admin_user: dict = Depends(get_current_admin_user)):
+    """Fetch item master catalogue with aggregated ASRS stock."""
+    return get_inventory_details(admin_user)
+
+
+@router.post("/items")
+def admin_create_item(body: ItemCreateRequest, admin_user: dict = Depends(get_current_admin_user)):
+    """Create a new item in the item master catalogue and optionally allocate initial ASRS stock."""
+    with db_session() as session:
+        clean_sku = body.sku.strip().upper()
+        clean_name = body.name.strip()
+        
+        if not clean_sku or not clean_name:
+            raise HTTPException(status_code=400, detail="SKU and Name are required")
+            
+        existing = session.execute(text("SELECT item_id FROM storage_items WHERE sku = :sku"), {"sku": clean_sku}).fetchone()
+        if existing:
+            raise HTTPException(status_code=409, detail=f"An item with SKU '{clean_sku}' already exists")
+            
+        # Get next item_id
+        max_id = session.execute(text("SELECT COALESCE(MAX(item_id), 100) FROM storage_items")).scalar()
+        new_id = max_id + 1
+        
+        session.execute(text("""
+            INSERT INTO storage_items 
+                (item_id, machine_id, sku, name, description, item_type, unit, price, image_url, created_at, updated_at)
+            VALUES 
+                (:iid, 'asrs', :sku, :name, :desc, :type, :unit, :price, :img, NOW(), NOW())
+        """), {
+            "iid": new_id,
+            "sku": clean_sku,
+            "name": clean_name,
+            "desc": body.description,
+            "type": body.item_type,
+            "unit": body.unit,
+            "price": body.price,
+            "img": body.image_url
+        })
+        
+        # Optional initial compartment allocation
+        if body.box_id and body.initial_qty and body.initial_qty > 0:
+            sub = (body.sub_slot or "a").lower()
+            session.execute(text("""
+                UPDATE storage_compartments 
+                SET item_id = :iid, quantity = :qty, status = 'occupied', updated_at = NOW()
+                WHERE box_id = :box AND sub_slot = :sub
+            """), {
+                "iid": new_id,
+                "qty": body.initial_qty,
+                "box": body.box_id.strip().upper(),
+                "sub": sub
+            })
+            
+        session.commit()
+        
+    return {"message": f"Item '{clean_name}' ({clean_sku}) created successfully.", "item_id": new_id}
+
+
+@router.patch("/items/{item_id}")
+def admin_update_item(item_id: int, body: ItemUpdateRequest, admin_user: dict = Depends(get_current_admin_user)):
+    """Update item metadata, specs, pricing, and images."""
+    with db_session() as session:
+        item = session.execute(text("SELECT item_id FROM storage_items WHERE item_id = :iid"), {"iid": item_id}).fetchone()
+        if not item:
+            raise HTTPException(status_code=404, detail="Item not found")
+            
+        updates = []
+        params = {"iid": item_id}
+        
+        if body.sku is not None:
+            updates.append("sku = :sku")
+            params["sku"] = body.sku.strip().upper()
+        if body.name is not None:
+            updates.append("name = :name")
+            params["name"] = body.name.strip()
+        if body.description is not None:
+            updates.append("description = :desc")
+            params["desc"] = body.description
+        if body.price is not None:
+            updates.append("price = :price")
+            params["price"] = body.price
+        if body.item_type is not None:
+            updates.append("item_type = :type")
+            params["type"] = body.item_type
+        if body.unit is not None:
+            updates.append("unit = :unit")
+            params["unit"] = body.unit
+        if body.image_url is not None:
+            updates.append("image_url = :img")
+            params["img"] = body.image_url
+            
+        if not updates:
+            return {"message": "No changes requested."}
+            
+        updates.append("updated_at = NOW()")
+        sql = f"UPDATE storage_items SET {', '.join(updates)} WHERE item_id = :iid"
+        session.execute(text(sql), params)
+        session.commit()
+        
+    return {"message": f"Item #{item_id} updated successfully."}
+
+
+@router.delete("/items/{item_id}")
+def admin_delete_item(item_id: int, admin_user: dict = Depends(get_current_admin_user)):
+    """Delete an item from master catalog and clear its compartments."""
+    with db_session() as session:
+        # Check order references
+        in_orders = session.execute(text("SELECT COUNT(*) FROM order_items WHERE item_id = :iid"), {"iid": item_id}).scalar()
+        if in_orders > 0:
+            raise HTTPException(status_code=400, detail="Cannot delete item that has existing orders associated with it. Please edit or archive it instead.")
+            
+        # Unlink compartments
+        session.execute(text("UPDATE storage_compartments SET item_id = NULL, quantity = 0, status = 'empty', updated_at = NOW() WHERE item_id = :iid"), {"iid": item_id})
+        
+        # Delete item
+        session.execute(text("DELETE FROM storage_items WHERE item_id = :iid"), {"iid": item_id})
+        session.commit()
+        
+    return {"message": f"Item #{item_id} deleted successfully."}
+
+
+@router.post("/items/{item_id}/compartment")
+def admin_allocate_compartment(item_id: int, body: CompartmentAllocationRequest, admin_user: dict = Depends(get_current_admin_user)):
+    """Allocate or adjust ASRS compartment stock for an item."""
+    with db_session() as session:
+        item = session.execute(text("SELECT item_id, name FROM storage_items WHERE item_id = :iid"), {"iid": item_id}).fetchone()
+        if not item:
+            raise HTTPException(status_code=404, detail="Item not found")
+            
+        box = body.box_id.strip().upper()
+        sub = (body.sub_slot or "a").lower()
+        
+        # Check if box exists
+        box_row = session.execute(text("SELECT box_id FROM storage_boxes WHERE box_id = :box"), {"box": box}).fetchone()
+        if not box_row:
+            raise HTTPException(status_code=404, detail=f"ASRS Box '{box}' not found (valid range: A1 to E7).")
+            
+        status = "occupied" if body.quantity > 0 else "empty"
+        if body.status:
+            status = body.status
+            
+        session.execute(text("""
+            UPDATE storage_compartments
+            SET item_id = :iid, quantity = :qty, status = :st, updated_at = NOW()
+            WHERE box_id = :box AND sub_slot = :sub
+        """), {
+            "iid": item_id if body.quantity > 0 else None,
+            "qty": body.quantity,
+            "st": status,
+            "box": box,
+            "sub": sub
+        })
+        session.commit()
+        
+    return {"message": f"Compartment {box}{sub} updated for item #{item_id} (Qty: {body.quantity})."}
+
 

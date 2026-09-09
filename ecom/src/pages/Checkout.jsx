@@ -210,7 +210,7 @@ export default function Checkout({ onCartChange }) {
               )}
             </button>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', margin: 0 }}>
-              Order will immediately communicate with Omron NX102 PLC over OPC-UA at 10.10.14.104:4840.
+              Order will immediately communicate with ASRS Robotic Storage Controller over OPC-UA at 10.10.14.104:4840.
             </p>
           </form>
         </div>

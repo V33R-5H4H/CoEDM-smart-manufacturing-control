@@ -16,7 +16,7 @@ const DEFAULT_HOUSINGS = [
     name: 'Square 4-Bolt Flanged Housing Unit (70×70mm, Ø40mm Bore)',
     description: 'Precision CNC milled 70×70mm square 4-bolt flanged bearing unit with Ø40mm H7 bore (12mm seat depth) and PCD Ø75mm (4× Ø7mm holes). Station 4 TRIAC CNC Centre. DWG: 70sq_40mmdia.',
     price: 1250,
-    available_qty: 8,
+    available_qty: 0,
     image_url: '/images/casing.png'
   },
   {
@@ -25,7 +25,7 @@ const DEFAULT_HOUSINGS = [
     name: 'Oval 2-Bolt Flanged Housing Unit (104mm, Ø40mm Bore)',
     description: 'Precision CNC milled rhombic oval 2-bolt flanged bearing unit (104×54mm) with Ø40mm H7 bore and 84mm mounting pitch (2× Ø9mm holes). Station 4 TRIAC CNC Centre. DWG: oval_40mm.',
     price: 1150,
-    available_qty: 12,
+    available_qty: 0,
     image_url: '/images/casing2.png'
   },
   {
@@ -34,7 +34,7 @@ const DEFAULT_HOUSINGS = [
     name: 'Asymmetric Bracket Bearing Housing (60×54mm, Ø40mm Bore)',
     description: 'Precision CNC milled heavy-duty asymmetric bracket bearing unit with 3× Ø9mm mounting holes, 40° structural gusset rib, and Ø40mm H7 bore. Station 4 TRIAC CNC Centre. DWG: Bracket_40mm.',
     price: 1350,
-    available_qty: 6,
+    available_qty: 0,
     image_url: '/images/casing3.png'
   }
 ];
@@ -51,7 +51,9 @@ export default function Configurator({ onCartChange }) {
   const [assemblyRequested, setAssemblyRequested] = useState(true); // Hydraulic Press assembly
 
   const [activeStep, setActiveStep] = useState(1);
-  const [previewMode, setPreviewMode] = useState('mated'); // 'mated' | 'cad'
+  const [previewMode, setPreviewMode] = useState('exploded'); // 'exploded' | 'mated' | 'cad'
+  const [explosionDistance, setExplosionDistance] = useState(65); // 0 to 100%
+  const [showTolerances, setShowTolerances] = useState(true);
   const [modalProduct, setModalProduct] = useState(null);
   const [added, setAdded] = useState(false);
 
@@ -62,15 +64,19 @@ export default function Configurator({ onCartChange }) {
         setProducts(data);
         const shafts = data.filter(p => p.name.toLowerCase().includes('shaft') || (p.sku || '').toLowerCase().includes('sft'));
         const bearings = data.filter(p => p.name.toLowerCase().includes('bearing') || (p.sku || '').toLowerCase().includes('brg'));
-        let casings = data.filter(p => p.name.toLowerCase().includes('casing') || p.name.toLowerCase().includes('housing') || (p.sku || '').toLowerCase().includes('csg') || p.name.toLowerCase().includes('70sq') || p.name.toLowerCase().includes('oval') || p.name.toLowerCase().includes('bracket'));
+        const apiCasings = data.filter(p => p.name.toLowerCase().includes('casing') || p.name.toLowerCase().includes('housing') || (p.sku || '').toLowerCase().includes('csg') || p.name.toLowerCase().includes('70sq') || p.name.toLowerCase().includes('oval') || p.name.toLowerCase().includes('bracket'));
 
-        if (casings.length < 3) {
-          casings = DEFAULT_HOUSINGS;
-        }
+        const resolvedCasings = DEFAULT_HOUSINGS.map(dh => {
+          const matched = apiCasings.find(ac => 
+            ac.item_id === dh.item_id || 
+            (ac.sku && dh.sku && ac.sku.toLowerCase() === dh.sku.toLowerCase())
+          );
+          return matched ? { ...dh, ...matched, available_qty: matched.available_qty ?? 0 } : { ...dh, available_qty: 0 };
+        });
 
         if (shafts.length > 0) setSelectedShaft(shafts[0]);
         if (bearings.length > 0) setSelectedBearing(bearings[0]);
-        if (casings.length > 0) setSelectedCasing(casings[0]);
+        if (resolvedCasings.length > 0) setSelectedCasing(resolvedCasings[0]);
         setLoading(false);
       })
       .catch(() => {
@@ -81,8 +87,26 @@ export default function Configurator({ onCartChange }) {
 
   const shafts = products.filter(p => p.name.toLowerCase().includes('shaft') || (p.sku || '').toLowerCase().includes('sft'));
   const bearings = products.filter(p => p.name.toLowerCase().includes('bearing') || (p.sku || '').toLowerCase().includes('brg'));
-  const apiCasings = products.filter(p => p.name.toLowerCase().includes('casing') || p.name.toLowerCase().includes('housing') || (p.sku || '').toLowerCase().includes('csg'));
-  const casings = apiCasings.length >= 3 ? apiCasings : DEFAULT_HOUSINGS;
+  const apiCasings = products.filter(p => 
+    p.name.toLowerCase().includes('casing') || 
+    p.name.toLowerCase().includes('housing') || 
+    (p.sku || '').toLowerCase().includes('csg') ||
+    p.name.toLowerCase().includes('70sq') ||
+    p.name.toLowerCase().includes('oval') ||
+    p.name.toLowerCase().includes('bracket')
+  );
+
+  // Merge live API stock into casings list strictly from ASRS
+  const casings = DEFAULT_HOUSINGS.map(dh => {
+    const matched = apiCasings.find(ac => 
+      ac.item_id === dh.item_id || 
+      (ac.sku && dh.sku && ac.sku.toLowerCase() === dh.sku.toLowerCase())
+    );
+    if (matched) {
+      return { ...dh, ...matched, available_qty: matched.available_qty ?? 0 };
+    }
+    return { ...dh, available_qty: 0 };
+  });
 
   // Calculate totals
   const shaftPrice = selectedShaft?.price || 0;
@@ -103,10 +127,11 @@ export default function Configurator({ onCartChange }) {
 
     if (assemblyRequested) {
       const serviceItem = {
-        item_id: 'SVC-PRESS-ASSY',
+        item_id: 201,
         name: `Precision Sub-Assembly Service (${selectedShaft.sku}+${selectedBearing.sku}+${selectedCasing.sku})`,
         price: 450,
         sku: 'SVC-ASSY-PRESS',
+        item_type: 'finished',
         category: 'Services',
         description: 'Automated hydraulic press fitting & alignment check at Station 2 CODESYS Press Cell.',
         available_qty: 999
@@ -493,33 +518,163 @@ export default function Configurator({ onCartChange }) {
             </div>
 
             {/* Preview Mode Switcher */}
-            <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+            <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
+              <button
+                onClick={() => setPreviewMode('exploded')}
+                style={{
+                  flex: 1, padding: '7px 6px', borderRadius: 4, fontSize: '0.72rem', fontWeight: 700,
+                  background: previewMode === 'exploded' ? 'var(--primary)' : 'var(--bg-secondary)',
+                  color: previewMode === 'exploded' ? 'var(--bg-primary)' : 'var(--text-secondary)',
+                  border: '1px solid var(--border)', cursor: 'pointer'
+                }}
+              >
+                ⚡ Exploded View
+              </button>
               <button
                 onClick={() => setPreviewMode('mated')}
                 style={{
-                  flex: 1, padding: '6px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700,
+                  flex: 1, padding: '7px 6px', borderRadius: 4, fontSize: '0.72rem', fontWeight: 700,
                   background: previewMode === 'mated' ? 'var(--primary)' : 'var(--bg-secondary)',
                   color: previewMode === 'mated' ? 'var(--bg-primary)' : 'var(--text-secondary)',
                   border: '1px solid var(--border)', cursor: 'pointer'
                 }}
               >
-                Composite Preview
+                Mated 3D
               </button>
               <button
                 onClick={() => setPreviewMode('cad')}
                 style={{
-                  flex: 1, padding: '6px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700,
+                  flex: 1, padding: '7px 6px', borderRadius: 4, fontSize: '0.72rem', fontWeight: 700,
                   background: previewMode === 'cad' ? 'var(--primary)' : 'var(--bg-secondary)',
                   color: previewMode === 'cad' ? 'var(--bg-primary)' : 'var(--text-secondary)',
                   border: '1px solid var(--border)', cursor: 'pointer'
                 }}
               >
-                2D CAD Mating Axis
+                2D CAD
               </button>
             </div>
 
-            {/* Visual Layered Composite Render */}
-            {previewMode === 'mated' ? (
+            {/* PREVIEW CONTAINER */}
+            {previewMode === 'exploded' ? (
+              <div style={{
+                background: 'var(--bg-secondary)',
+                borderRadius: 'var(--radius-md)',
+                padding: '20px 14px 14px',
+                border: '1px solid var(--border)',
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column'
+              }}>
+                {/* Visual Exploded Axis */}
+                <div style={{
+                  position: 'relative', height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  overflow: 'hidden'
+                }}>
+                  {/* Central Guide Axis Line */}
+                  <div style={{
+                    position: 'absolute', top: '50%', left: 20, right: 20, height: 2,
+                    borderTop: '2px dashed var(--border-hover)', zIndex: 0
+                  }} />
+
+                  {/* 1. Housing on Left */}
+                  {selectedCasing && (
+                    <motion.div
+                      animate={{ x: -(explosionDistance * 0.9) }}
+                      transition={{ type: 'spring', damping: 20, stiffness: 200 }}
+                      style={{ position: 'relative', zIndex: 3, textAlign: 'center', cursor: 'pointer' }}
+                      onClick={() => setModalProduct(selectedCasing)}
+                    >
+                      <img
+                        src={getProductAsset(selectedCasing.name, selectedCasing.sku, selectedCasing.image_url)}
+                        alt="Casing"
+                        style={{ width: 72, height: 72, objectFit: 'contain', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))' }}
+                      />
+                      <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--primary)', marginTop: 4 }}>
+                        {casingShape === 'bracket' ? 'Bracket Housing' : casingShape === 'oval' ? 'Oval Flange' : 'Square Flange'}
+                      </div>
+                      {showTolerances && (
+                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                          Ø40mm H7 (+0.025)
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+
+                  {/* 2. Bearing in Middle */}
+                  {selectedBearing && (
+                    <motion.div
+                      style={{ position: 'relative', zIndex: 2, textAlign: 'center', margin: '0 10px', cursor: 'pointer' }}
+                      onClick={() => setModalProduct(selectedBearing)}
+                    >
+                      <img
+                        src={getProductAsset(selectedBearing.name, selectedBearing.sku, selectedBearing.image_url)}
+                        alt="Bearing"
+                        style={{ width: 64, height: 64, objectFit: 'contain', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))' }}
+                      />
+                      <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-secondary)', marginTop: 4 }}>
+                        Radial Bearing
+                      </div>
+                      {showTolerances && (
+                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                          ABEC-5 14.8kN
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+
+                  {/* 3. Shaft on Right */}
+                  {selectedShaft && (
+                    <motion.div
+                      animate={{ x: (explosionDistance * 0.9) }}
+                      transition={{ type: 'spring', damping: 20, stiffness: 200 }}
+                      style={{ position: 'relative', zIndex: 1, textAlign: 'center', cursor: 'pointer' }}
+                      onClick={() => setModalProduct(selectedShaft)}
+                    >
+                      <img
+                        src={getProductAsset(selectedShaft.name, selectedShaft.sku, selectedShaft.image_url)}
+                        alt="Shaft"
+                        style={{ width: 72, height: 72, objectFit: 'contain', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))' }}
+                      />
+                      <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-secondary)', marginTop: 4 }}>
+                        Stepped Shaft
+                      </div>
+                      {showTolerances && (
+                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                          Ø18mm h6 (-0.011)
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </div>
+
+                {/* Explosion Controls Bar */}
+                <div style={{
+                  marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)' }}>Explode:</span>
+                    <input
+                      type="range" min="0" max="100" value={explosionDistance}
+                      onChange={(e) => setExplosionDistance(Number(e.target.value))}
+                      style={{ flex: 1, accentColor: 'var(--primary)', cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: '0.7rem', fontFamily: 'monospace', color: 'var(--primary)', fontWeight: 700 }}>
+                      {explosionDistance}%
+                    </span>
+                  </div>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.68rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox" checked={showTolerances}
+                      onChange={(e) => setShowTolerances(e.target.checked)}
+                      style={{ accentColor: 'var(--primary)' }}
+                    />
+                    Tolerances
+                  </label>
+                </div>
+              </div>
+            ) : previewMode === 'mated' ? (
               <div style={{
                 background: 'var(--bg-secondary)',
                 borderRadius: 'var(--radius-md)',
@@ -597,7 +752,7 @@ export default function Configurator({ onCartChange }) {
                   )}
 
                   {/* Bearing Inner & Outer Seat in Bore */}
-                  <rect x="110" y="36" width="30" height="48" rx="2" fill="rgba(59, 130, 246, 0.2)" stroke="var(--primary)" strokeWidth="2" />
+                  <rect x="110" y="36" width="30" height="48" rx="2" fill="rgba(245, 203, 92, 0.2)" stroke="var(--primary)" strokeWidth="2" />
                   
                   <text x="125" y="114" textAnchor="middle" fontSize="9.5" fill="var(--primary)" fontWeight="800">
                     Ø40mm H7 Housing ⇄ Ø40mm Bearing ⇄ Ø18/20mm h6 Shaft
