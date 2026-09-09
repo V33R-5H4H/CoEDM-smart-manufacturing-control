@@ -7,7 +7,7 @@ import AmrIcon from "../components/icons/AmrIcon";
 import StationEmoticon from "../components/StationEmoticon";
 
 // Module-level constant — x,y are real Nav2 map coords from tcp_nav_node.py (do not edit here)
-// sx,sy are visual screen % positions matching the exact HUD floor layout in the reference image
+// sx,sy are the visual screen % positions matching the exact center of each station's HUD grid cell
 const STATION_MAP = {
   ASRS:       { x:  5.699323, y:  1.104239, sx: 10, sy: 50 },  // col 1, row 2 (01)
   MIRAC:      { x:  4.148900, y:  0.427600, sx: 30, sy: 17 },  // col 2, row 1 (02)
@@ -21,6 +21,36 @@ const STATION_MAP = {
 // Screen position the robot always starts from (and returns to)
 const HOME_POS = { x: STATION_MAP.HOME.sx, y: STATION_MAP.HOME.sy };
 
+// Maps real physical AMR coordinates (x, y) continuously and scales across the station layout
+export const getScreenCoords = (amrX, amrY) => {
+  if (amrX === undefined || amrY === undefined || amrX === null || amrY === null || isNaN(amrX) || isNaN(amrY)) {
+    return HOME_POS;
+  }
+
+  let totalWeight = 0;
+  let screenX = 0;
+  let screenY = 0;
+
+  for (const s of Object.values(STATION_MAP)) {
+    const dx = amrX - s.x;
+    const dy = amrY - s.y;
+    const dist = Math.hypot(dx, dy);
+
+    // Exact landing snap when at or reaching station coordinate
+    if (dist < 0.05) {
+      return { x: s.sx, y: s.sy };
+    }
+
+    const w = 1 / Math.pow(dist, 2.5);
+    totalWeight += w;
+    screenX += s.sx * w;
+    screenY += s.sy * w;
+  }
+
+  if (totalWeight === 0) return HOME_POS;
+  return { x: screenX / totalWeight, y: screenY / totalWeight };
+};
+
 export default function Amr() {
   const [isConnected, setIsConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
@@ -33,60 +63,6 @@ export default function Amr() {
     error: null
   });
   const [posHistory, setPosHistory] = useState([HOME_POS]);  // AMR always starts at HOME
-
-  const getScreenCoords = (amrX, amrY) => {
-    const home = STATION_MAP.HOME;
-    const dHome = Math.hypot(amrX - home.x, amrY - home.y);
-
-    // If at or docked at HOME
-    if (dHome < 0.2) {
-      return { x: home.sx, y: home.sy };
-    }
-
-    // Direct match if at any station
-    for (const name in STATION_MAP) {
-      if (name === "HOME") continue;
-      const s = STATION_MAP[name];
-      if (Math.hypot(amrX - s.x, amrY - s.y) < 0.2) {
-        return { x: s.sx, y: s.sy };
-      }
-    }
-
-    // Triangle inequality deviation metric for each spoke (HOME <-> Station)
-    // Deviation = (dist(amr, HOME) + dist(amr, Station)) - dist(HOME, Station)
-    // On the exact path from HOME to Station, deviation is 0.
-    let bestWeight = 0;
-    let screenX = 0;
-    let screenY = 0;
-
-    for (const name in STATION_MAP) {
-      if (name === "HOME") continue;
-      const s = STATION_MAP[name];
-
-      const lSpoke = Math.hypot(s.x - home.x, s.y - home.y);
-      if (lSpoke === 0) continue;
-
-      const dStation = Math.hypot(amrX - s.x, amrY - s.y);
-      const excess = (dHome + dStation) - lSpoke;
-      const deviation = Math.max(0, excess);
-
-      // Progress fraction t (0 at HOME, 1 at Station)
-      const t = Math.max(0, Math.min(1, dHome / lSpoke));
-
-      // Weight with power 6 to sharply isolate the active travel spoke
-      const weight = 1 / Math.pow(deviation + 0.03, 6);
-
-      const candSx = home.sx + t * (s.sx - home.sx);
-      const candSy = home.sy + t * (s.sy - home.sy);
-
-      screenX += candSx * weight;
-      screenY += candSy * weight;
-      bestWeight += weight;
-    }
-
-    if (bestWeight === 0) return { x: home.sx, y: home.sy };
-    return { x: screenX / bestWeight, y: screenY / bestWeight };
-  };
 
   useEffect(() => {
     if (telemetry.position && telemetry.position.x !== undefined && telemetry.position.y !== undefined) {
@@ -396,7 +372,7 @@ export default function Amr() {
             <span>Y: -1.0m</span>
           </div>
 
-          {/* SVG Track Lines directly on the main Grid page */}
+          {/* SVG Live Breadcrumb Trail */}
           <svg style={{ position: 'absolute', width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1, top: 0, left: 0 }}>
             <defs>
               <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -404,21 +380,6 @@ export default function Amr() {
                 <stop offset="100%" stopColor="var(--primary-dark)" stopOpacity="0.2" />
               </linearGradient>
             </defs>
-            
-            {/* Hub-and-spoke paths — HOME dock connects to each station */}
-            {Object.entries(STATION_MAP).filter(([name]) => name !== 'HOME').map(([name, st]) => (
-              <line
-                key={name}
-                x1={`${STATION_MAP.HOME.sx}%`}
-                y1={`${STATION_MAP.HOME.sy}%`}
-                x2={`${st.sx}%`}
-                y2={`${st.sy}%`}
-                stroke="var(--text-muted)"
-                strokeWidth="1.5"
-                strokeDasharray="5 5"
-                opacity="0.6"
-              />
-            ))}
 
             {/* Live Breadcrumb / Coordinate trail plotted in real time */}
             {posHistory.length > 1 && (
@@ -442,20 +403,6 @@ export default function Amr() {
                 fill="var(--primary)"
                 opacity={0.3 + (0.7 * idx) / posHistory.length}
                 style={{ filter: 'drop-shadow(0 0 3px var(--primary))' }}
-              />
-            ))}
-
-            {/* Glowing active path indicators when navigating */}
-            {isConnected && telemetry.status === "navigating" && Object.entries(STATION_MAP).filter(([name]) => name !== 'HOME').map(([name, st]) => (
-              <line
-                key={`glow-${name}`}
-                x1={`${STATION_MAP.HOME.sx}%`}
-                y1={`${STATION_MAP.HOME.sy}%`}
-                x2={`${st.sx}%`}
-                y2={`${st.sy}%`}
-                stroke="var(--primary)"
-                strokeWidth="3"
-                opacity="0.5"
               />
             ))}
           </svg>
