@@ -56,10 +56,13 @@ stitch_designs/
 /actions-runner/
 /initdb/
 
-
+frontend/diagrams
 
 # Misc
 *.zip
 *.exe
 /light_mode.md
 /todo.txt
+frontend/extract_mermaid.cjs
+docs/extract_mermaid.js
+test.py
