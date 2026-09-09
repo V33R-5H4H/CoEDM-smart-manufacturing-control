@@ -490,7 +490,7 @@ export default function Storefront() {
                   <h2 className="store-section-header__title">Manufacturing Assembly Kit</h2>
                 </div>
                 <p>
-                  To dispatch an automated manufacturing order, exactly 3 components must be chosen: 
+                  To dispatch an automated manufacturing order, exactly 3 components must be chosen:
                   <strong> 1 Housing</strong>, <strong>1 Bearing</strong>, and <strong>1 Shaft</strong>.
                 </p>
               </div>
@@ -591,8 +591,8 @@ export default function Storefront() {
                 {orderLoading
                   ? 'Dispatching Order...'
                   : isKitComplete
-                  ? 'Place Assembly Order (AS/RS ➜ Robotic Cell)'
-                  : 'Select All 3 Components to Order'}
+                    ? 'Place Assembly Order (AS/RS -> AMR)'
+                    : 'Select All 3 Components to Order'}
               </button>
             </div>
           </div>
