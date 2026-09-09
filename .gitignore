@@ -57,7 +57,7 @@ stitch_designs/
 /initdb/
 
 
-
+frontend/diagrams
 # Misc
 *.zip
 *.exe
