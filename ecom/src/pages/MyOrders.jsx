@@ -102,15 +102,23 @@ export default function MyOrders() {
           {orders.map(order => (
             <motion.div key={order.order_id} variants={itemVariants} whileHover={{ y: -2, transition: { duration: 0.2 } }}>
               <Link to={`/order/${order.order_id}`} style={{ textDecoration: 'none' }}>
-                <div className="glass-panel" style={{ cursor: 'pointer', padding: 24, transition: 'border-color 0.2s', border: '1px solid transparent' }} onMouseOver={e => e.currentTarget.style.borderColor = 'var(--border)'} onMouseOut={e => e.currentTarget.style.borderColor = 'transparent'}>
+                <div 
+                  className="glass-panel" 
+                  style={{ 
+                    cursor: 'pointer', padding: 24, transition: 'all 0.2s ease', 
+                    border: '1px solid var(--border)', background: 'var(--bg-card)' 
+                  }} 
+                  onMouseOver={e => e.currentTarget.style.borderColor = 'var(--primary)'} 
+                  onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border)'}
+                >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
                     
-                    <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
-                      <div style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                    <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
+                      <div style={{ width: 48, height: 48, borderRadius: 10, background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', border: '1px solid var(--border)' }}>
                         <Package size={24} />
                       </div>
                       <div>
-                        <div style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: 4, color: 'var(--text-primary)' }}>
+                        <div style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: 4, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                           Order #{order.order_id}
                         </div>
                         <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }}>
