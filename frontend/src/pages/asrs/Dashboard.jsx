@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import BoxesTab from "./components/BoxesTab";
 import ItemsTab from "./components/ItemsTab";
 import TransactionsTab from "./components/TransactionsTab";
@@ -23,6 +24,85 @@ const STATUS_COLORS = {
 };
 
 function Dashboard() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const orderId = searchParams.get('order_id');
+  const rawItem = searchParams.get('item');
+
+  const [orderTracking, setOrderTracking] = useState(() => ({
+    active: !!orderId,
+    orderId,
+    itemName: rawItem ? decodeURIComponent(rawItem) : 'Ordered Part',
+    phase: 'asrs_fetching',
+    asrsCompleted: false,
+    message: 'AS/RS shuttle is retrieving the part from the storage rack...',
+  }));
+
+  const redirectedRef = useRef(false);
+
+  useEffect(() => {
+    if (!orderId) return;
+
+    let intervalId = null;
+
+    // Safety timer: guarantees transition to AMR after 6.5s even if backend status is slow
+    const fallbackTimer = setTimeout(() => {
+      if (!redirectedRef.current) {
+        redirectedRef.current = true;
+        setOrderTracking(prev => ({
+          ...prev,
+          phase: 'asrs_completed',
+          asrsCompleted: true,
+          message: '✅ AS/RS retrieval complete! Part at drop-off station.',
+        }));
+        toast.success(`AS/RS retrieval complete for Order #${orderId}! Shifting to AMR transport...`, {
+          autoClose: 2000,
+        });
+        setTimeout(() => {
+          navigate(`/amr?order_id=${orderId}&item=${encodeURIComponent(rawItem || 'Part')}&status=moving`);
+        }, 1400);
+      }
+    }, 6500);
+
+    const checkStatus = async () => {
+      try {
+        const res = await fetch(`/api/store/order-status/${orderId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const isDone = data.asrs_completed || data.phase === 'asrs_completed' || data.phase === 'amr_moving' || data.phase === 'completed';
+
+        setOrderTracking(prev => ({
+          ...prev,
+          phase: data.phase,
+          asrsCompleted: isDone,
+          message: data.message || prev.message,
+        }));
+
+        if (isDone && !redirectedRef.current) {
+          clearTimeout(fallbackTimer);
+          redirectedRef.current = true;
+          toast.success(`AS/RS retrieval complete for Order #${orderId}! Shifting to AMR transport...`, {
+            autoClose: 2000,
+          });
+          setTimeout(() => {
+            const destItem = rawItem || data.item_name || 'Part';
+            navigate(`/amr?order_id=${orderId}&item=${encodeURIComponent(destItem)}&status=moving`);
+          }, 1400);
+        }
+      } catch (e) {
+        console.warn('[ASRS Tracking] Status poll error:', e);
+      }
+    };
+
+    checkStatus();
+    intervalId = setInterval(checkStatus, 1000);
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(fallbackTimer);
+    };
+  }, [orderId, rawItem, navigate]);
+
   const [activeTab, setActiveTab] = useState("boxes");
   const [isConnected, setIsConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
@@ -206,6 +286,71 @@ function Dashboard() {
           onFinish={() => setTutorialActive(false)}
         />
       )}
+      {/* ── Active Order Fulfillment Progress Banner ── */}
+      {orderTracking.active && (
+        <div style={{
+          background: orderTracking.asrsCompleted
+            ? 'linear-gradient(90deg, rgba(22, 163, 74, 0.15), rgba(16, 185, 129, 0.25))'
+            : 'linear-gradient(90deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.2))',
+          borderBottom: `1px solid ${orderTracking.asrsCompleted ? '#22c55e' : 'var(--primary)'}`,
+          padding: '10px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexShrink: 0,
+          zIndex: 90,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span
+              className="material-symbols-outlined"
+              style={{
+                fontSize: '24px',
+                color: orderTracking.asrsCompleted ? '#22c55e' : 'var(--primary)',
+                animation: orderTracking.asrsCompleted ? 'none' : 'spin 1.8s linear infinite'
+              }}
+            >
+              {orderTracking.asrsCompleted ? 'check_circle' : 'autorenew'}
+            </span>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{
+                  background: orderTracking.asrsCompleted ? '#16a34a' : 'var(--primary)',
+                  color: '#fff',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  fontFamily: 'var(--font-mono)',
+                  padding: '2px 8px',
+                  borderRadius: '4px'
+                }}>
+                  {orderTracking.asrsCompleted ? 'STEP 1 COMPLETE' : 'STEP 1/2: ASRS RETRIEVAL'}
+                </span>
+                <strong style={{ fontSize: '14px', color: 'var(--text-primary)' }}>
+                  Order #{orderTracking.orderId}: {orderTracking.itemName}
+                </strong>
+              </div>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                {orderTracking.message}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontFamily: 'var(--font-mono)' }}>
+              <span style={{ color: orderTracking.asrsCompleted ? '#22c55e' : 'var(--primary)', fontWeight: 700 }}>
+                {orderTracking.asrsCompleted ? 'Handoff to AMR Ready' : 'Retrieving...'}
+              </span>
+              <span className="material-symbols-outlined" style={{ fontSize: '16px', color: 'var(--text-muted)' }}>
+                arrow_forward
+              </span>
+              <span style={{ color: orderTracking.asrsCompleted ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 600 }}>
+                Step 2: AMR Transfer
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stitch-style top bar */}
       <PageHeader
         title="AS/RS"

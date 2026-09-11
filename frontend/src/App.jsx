@@ -7,6 +7,7 @@ import { useTheme } from "./theme/ThemeContext";
 import MiniStationIcon from "./components/MiniStationIcons";
 
 // Lazy load page components to improve initial load performance (LCP)
+const Storefront = lazy(() => import("./pages/Storefront"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Asrs = lazy(() => import("./pages/asrs/Dashboard"));
 const Mirac = lazy(() => import("./pages/Mirac"));
@@ -161,7 +162,8 @@ export default function App() {
           </div>
         }>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<Storefront />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/asrs" element={<Asrs />} />
             <Route path="/mirac" element={<Mirac />} />
             <Route path="/triac" element={<Triac />} />
@@ -200,7 +202,8 @@ export default function App() {
 
         {/* Center: Main Links */}
         <div className="bottom-nav-links">
-          <NavItem to="/" icon="dashboard" label="Dashboard" />
+          <NavItem to="/" icon="shopping_cart" label="Store" />
+          <NavItem to="/dashboard" icon="dashboard" label="Dashboard" />
           <NavItem to="/asrs" machineType="asrs" label="AS/RS" />
           <NavItem to="/mirac" machineType="mirac" label="Smart MIRAC" />
           <NavItem to="/triac" machineType="triac" label="Smart TRIAC" />

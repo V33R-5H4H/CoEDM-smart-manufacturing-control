@@ -2,20 +2,9 @@ import { getCart, removeFromCart, updateQty, cartTotal } from '../store/cartStor
 import { useNavigate } from 'react-router-dom';
 import { getUser } from '../store/cartStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Trash2, ShoppingBag, ArrowRight, PackageOpen } from 'lucide-react';
+import { X, Trash2, ShoppingBag, ArrowRight, PackageOpen, Layers } from 'lucide-react';
 import { useEffect } from 'react';
-
-function formatPrice(n) {
-  return '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 });
-}
-
-function getProductImage(name) {
-  const lower = name.toLowerCase();
-  if (lower.includes('shaft')) return '/images/shaft.png';
-  if (lower.includes('bearing')) return '/images/bearing.png';
-  if (lower.includes('casing')) return '/images/casing.png';
-  return null;
-}
+import { getProductAsset, formatPrice } from '../utils/productImages';
 
 export default function CartDrawer({ open, onClose, onCartChange }) {
   const cart = getCart();
@@ -76,11 +65,10 @@ export default function CartDrawer({ open, onClose, onCartChange }) {
               padding: '24px',
               borderBottom: '1px solid var(--border)',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              background: 'rgba(var(--bg-elevated), 0.8)',
-              backdropFilter: 'blur(12px)',
+              background: 'var(--bg-elevated)',
             }}>
               <div style={{ fontWeight: 800, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <ShoppingBag /> Cart <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>({cart.length})</span>
+                <ShoppingBag className="text-primary" /> Cart <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>({cart.length})</span>
               </div>
               <button className="btn-icon" onClick={onClose}><X size={20} /></button>
             </div>
@@ -95,23 +83,23 @@ export default function CartDrawer({ open, onClose, onCartChange }) {
                 </div>
               ) : (
                 cart.map(item => {
-                  const imageSrc = getProductImage(item.name);
+                  const imageSrc = getProductAsset(item.name, item.sku, item.image_url);
                   return (
                     <motion.div layout key={item.item_id} style={{
                       display: 'flex', alignItems: 'center', gap: 16,
                       padding: '20px 0', borderBottom: '1px solid var(--border)'
                     }}>
                       <div style={{
-                        width: 72, height: 72, borderRadius: 12,
+                        width: 72, height: 72, borderRadius: 10,
                         background: 'var(--bg-secondary)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        flexShrink: 0, overflow: 'hidden', border: '1px solid var(--border)'
+                        flexShrink: 0, overflow: 'hidden', border: '1px solid var(--border)', padding: 6
                       }}>
-                        {imageSrc ? <img src={imageSrc} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/> : <PackageOpen size={28} className="text-muted" />}
+                        {imageSrc ? <img src={imageSrc} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }}/> : <PackageOpen size={28} className="text-muted" />}
                       </div>
                       
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {item.name}
                         </div>
                         <div style={{ marginTop: 4, fontWeight: 800, color: 'var(--primary)', fontSize: '0.95rem' }}>
@@ -122,22 +110,22 @@ export default function CartDrawer({ open, onClose, onCartChange }) {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ 
                           display: 'flex', alignItems: 'center', 
-                          background: 'var(--bg-secondary)', borderRadius: 8, padding: '4px' 
+                          background: 'var(--bg-secondary)', borderRadius: 8, padding: '2px', border: '1px solid var(--border)'
                         }}>
                           <button style={{ 
                             width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent',
                             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: 'var(--text-primary)', fontWeight: 600, fontSize: '1rem'
+                            color: 'var(--text-primary)', fontWeight: 700, fontSize: '1rem'
                           }} onClick={() => handleQty(item.item_id, item.quantity - 1)}>
                             −
                           </button>
-                          <span style={{ minWidth: 28, textAlign: 'center', fontWeight: 700, fontSize: '0.9rem' }}>
+                          <span style={{ minWidth: 28, textAlign: 'center', fontWeight: 800, fontSize: '0.88rem' }}>
                             {item.quantity}
                           </span>
                           <button style={{ 
                             width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent',
                             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: 'var(--text-primary)', fontWeight: 600, fontSize: '1rem'
+                            color: 'var(--text-primary)', fontWeight: 700, fontSize: '1rem'
                           }} onClick={() => handleQty(item.item_id, item.quantity + 1)}>
                             +
                           </button>
@@ -145,15 +133,14 @@ export default function CartDrawer({ open, onClose, onCartChange }) {
                         <button 
                           onClick={() => handleRemove(item.item_id)}
                           style={{ 
-                            width: 36, height: 36, borderRadius: 8, border: 'none', 
-                            background: 'rgba(220, 38, 38, 0.1)', color: '#dc2626',
+                            width: 34, height: 34, borderRadius: 8, border: 'none', 
+                            background: 'var(--error-bg)', color: 'var(--error)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             cursor: 'pointer', flexShrink: 0, transition: 'all 0.2s'
                           }}
-                          onMouseOver={e => e.currentTarget.style.background = 'rgba(220, 38, 38, 0.2)'}
-                          onMouseOut={e => e.currentTarget.style.background = 'rgba(220, 38, 38, 0.1)'}
+                          title="Remove item"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={15} />
                         </button>
                       </div>
                     </motion.div>
@@ -167,18 +154,17 @@ export default function CartDrawer({ open, onClose, onCartChange }) {
               <div style={{
                 padding: '24px',
                 borderTop: '1px solid var(--border)',
-                background: 'rgba(var(--bg-elevated), 0.8)',
-                backdropFilter: 'blur(12px)',
+                background: 'var(--bg-elevated)',
               }}>
                 <div style={{
                   display: 'flex', justifyContent: 'space-between',
-                  fontWeight: 800, fontSize: '1.25rem', marginBottom: 24,
+                  fontWeight: 800, fontSize: '1.25rem', marginBottom: 20,
                 }}>
                   <span>Subtotal</span>
                   <span style={{ color: 'var(--primary)' }}>{formatPrice(cartTotal(cart))}</span>
                 </div>
                 <button className="btn btn-primary btn-lg" style={{ width: '100%' }} onClick={handleCheckout}>
-                  Checkout <ArrowRight size={18} />
+                  Proceed to B2B Checkout <ArrowRight size={18} />
                 </button>
               </div>
             )}

@@ -6,7 +6,7 @@ The **CoEDM E-Commerce Storefront** is a dedicated React/Vite single-page applic
 
 ## 1. Overview & Purpose
 
-The e-commerce module connects customer order placement directly to the factory floor's **Automated Storage & Retrieval System (ASRS)** and manufacturing execution pipelines. When a customer configures and places an order for custom hardware sub-assemblies (e.g., Bearings, Housings, Shafts), the order is registered in the core PostgreSQL database (`coedm_db`). Upon administrative approval in the fulfillment portal, the system automatically dispatches OPC-UA retrieval commands (`ns=4, s=<box>R`) to the Omron NX PLC controlling the physical ASRS crate grid.
+The e-commerce module connects customer order placement directly to the factory floor's **Automated Storage & Retrieval System (ASRS)** and manufacturing execution pipelines. When a customer configures and places an order for custom hardware sub-assemblies (e.g., Bearings, Housings, Shafts), the order is registered in the core PostgreSQL database (`coedm_db`). Upon administrative approval in the fulfillment portal, the system automatically dispatches OPC-UA retrieval commands (`ns=4, s=<box>R`) to the ASRS PLC controlling the physical ASRS crate grid.
 
 ```mermaid
 graph TD
@@ -17,7 +17,7 @@ graph TD
     E[Fulfillment Admin] -->|Review & Approve Order| B
     B -->|Trigger Fulfillment API| C
     C -->|Check Inventory & Allocate Slot| D
-    C -->|OPC-UA Command ns=4, s=A1R| F[Omron NX PLC<br/>10.10.14.104:4840]
+    C -->|OPC-UA Command ns=4, s=A1R| F[ASRS PLC Controller<br/>10.10.14.104:4840]
     F -->|Physical Shuttle Retrieval| G[ASRS Hardware Grid]
 ```
 
@@ -26,31 +26,34 @@ graph TD
 ## 2. Technical Architecture & Tech Stack
 
 - **Framework**: React 18 with Vite (High-performance HMR and optimized production bundles).
-- **Styling**: Tailwind CSS & Custom Warm Industrial Design Tokens (CSS variables in `src/index.css`).
+- **Styling**: Vanilla CSS & Custom Warm Industrial Design Tokens (CSS variables in `src/index.css`).
 - **State Management**: React Context API and custom REST hooks.
-- **Backend Communication**: Axios / Fetch API targeting the core FastAPI backend (`http://localhost:8000/api/v1` in dev, `/api/v1` in production via proxy).
-- **Real-Time Tracking**: WebSocket client listening for order status transitions and inventory allocation updates.
+- **Backend Communication**: Fetch API targeting the core FastAPI backend (`/api/ecom/*`).
+- **Real-Time Tracking**: Polling and WebSockets for order status transitions and inventory allocation updates.
 
 ---
 
 ## 3. Key Features
 
-### 3.1 Interactive Product Configurator
-Allows B2B customers to customize multi-part mechanical assemblies before ordering:
-- **Bearing Selection**: Select size, load rating, and material specifications.
-- **Housing Mating**: Match appropriate housing units to bearing dimensions.
-- **Shaft Assembly**: Choose shaft lengths, diameters, and keyway configurations.
-- **Real-Time Validation**: Prevents incompatible component combinations from being added to the cart.
+### 3.1 Interactive Sub-Assembly Configurator (`/configure`)
+Allows B2B customers to customize multi-part precision mechanical assemblies with live stock counters and CAD blueprints:
+- **Shaft Selection**: Precision ground shafts machined at Station 3 (MIRAC CNC Lathe, h6 tolerance).
+- **Bearing Mating**: Deep groove ball bearings (ABEC-5, GCr15 Chrome Steel, 14.8 kN dynamic load, Ø40mm OD).
+- **Certified Housing Variants**: Milled at Station 4 (TRIAC CNC Centre, Ø40mm H7 bore):
+  1. **Bracket Housing (`Bracket_40mm`)**: Asymmetric corner mount with 3× Ø9mm holes and 40° gusset rib.
+  2. **Oval 2-Bolt Flange (`oval_40mm`)**: Rhombic oval 2-bolt flange (104×54mm) with 2× Ø9mm holes.
+  3. **Square 4-Bolt Flange (`70sq_40mmdia`)**: 70×70mm square flange with 4× Ø7mm holes (PCD Ø75mm).
+- **Dynamic CAD Preview & PDF Datasheet**: Toggle between composite render and 2D CAD engineering diagrams with automated spec sheet generation.
 
 ### 3.2 B2B Shopping Cart & Checkout
-- Multi-line item ordering with custom reference PO numbers.
-- Automated stock check against real-time ASRS inventory tables (`asrs_inventory`).
-- Instant order confirmation with tracking UUIDs.
+- Multi-line item ordering with custom reference PO numbers, GSTIN / Tax ID, and Factory Dispatch Priority.
+- Automated stock check against real-time ASRS inventory tables (`storage_compartments`).
+- Instant order confirmation with tracking links.
 
 ### 3.3 Fulfillment Admin Dashboard (`/admin`)
-- **Order Queue**: View pending, approved, processing, and dispatched orders.
-- **Automated ASRS Allocation**: When an order is processed, the dashboard displays which physical crate box (e.g., `A1` to `E7`) holds the required components.
-- **One-Click Dispatch**: Trigger physical retrieval directly from the browser, initiating shuttle motion on the factory floor.
+- **Order Queue & Manual Dispatch**: View orders and trigger physical ASRS shuttle retrieval directly from the browser.
+- **ASRS PLC Monitor**: Real-time OPC-UA connectivity badge to the ASRS controller at `10.10.14.104:4840`.
+- **Integrated User Manager**: Provision accounts, promote/demote administrator roles, activate/deactivate users, and export CSV logs.
 
 ---
 

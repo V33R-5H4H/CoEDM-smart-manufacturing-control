@@ -1,138 +1,32 @@
-#!/usr/bin/env node
-/**
- * convert_mmd_folder.js
- *
- * Converts every .mmd (mermaid) file in a folder into a rendered image
- * (PNG by default, or JPG) using @mermaid-js/mermaid-cli (mmdc).
- *
- * Usage:
- *   node convert_mmd_folder.js <inputFolder> [outputFolder] [--format=png|jpg] [--scale=3]
- *
- * Examples:
- *   node convert_mmd_folder.js ./diagrams
- *   node convert_mmd_folder.js ./diagrams ./images --format=jpg
- *   node convert_mmd_folder.js ./diagrams ./images --format=png --scale=2
- *
- * Requires: @mermaid-js/mermaid-cli
- *   npm install @mermaid-js/mermaid-cli
- */
+export default `graph LR
+    OP["Shop Floor Operator"]
+    ADMIN["Admin / Engineer"]
+    ASRS_HW["ASRS PLC<br/>(Omron NX / OPC-UA)"]
+    ASSEMBLY_HW["Assembly Press PLC<br/>(AX-308EA0MA1P / OPC-UA)"]
+    MIRAC_HW["MIRAC CNC Lathe<br/>(S7-1200 / OPC-UA)"]
+    TRIAC_HW["TRIAC CNC Mill<br/>(Smart PC / OPC-UA)"]
+    VIBIT["VibIT Sensors<br/>(Modbus TCP / RS-485)"]
+    ECOM["E-Commerce Portal<br/>(Order Management)"]
+    DB[("PostgreSQL<br/>Database")]
 
-import fs from "fs";
-import path from "path";
-import { execFileSync } from "child_process";
-import { fileURLToPath } from "url";
+    SYSTEM["CoEDM Smart Manufacturing<br/>Control System"]
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+    OP -- "Control commands<br/>(Store, Retrieve, Press, Vice)" --> SYSTEM
+    ADMIN -- "Configure settings<br/>View logs & reports" --> SYSTEM
+    ECOM -- "Customer orders<br/>(item_id, qty)" --> SYSTEM
 
-function parseArgs(argv) {
-  const positional = [];
-  const flags = { format: "png", scale: "3" };
+    SYSTEM -- "Real-time machine state<br/>(10 Hz WebSocket)" --> OP
+    SYSTEM -- "Safety alerts & alarms<br/>(toast notifications)" --> OP
+    SYSTEM -- "Historical reports<br/>Event logs" --> ADMIN
 
-  for (const arg of argv) {
-    if (arg.startsWith("--format=")) {
-      flags.format = arg.split("=")[1].toLowerCase();
-    } else if (arg.startsWith("--scale=")) {
-      flags.scale = arg.split("=")[1];
-    } else {
-      positional.push(arg);
-    }
-  }
-  return { positional, flags };
-}
+    ASRS_HW -- "LED grid states (35 nodes)<br/>Safety curtain<br/>Shuttle position" --> SYSTEM
+    ASSEMBLY_HW -- "Piston displacement (mm)<br/>Vice state<br/>Safety lights (R/Y/G)" --> SYSTEM
+    MIRAC_HW -- "Spindle RPM & temp<br/>Axis position & feed<br/>Tool data, LEDs" --> SYSTEM
+    TRIAC_HW -- "Spindle RPM<br/>Axis feed, tool data" --> SYSTEM
+    VIBIT -- "X/Y/Z RMS acc & vel<br/>Peak acc & vel<br/>Temperature (°C), RPM" --> SYSTEM
 
-function findMmdcBin() {
-  // On Windows, npm creates shim files with extensions (.cmd / .ps1) rather
-  // than a bare "mmdc" file, so check each possible name.
-  const binDir = path.resolve(__dirname, "node_modules", ".bin");
-  const candidates =
-    process.platform === "win32"
-      ? ["mmdc.cmd", "mmdc.ps1", "mmdc"]
-      : ["mmdc"];
-
-  for (const name of candidates) {
-    const candidatePath = path.join(binDir, name);
-    if (fs.existsSync(candidatePath)) {
-      return { cmd: candidatePath, needsShell: name.endsWith(".cmd") };
-    }
-  }
-  // Fall back to global/PATH lookup
-  return { cmd: "mmdc", needsShell: process.platform === "win32" };
-}
-
-function main() {
-  const { positional, flags } = parseArgs(process.argv.slice(2));
-  const [inputFolderArg, outputFolderArg] = positional;
-
-  if (!inputFolderArg) {
-    console.error(
-      "Usage: node convert_mmd_folder.js <inputFolder> [outputFolder] [--format=png|jpg] [--scale=3]"
-    );
-    process.exit(1);
-  }
-
-  if (!["png", "jpg", "jpeg"].includes(flags.format)) {
-    console.error(`Unsupported format "${flags.format}". Use png or jpg.`);
-    process.exit(1);
-  }
-  const ext = flags.format === "jpeg" ? "jpg" : flags.format;
-
-  const inputFolder = path.resolve(inputFolderArg);
-  const outputFolder = path.resolve(outputFolderArg || inputFolderArg);
-
-  if (!fs.existsSync(inputFolder) || !fs.statSync(inputFolder).isDirectory()) {
-    console.error(`Input folder not found: ${inputFolder}`);
-    process.exit(1);
-  }
-  fs.mkdirSync(outputFolder, { recursive: true });
-
-  const mmdFiles = fs
-    .readdirSync(inputFolder)
-    .filter((f) => f.toLowerCase().endsWith(".mmd"))
-    .sort();
-
-  if (mmdFiles.length === 0) {
-    console.log(`No .mmd files found in ${inputFolder}`);
-    return;
-  }
-
-  const { cmd: mmdcCmd, needsShell } = findMmdcBin();
-  console.log(`Found ${mmdFiles.length} .mmd file(s). Converting to .${ext}...\n`);
-
-  const puppeteerConfigPath = path.join(__dirname, "puppeteer-config.json");
-  const hasPuppeteerConfig = fs.existsSync(puppeteerConfigPath);
-
-  let okCount = 0;
-
-  for (const file of mmdFiles) {
-    const inputPath = path.join(inputFolder, file);
-    const baseName = path.basename(file, path.extname(file));
-    const outputPath = path.join(outputFolder, `${baseName}.${ext}`);
-
-    const args = [
-      "-i", inputPath,
-      "-o", outputPath,
-      "-b", "white",
-    ];
-    if (ext === "png") {
-      args.push("-s", flags.scale);
-    }
-    if (hasPuppeteerConfig) {
-      args.push("-p", puppeteerConfigPath);
-    }
-
-    try {
-      execFileSync(mmdcCmd, args, { stdio: "pipe", shell: needsShell });
-      console.log(`[OK]   ${file} -> ${path.basename(outputPath)}`);
-      okCount += 1;
-    } catch (err) {
-      console.error(`[FAIL] ${file}`);
-      console.error(err.stderr ? err.stderr.toString() : err.message);
-    }
-  }
-
-  console.log(`\nDone. ${okCount}/${mmdFiles.length} converted successfully.`);
-  console.log(`Output folder: ${outputFolder}`);
-}
-
-main();
+    SYSTEM -- "Store/Retrieve/Home pulse commands" --> ASRS_HW
+    SYSTEM -- "BEARING_ON, SHAFT_ON<br/>VICE_OPEN, VICE_CLOSE" --> ASSEMBLY_HW
+    SYSTEM -- "Log events & telemetry<br/>connection history" --> DB
+    DB -- "Inventory, orders<br/>shuttle history, events" --> SYSTEM
+`;

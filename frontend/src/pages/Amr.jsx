@@ -6,6 +6,51 @@ import AmrControlService from "../services/AmrControl";
 import AmrIcon from "../components/icons/AmrIcon";
 import StationEmoticon from "../components/StationEmoticon";
 
+// Module-level constant — x,y are real Nav2 map coords from tcp_nav_node.py (do not edit here)
+// sx,sy are the visual screen % positions matching the exact center of each station's HUD grid cell
+const STATION_MAP = {
+  ASRS:       { x:  5.699323, y:  1.104239, sx: 10, sy: 50 },  // col 1, row 2 (01)
+  MIRAC:      { x:  4.148900, y:  0.427600, sx: 30, sy: 17 },  // col 2, row 1 (02)
+  TRIAC:      { x:  0.894450, y:  0.341190, sx: 50, sy: 17 },  // col 3, row 1 (03)
+  ASSEMBLY:   { x: -1.389239, y:  0.101845, sx: 70, sy: 17 },  // col 4, row 1 (04)
+  INSPECTION: { x: -1.285937, y:  2.250227, sx: 90, sy: 50 },  // col 5, row 2 (05)
+  TESTING:    { x:  1.960000, y:  0.300000, sx: 70, sy: 83 },  // col 4, row 3 (06)
+  HOME:       { x:  2.335276, y:  2.950755, sx: 50, sy: 83 },  // col 3, row 3 (HOME Dock)
+};
+
+// Screen position the robot always starts from (and returns to)
+const HOME_POS = { x: STATION_MAP.HOME.sx, y: STATION_MAP.HOME.sy };
+
+// Maps real physical AMR coordinates (x, y) continuously and scales across the station layout
+export const getScreenCoords = (amrX, amrY) => {
+  if (amrX === undefined || amrY === undefined || amrX === null || amrY === null || isNaN(amrX) || isNaN(amrY)) {
+    return HOME_POS;
+  }
+
+  let totalWeight = 0;
+  let screenX = 0;
+  let screenY = 0;
+
+  for (const s of Object.values(STATION_MAP)) {
+    const dx = amrX - s.x;
+    const dy = amrY - s.y;
+    const dist = Math.hypot(dx, dy);
+
+    // Exact landing snap when at or reaching station coordinate
+    if (dist < 0.05) {
+      return { x: s.sx, y: s.sy };
+    }
+
+    const w = 1 / Math.pow(dist, 2.5);
+    totalWeight += w;
+    screenX += s.sx * w;
+    screenY += s.sy * w;
+  }
+
+  if (totalWeight === 0) return HOME_POS;
+  return { x: screenX / totalWeight, y: screenY / totalWeight };
+};
+
 export default function Amr() {
   const [isConnected, setIsConnected] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
@@ -17,46 +62,7 @@ export default function Amr() {
     position: null,
     error: null
   });
-  const [posHistory, setPosHistory] = useState([]);
-
-  // Single source of truth for station real-world coords → screen % positions
-  // Must match STATIONS in tcp_nav_bridge/tcp_nav_bridge/tcp_nav_node.py on the robot
-  const STATION_MAP = {
-    ASRS:       { x: -4.000000, y:  0.200000, sx: 10, sy: 50 },
-    INSPECTION: { x: -3.000000, y:  0.200000, sx: 90, sy: 50 },
-    TESTING:    { x: -2.000000, y:  0.200000, sx: 70, sy: 83 },
-    HOME:       { x:  0.000000, y:  0.000000, sx: 50, sy: 50 },
-    TRIAC:      { x:  1.476023, y:  0.405875, sx: 50, sy: 17 },
-    MIRAC:      { x:  4.148900, y:  0.427600, sx: 30, sy: 17 },
-    ASSEMBLY:   { x:  5.630868, y:  1.215410, sx: 75, sy: 17 },  // updated to active robot coordinates
-  };
-
-  const getScreenCoords = (amrX, amrY) => {
-    const stations = STATION_MAP;
-
-    let totalWeight = 0;
-    let screenX = 0;
-    let screenY = 0;
-
-    for (const name in stations) {
-      const s = stations[name];
-      const dx = amrX - s.x;
-      const dy = amrY - s.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist < 0.05) {
-        return { x: s.sx, y: s.sy };
-      }
-
-      const w = 1 / (dist * dist);
-      totalWeight += w;
-      screenX += s.sx * w;
-      screenY += s.sy * w;
-    }
-
-    if (totalWeight === 0) return { x: 50, y: 50 };
-    return { x: screenX / totalWeight, y: screenY / totalWeight };
-  };
+  const [posHistory, setPosHistory] = useState([HOME_POS]);  // AMR always starts at HOME
 
   useEffect(() => {
     if (telemetry.position && telemetry.position.x !== undefined && telemetry.position.y !== undefined) {
@@ -124,7 +130,7 @@ export default function Amr() {
         position: null,
         error: null
       });
-      setPosHistory([]);
+      setPosHistory([HOME_POS]);  // robot returns to HOME on disconnect
 
       reconnectTimerRef.current = setTimeout(() => {
         if (wsRef.current?.readyState !== WebSocket.OPEN) {
@@ -366,7 +372,7 @@ export default function Amr() {
             <span>Y: -1.0m</span>
           </div>
 
-          {/* SVG Track Lines directly on the main Grid page */}
+          {/* SVG Live Breadcrumb Trail */}
           <svg style={{ position: 'absolute', width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1, top: 0, left: 0 }}>
             <defs>
               <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -374,15 +380,6 @@ export default function Amr() {
                 <stop offset="100%" stopColor="var(--primary-dark)" stopOpacity="0.2" />
               </linearGradient>
             </defs>
-            
-            {/* Central hub lines connecting columns */}
-            {/* Path layout lines */}
-            <line x1="10%" y1="50%" x2="50%" y2="50%" stroke="var(--text-muted)" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.6" />
-            <line x1="50%" y1="50%" x2="90%" y2="50%" stroke="var(--text-muted)" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.6" />
-            <line x1="30%" y1="17%" x2="50%" y2="50%" stroke="var(--text-muted)" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.6" />
-            <line x1="50%" y1="17%" x2="50%" y2="50%" stroke="var(--text-muted)" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.6" />
-            <line x1="70%" y1="17%" x2="50%" y2="50%" stroke="var(--text-muted)" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.6" />
-            <line x1="70%" y1="83%" x2="50%" y2="50%" stroke="var(--text-muted)" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.6" />
 
             {/* Live Breadcrumb / Coordinate trail plotted in real time */}
             {posHistory.length > 1 && (
@@ -408,28 +405,16 @@ export default function Amr() {
                 style={{ filter: 'drop-shadow(0 0 3px var(--primary))' }}
               />
             ))}
-
-            {/* Glowing active path indicators when navigating */}
-            {isConnected && telemetry.status === "navigating" && (
-              <>
-                <line x1="10%" y1="50%" x2="50%" y2="50%" stroke="var(--primary)" strokeWidth="3" opacity="0.5" />
-                <line x1="50%" y1="50%" x2="90%" y2="50%" stroke="var(--primary)" strokeWidth="3" opacity="0.5" />
-                <line x1="30%" y1="17%" x2="50%" y2="50%" stroke="var(--primary)" strokeWidth="3" opacity="0.5" />
-                <line x1="50%" y1="17%" x2="50%" y2="50%" stroke="var(--primary)" strokeWidth="3" opacity="0.5" />
-                <line x1="70%" y1="17%" x2="50%" y2="50%" stroke="var(--primary)" strokeWidth="3" opacity="0.5" />
-                <line x1="70%" y1="83%" x2="50%" y2="50%" stroke="var(--primary)" strokeWidth="3" opacity="0.5" />
-              </>
-            )}
           </svg>
 
           {/* Station Cards */}
           {[
-            { id: 1, name: "ASRS", desc: "Automated Storage & Retrieval System", cmd: "ASRS", gridArea: '2 / 1 / 3 / 2', icon: "dns" },
-            { id: 2, name: "MIRAC", desc: "CNC Lathe Machine", cmd: "MIRAC", gridArea: '1 / 2 / 2 / 3', icon: "precision_manufacturing" },
-            { id: 3, name: "TRIAC", desc: "CNC Milling Machine", cmd: "TRIAC", gridArea: '1 / 3 / 2 / 4', icon: "settings" },
-            { id: 4, name: "ASSEMBLY", desc: "Robotic Assembly Station", cmd: "ASSEMBLY", gridArea: '1 / 4 / 2 / 5', icon: "build" },
-            { id: 5, name: "INSPECTION", desc: "Visual Defect Inspection", cmd: "INSPECTION", gridArea: '2 / 5 / 3 / 6', icon: "visibility" },
-            { id: 6, name: "TESTING", desc: "Quality Testing Station", cmd: "TESTING", gridArea: '3 / 4 / 4 / 5', icon: "analytics" }
+            { id: 1, name: "ASRS",       desc: "Automated Storage & Retrieval System", cmd: "ASRS",       gridArea: '2 / 1 / 3 / 2', icon: "dns" },
+            { id: 2, name: "MIRAC",      desc: "CNC Lathe Machine",                    cmd: "MIRAC",      gridArea: '1 / 2 / 2 / 3', icon: "precision_manufacturing" },
+            { id: 3, name: "TRIAC",      desc: "CNC Milling Machine",                  cmd: "TRIAC",      gridArea: '1 / 3 / 2 / 4', icon: "settings" },
+            { id: 4, name: "ASSEMBLY",   desc: "Robotic Assembly Station",             cmd: "ASSEMBLY",   gridArea: '1 / 4 / 2 / 5', icon: "build" },
+            { id: 5, name: "INSPECTION", desc: "Visual Defect Inspection",             cmd: "INSPECTION", gridArea: '2 / 5 / 3 / 6', icon: "visibility" },
+            { id: 6, name: "TESTING",    desc: "Quality Testing Station",              cmd: "TESTING",    gridArea: '3 / 4 / 4 / 5', icon: "analytics" },
           ].map((station) => (
             <div 
               key={station.id}
@@ -524,7 +509,124 @@ export default function Amr() {
             </div>
           ))}
 
-          {/* AMR Telemetry Values Card placed in the Bottom Left Corner */}
+          {/* HOME position marker — hub / charging dock */}
+          {(() => {
+            // Determine if robot is currently at HOME or parked
+            const atHome = !isConnected || (() => {
+              if (!telemetry.position) return true;
+              const dx = telemetry.position.x - STATION_MAP.HOME.x;
+              const dy = telemetry.position.y - STATION_MAP.HOME.y;
+              return Math.sqrt(dx * dx + dy * dy) < 0.3;
+            })();
+            return (
+              <div style={{
+                gridArea: '3 / 3 / 4 / 4',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 14px',
+                background: atHome
+                  ? 'color-mix(in srgb, var(--primary) 10%, transparent)'
+                  : 'color-mix(in srgb, var(--bg-elevated) 85%, transparent)',
+                border: atHome
+                  ? '1px solid color-mix(in srgb, var(--primary) 50%, transparent)'
+                  : '1px dashed color-mix(in srgb, var(--border) 60%, transparent)',
+                borderRadius: '8px',
+                boxSizing: 'border-box',
+                zIndex: 2,
+                alignSelf: 'end',
+                height: 'fit-content',
+                gap: '8px',
+                transition: 'all 0.4s ease',
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span className="material-symbols-outlined" style={{
+                        fontSize: '20px',
+                        color: atHome ? 'var(--primary)' : 'var(--text-muted)',
+                        opacity: atHome ? 1 : 0.7,
+                        transition: 'all 0.4s ease',
+                      }}>home</span>
+                      <span style={{
+                        fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.1em',
+                        color: atHome ? 'var(--primary)' : 'var(--text-primary)',
+                        transition: 'color 0.4s ease',
+                      }}>HOME</span>
+                    </div>
+                    {/* Status badge */}
+                    <span style={{
+                      fontSize: '0.55rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.12em',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      background: atHome
+                        ? 'color-mix(in srgb, var(--primary) 20%, transparent)'
+                        : 'color-mix(in srgb, var(--text-muted) 10%, transparent)',
+                      color: atHome ? 'var(--primary)' : 'var(--text-muted)',
+                      border: atHome
+                        ? '1px solid color-mix(in srgb, var(--primary) 30%, transparent)'
+                        : '1px solid var(--border)',
+                      transition: 'all 0.4s ease',
+                    }}>
+                      {atHome ? 'PARKED' : 'DEPARTED'}
+                    </span>
+                  </div>
+
+                  <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.2 }}>
+                    {STATION_MAP.HOME.x.toFixed(3)}, {STATION_MAP.HOME.y.toFixed(3)}
+                  </span>
+                </div>
+
+                <button 
+                  onClick={() => handleDispatch("HOME", "HOME")}
+                  disabled={!isConnected || atHome}
+                  style={{ 
+                    width: '100%', 
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '32px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    borderRadius: '6px',
+                    transition: 'all 0.2s ease',
+                    cursor: (!isConnected || atHome) ? 'not-allowed' : 'pointer',
+                    background: (!isConnected || atHome)
+                      ? 'var(--bg-hover)'
+                      : 'color-mix(in srgb, var(--primary) 20%, transparent)',
+                    color: (!isConnected || atHome) ? 'var(--text-disabled)' : 'var(--primary)',
+                    border: (!isConnected || atHome)
+                      ? '1px solid var(--border)'
+                      : '1px solid color-mix(in srgb, var(--primary) 50%, transparent)',
+                    boxShadow: (!isConnected || atHome) ? 'none' : '0 0 12px color-mix(in srgb, var(--primary) 20%, transparent)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (isConnected && !atHome) {
+                      e.currentTarget.style.background = 'color-mix(in srgb, var(--primary) 30%, transparent)';
+                      e.currentTarget.style.boxShadow = '0 0 18px color-mix(in srgb, var(--primary) 30%, transparent)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (isConnected && !atHome) {
+                      e.currentTarget.style.background = 'color-mix(in srgb, var(--primary) 20%, transparent)';
+                      e.currentTarget.style.boxShadow = '0 0 12px color-mix(in srgb, var(--primary) 20%, transparent)';
+                    }
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '16px', marginRight: '6px', opacity: 0.85 }}>
+                    home
+                  </span>
+                  {atHome ? 'DOCKED' : 'RETURN HOME'}
+                </button>
+              </div>
+            );
+          })()}
+
+          {/* AMR Telemetry Values Card — bottom-left corner */}
           <div style={{
             gridArea: '3 / 1 / 4 / 2',
             display: 'flex',
@@ -608,7 +710,7 @@ export default function Amr() {
           {/* Moving AMR Robot Icon directly on the page layout */}
           {(() => {
             const pos = (() => {
-              if (!telemetry.position) return { x: 50, y: 50 };
+              if (!telemetry.position) return HOME_POS;  // always start from HOME
               // Reuse the same function that drives posHistory — single source of truth
               return getScreenCoords(telemetry.position.x, telemetry.position.y);
             })();

@@ -28,6 +28,7 @@ from backend.api.routes.data.events import router as events_router
 from backend.api.routes.data.telemetry import router as telemetry_router
 from backend.api.routes.ecom import ecom_router
 from backend.api.routes import amr_routes
+from backend.api.routes.store_orders import router as store_orders_router
 
 from backend.stations.asrs.asrs_singleton import asrs_controller
 from backend.websockets.assembly_broadcaster import hydraulic_broadcaster
@@ -89,6 +90,7 @@ app.include_router(events_router)
 app.include_router(telemetry_router)
 app.include_router(ecom_router)
 app.include_router(amr_routes.router)
+app.include_router(store_orders_router)
 
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────

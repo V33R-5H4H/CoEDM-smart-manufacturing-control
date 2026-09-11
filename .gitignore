@@ -56,8 +56,8 @@ stitch_designs/
 /actions-runner/
 /initdb/
 
-frontend/diagrams
 
+frontend/diagrams
 # Misc
 *.zip
 *.exe
