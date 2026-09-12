@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoEDM Smart Manufacturing Control Presentation</title>
+    <!-- Reveal.js core CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.css">
+    
+    <!-- Google Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="reveal">
+        <!-- Global Header -->
+        <div id="global-header">
+            <span>CoEDM Smart Manufacturing Central Control</span>
+            <span>BVM Engineering College</span>
+        </div>
+
+        <!-- Slides Container -->
+        <div class="slides">
+
+            <!-- Slide 1: Title Cover -->
+            <section>
+                <div style="text-align: center; margin-top: 50px;">
+                    <div style="display: inline-block; background: rgba(217, 119, 6, 0.08); border: 1px solid rgba(217, 119, 6, 0.2); padding: 6px 14px; border-radius: 20px; font-size: 0.65em; font-weight: 600; color: var(--primary-color); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 25px; font-family: var(--font-mono);">
+                        BVM Engineering College &bull; Centre of Excellence in Digital Manufacturing
+                    </div>
+                    <h1 style="font-size: 2.2em; line-height: 1.2; margin-bottom: 20px; color: var(--text-color); font-weight: 800;">
+                        Smart Manufacturing Line<br>
+                        <span style="color: var(--primary-color);">Centralized Control HMI Platform</span>
+                    </h1>
+                    <p style="font-size: 1.05em; font-weight: 500; color: var(--text-light); margin-bottom: 40px;">
+                        Full-Stack Real-Time Industrial Integration, Telemetry Logging, and E-Commerce Dispatching
+                    </p>
+                    
+                    <div style="display: inline-block; background: var(--bg-secondary); padding: 15px 30px; border-radius: 8px; text-align: left; border: 1px solid var(--border-color); max-width: 550px; box-shadow: 0 4px 6px rgba(0,0,0,0.03);">
+                        <p style="margin: 0; font-size: 0.7em; line-height: 1.6; color: var(--text-light); font-family: var(--font-mono);">
+                            <strong>Project ID:</strong> 2026.05.1 &nbsp;|&nbsp; <strong>Version:</strong> v4.3.0-CI-DEPLOYED<br>
+                            <strong>Core Stack:</strong> FastAPI + React 18 + TimescaleDB + OPC-UA/Modbus<br>
+                            <strong>HMI Console:</strong> Vallabh Vidyanagar, Anand, Gujarat, India
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 2: Executive Summary -->
+            <section>
+                <h2>1. Executive Summary</h2>
+                <p style="font-size: 1.05em; margin-bottom: 25px; color: var(--text-light); line-height: 1.6;">
+                    The **CoEDM Smart Manufacturing Control Software** unifies 7 heterogeneous machines under a single browser-accessible HMI portal, replacing individual manual PLC terminals with a single centralized software layer.
+                </p>
+
+                <div class="grid-2col">
+                    <div class="info-card accent" style="border-left-color: #ef4444; margin-bottom: 0;">
+                        <h4 style="color: #b91c1c; font-size: 1.1em;"><span class="material-icons" style="font-size: 18px; vertical-align: middle;">cancel</span> Before: Factory Floor Silos</h4>
+                        <ul style="font-size: 0.88em; margin: 0; padding-left: 15px; line-height: 1.6; color: var(--text-light);">
+                            <li>Operators walked to separate physical PLC screens to issue commands.</li>
+                            <li>No historic data logging; vibration sensors lacked trend analysis.</li>
+                            <li>No software dispatch; AMRs required manual coordination.</li>
+                            <li>Safety curtains acted as local cut-offs; lacked HMI lockouts and notifications.</li>
+                        </ul>
+                    </div>
+
+                    <div class="info-card accent" style="border-left-color: #10b981; margin-bottom: 0;">
+                        <h4 style="color: #065f46; font-size: 1.1em;"><span class="material-icons" style="font-size: 18px; vertical-align: middle;">check_circle</span> After: Unified Automation Layer</h4>
+                        <ul style="font-size: 0.88em; margin: 0; padding-left: 15px; line-height: 1.6; color: var(--text-light);">
+                            <li>Single, secure web HMI for all stations on the local network.</li>
+                            <li>TimescaleDB time-series storage for 10Hz sensor data.</li>
+                            <li>E-Commerce integration: customer purchases trigger physical shuttle retrieval.</li>
+                            <li>Intelligent safety lockout overlay disables controls instantly during faults.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 3: Problem Statement -->
+            <section>
+                <h2>2. Shop Floor Challenges</h2>
+                <p style="font-size: 1.05em; margin-bottom: 20px; color: var(--text-light);">
+                    Heterogeneous factory floors run on disjointed hardware channels. The platform was designed to address these core engineering issues:
+                </p>
+
+                <table class="custom-table" style="font-size: 0.88em; margin-top: 0;">
+                    <thead>
+                        <tr>
+                            <th>Operations Area</th>
+                            <th>Industrial Bottleneck</th>
+                            <th>Centralized Control Solution</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>AS/RS Logistics</strong></td>
+                            <td>Manual stock checking and tracking. Risk of orphaned PLC runs.</td>
+                            <td>DB-First storage transaction. Keeps DB + PLC states synchronized.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>CNC Telemetry</strong></td>
+                            <td>Vibration dashboards with no persistent logging or alarm hooks.</td>
+                            <td>TimescaleDB hypertables for continuous accelerometer logging.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>AMR Navigation</strong></td>
+                            <td>AMRs navigation stack operates without centralized control.</td>
+                            <td>HMI dispatch coordinates. Maps coordinates to screen layout.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Safety Curtains</strong></td>
+                            <td>Local physical alarms do not block web command overrides.</td>
+                            <td>Safety curtain interrupt triggers database lockouts and visual HUD overlays.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Slide 4: Key Project Metrics -->
+            <section>
+                <h2>Key Project Metrics</h2>
+                <p style="font-size: 1.05em; margin-bottom: 20px; color: var(--text-light);">Operational size of the integrated digital factory line at BVM:</p>
+
+                <div class="grid-3col" style="margin-bottom: 20px;">
+                    <div class="metric-card">
+                        <div class="metric-value">7</div>
+                        <div class="metric-label">Heterogeneous Stations</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">4</div>
+                        <div class="metric-label">Industrial Protocols</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">210</div>
+                        <div class="metric-label">AS/RS Storage Slots</div>
+                    </div>
+                </div>
+                <div class="grid-3col">
+                    <div class="metric-card">
+                        <div class="metric-value">60fps</div>
+                        <div class="metric-label">Axis Animation Speed</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">40+</div>
+                        <div class="metric-label">REST API Endpoints</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">80%</div>
+                        <div class="metric-label">WS Bandwidth Saved</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 5: System Architecture Diagram -->
+            <section>
+                <h2>3. System Architecture</h2>
+                <p style="font-size: 1.05em; margin-bottom: 15px; color: var(--text-light);">The three-tier framework decouples low-level industrial drivers from client-side visual interactions:</p>
+                <div class="mermaid-container">
+                    <pre class="mermaid">
+graph TD
+    subgraph Client ["Tier 1 - Presentation (React HMI)"]
+        UI["React 18 SPA (Vite)"]
+        wsCache["wsCache.js (State Cache)"]
+        Charts["Recharts SVG Visuals"]
+    end
+
+    subgraph Backend ["Tier 2 - App Core (FastAPI)"]
+        API["FastAPI REST API"]
+        WS["WebSocket Broadcasters"]
+        Alarm["Alarm Manager (Singleton)"]
+        Workflow["Workflow Engine"]
+    end
+
+    subgraph DB ["Tier 3 - Data Layer (PostgreSQL)"]
+        PG["PostgreSQL 15 (Relational)"]
+        TS["TimescaleDB (Hypertables)"]
+    end
+
+    subgraph HW ["Factory Floor Hardware"]
+        ASRS["AS/RS (OPC-UA)"]
+        CNC["MIRAC/TRIAC CNC (OPC-UA+Modbus)"]
+        Press["Assembly Press (OPC-UA)"]
+        AMR["AMR (Modbus TCP)"]
+        Cobot["TM Cobot (Raw TCP/TMSCT)"]
+    end
+
+    UI <-->|HTTP REST & WebSockets| API
+    UI <-->|WebSockets Delta| WS
+    API <-->|SQLAlchemy ORM| PG
+    WS <-->|SQLAlchemy ORM| PG
+    API -->|Write Telemetry| TS
+    API --> ASRS
+    WS --> CNC
+    API --> Press
+    API --> AMR
+    API --> Cobot
+                    </pre>
+                </div>
+            </section>
+
+            <!-- Slide 6: Three-Tier Architecture Details -->
+            <section>
+                <h2>Three-Tier Architecture</h2>
+                <p style="font-size: 1.05em; margin-bottom: 15px; color: var(--text-light);">Decoupled boundaries provide high performance and guard low-level PLCs:</p>
+                
+                <table class="custom-table" style="font-size: 0.82em; margin-top: 0;">
+                    <thead>
+                        <tr>
+                            <th>Layer</th>
+                            <th>What was used</th>
+                            <th>How it was used</th>
+                            <th>How it is helpful</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Tier 1: HMI</strong></td>
+                            <td>React 18, Vite, Tailwind CSS, Recharts SVG</td>
+                            <td>Maintains global status via <code>wsCache.js</code>. Bypasses React updates for 60fps animations.</td>
+                            <td>Prevents UI freeze and HMI lag during high-frequency data streams.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tier 2: Core</strong></td>
+                            <td>FastAPI (Python 3.11), <code>asyncio</code></td>
+                            <td>Runs asynchronous loops for connection health and serializes gateway reads.</td>
+                            <td>Handles hundreds of telemetry signals concurrently without blocking.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tier 3: DB</strong></td>
+                            <td>PostgreSQL 15, TimescaleDB extension</td>
+                            <td>SQL transactions coordinate with PLC states; sensor telemetry writes to partitioned hypertables.</td>
+                            <td>Guarantees data integrity and ensures rapid historical index searches.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Slide 7: Communication Protocols -->
+            <section>
+                <h2>4. Communication Protocols</h2>
+                <p style="font-size: 1.05em; margin-bottom: 15px; color: var(--text-light);">How the central platform bridges and coordinates heterogeneous industrial hardware:</p>
+
+                <table class="custom-table" style="font-size: 0.8em; margin-top: 0;">
+                    <thead>
+                        <tr>
+                            <th>Protocol</th>
+                            <th>What was used</th>
+                            <th>How it was used</th>
+                            <th>How it is helpful</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge opcua">OPC-UA</span></td>
+                            <td><code>asyncua</code> Client</td>
+                            <td>Resolves tags, subscribes to LED changes, and sends 500ms command pulses to PLCs.</td>
+                            <td>Standardizes machine controls, removing the need for manual HMI walks.</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge modbus">Modbus TCP</span></td>
+                            <td><code>pymodbus</code>, gateway singletons</td>
+                            <td>Polls vibration registers via a shared gateway. Dispatches navigation targets to the AMR.</td>
+                            <td>Coordinates low-cost register-based sensors and mobile robots.</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge tcp">Raw TCP</span></td>
+                            <td>Socket streams, Techman TMSCT</td>
+                            <td>Wraps movement command arrays inside script packets containing custom XOR checksums.</td>
+                            <td>Enables direct script execution on the TM Cobot from the central server.</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge websocket">Websocket</span></td>
+                            <td>FastAPI WebSockets, deep diff</td>
+                            <td>Transmits only the differences (delta frames) to client HMI browsers every 100ms.</td>
+                            <td>Saves local network bandwidth and reduces client parsing loads.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Slide 8: Station Deep Dive Intro -->
+            <section>
+                <h2>5. Station Deep Dive</h2>
+                <p style="font-size: 1.05em; margin-bottom: 25px; color: var(--text-light);">
+                    Detailed technical inspection of station control loops, telemetry pipelines, and integration logic.
+                </p>
+
+                <div class="grid-3col">
+                    <div class="info-card accent" style="border-left-color: var(--primary-color);">
+                        <h4 style="font-size: 1.05em;">AS/RS Storage Rack</h4>
+                        <p style="font-size: 0.85em; margin: 0; line-height: 1.6; color: var(--text-light);">
+                            35 bins x 6 compartments (210 slots) with real-time X/Y shuttle tracking and safety curtain alarms.
+                        </p>
+                    </div>
+                    <div class="info-card accent" style="border-left-color: var(--opcua-color);">
+                        <h4 style="font-size: 1.05em;">Smart CNC & Vibration</h4>
+                        <p style="font-size: 0.85em; margin: 0; line-height: 1.6; color: var(--text-light);">
+                            Lathe & Milling machines with 3-axis spindle bearing accelerometers read via Modbus TCP.
+                        </p>
+                    </div>
+                    <div class="info-card accent" style="border-left-color: var(--modbus-color);">
+                        <h4 style="font-size: 1.05em;">Assembly & Logistics</h4>
+                        <p style="font-size: 0.85em; margin: 0; line-height: 1.6; color: var(--text-light);">
+                            Hydraulic press vice clamps and piston displacement + AMR floor path navigation mapping.
+                        </p>
+                    </div>
+                </div>
+                
+                <p style="font-size: 0.85em; text-align: center; color: var(--text-light); margin-top: 40px; font-family: var(--font-mono);">
+                    (Use the DOWN arrow key to inspect each station's technical details)
+                </p>
+            </section>
+
+            <!-- Slide 8.1: AS/RS DB-First Transaction Model -->
+            <section>
+                <h3>5.1 AS/RS Storage Rack Integration</h3>
+                <p style="font-size: 1.02em; margin-bottom: 12px; color: var(--text-light);">
+                    The Automated Storage and Retrieval System unifies a 210-slot rack shuttle grid under a database-first transaction model. The motorized warehouse carriage is driven by two AC induction motors controlled by a Siemens S7-1200 PLC, utilizing absolute rotary encoders to trace exact carriage millimeter coordinate positions.
+                </p>
+
+                <!-- Custom Visual Workflow Board -->
+                <div class="flow-board">
+                    <div class="flow-step-card active">
+                        <div class="flow-step-number">01</div>
+                        <div class="flow-step-title">Validate</div>
+                        <div class="flow-step-desc">Verify slot availability and inventory state inside PostgreSQL.</div>
+                    </div>
+                    <div class="flow-arrow">➔</div>
+                    <div class="flow-step-card">
+                        <div class="flow-step-number">02</div>
+                        <div class="flow-step-title">Begin</div>
+                        <div class="flow-step-desc">Open session context and lock relational slot rows.</div>
+                    </div>
+                    <div class="flow-arrow">➔</div>
+                    <div class="flow-step-card">
+                        <div class="flow-step-number">03</div>
+                        <div class="flow-step-title">Write</div>
+                        <div class="flow-step-desc">Pulse target location tag to PLC node via OPC-UA client.</div>
+                    </div>
+                    <div class="flow-arrow">➔</div>
+                    <div class="flow-step-card">
+                        <div class="flow-step-number">04</div>
+                        <div class="flow-step-title">Watch</div>
+                        <div class="flow-step-desc">Poll PLC complete status tag at 10Hz to detect physical arrival.</div>
+                    </div>
+                    <div class="flow-arrow">➔</div>
+                    <div class="flow-step-card">
+                        <div class="flow-step-number">05</div>
+                        <div class="flow-step-title">Commit</div>
+                        <div class="flow-step-desc">Record storage audits and commit database changes.</div>
+                    </div>
+                </div>
+
+                <table class="custom-table" style="font-size: 0.85em; margin: 0;">
+                    <thead>
+                        <tr>
+                            <th>What was used</th>
+                            <th>How it was used</th>
+                            <th>How it is helpful</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>OPC-UA Tag Writes & SQL Transaction blocks</strong></td>
+                            <td>Pulsed shuttle target tags within active SQLAlchemy transaction boundaries, waiting for PLC execution signals before committing database changes.</td>
+                            <td>Eliminates orphaned mechanical commands and prevents the database registry from mismatching the physical stock.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Slide 8.2: CNC Spindle Vibration Analytics -->
+            <section>
+                <h3>5.2 CNC Spindle Vibration Analytics</h3>
+                <p style="font-size: 1.02em; margin-bottom: 12px; color: var(--text-light);">
+                    VibIT vibration sensors are physically bolted to the main spindle housing of the MIRAC Lathe and TRIAC Mill to monitor bearing wear and tool integrity. The sensor internally processes high-frequency analog waveforms into a root-mean-square velocity ($V_{RMS}$) in units of $g$ RMS:
+                </p>
+
+                <!-- Custom Threshold alert tiles -->
+                <div class="threshold-grid">
+                    <div class="threshold-tile nominal">
+                        <div class="threshold-header">
+                            <span class="threshold-badge nominal">Nominal</span>
+                            <span class="threshold-value">&lt; 0.05 g</span>
+                        </div>
+                        <p class="threshold-desc">Normal spindle operation. Healthy vibration envelope. Standard machining speeds are allowed.</p>
+                    </div>
+                    <div class="threshold-tile warning">
+                        <div class="threshold-header">
+                            <span class="threshold-badge warning">Warning</span>
+                            <span class="threshold-value">0.05 - 0.12 g</span>
+                        </div>
+                        <p class="threshold-desc">Degraded spindle bearing state or tool wear. Logs warning alert events and flashes status overlays on the HMI.</p>
+                    </div>
+                    <div class="threshold-tile critical">
+                        <div class="threshold-header">
+                            <span class="threshold-badge critical">Critical Lockout</span>
+                            <span class="threshold-value">&gt; 0.12 g</span>
+                        </div>
+                        <p class="threshold-desc">Critical threshold. Sends cycle stop pulse directly to CNC OPC-UA tag and blocks further HMI control inputs.</p>
+                    </div>
+                </div>
+
+                <table class="custom-table" style="font-size: 0.85em; margin: 0;">
+                    <thead>
+                        <tr>
+                            <th>What was used</th>
+                            <th>How it was used</th>
+                            <th>How it is helpful</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Modbus TCP Singletons & RLock serialization</strong></td>
+                            <td>Funneled multi-node register reads through a class-level registry client, executing queries sequentially with word-swapped float32 decoding.</td>
+                            <td>Allows continuous telemetry reads without causing socket connection drops on physical VibIT gateways.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Slide 8.3: CNC Machine HMI View & React Bypass -->
+            <section>
+                <h3>5.2 CNC HMI View & React Bypass</h3>
+                <p style="font-size: 1.02em; margin-bottom: 15px; color: var(--text-light);">
+                    Visualizing 60fps tool carriage shifts and workpiece spins without browser bottlenecks:
+                </p>
+
+                <!-- Custom Comparative Visual Grid -->
+                <div class="comparison-grid">
+                    <div class="comparison-card left-side">
+                        <h4 class="comparison-header">
+                            <span class="material-icons" style="color:#ef4444;">cancel</span> Standard React State
+                        </h4>
+                        <ul class="comparison-list">
+                            <li>Updates state variables upon receiving 10Hz OPC-UA WebSocket coordinates.</li>
+                            <li>Triggers continuous Virtual DOM reconciliations.</li>
+                            <li>Causes heavy CPU recalculations, freezing HMI browser interactions.</li>
+                            <li>Renders animations with noticeable visual stutter.</li>
+                        </ul>
+                    </div>
+                    <div class="comparison-card right-side">
+                        <h4 class="comparison-header">
+                            <span class="material-icons" style="color:#10b981;">check_circle</span> Direct DOM Bypass
+                        </h4>
+                        <ul class="comparison-list">
+                            <li>Bypasses state reconciliation during active machining cycles.</li>
+                            <li>Queries incoming coordinate strings directly from memory cache.</li>
+                            <li>Applies translation values directly to SVG nodes using <code>requestAnimationFrame</code>.</li>
+                            <li>Smooths raw telemetry points using a critically-damped LERP function.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <table class="custom-table" style="font-size: 0.85em; margin: 0;">
+                    <thead>
+                        <tr>
+                            <th>What was used</th>
+                            <th>How it was used</th>
+                            <th>How it is helpful</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong><code>requestAnimationFrame</code> & direct DOM refs</strong></td>
+                            <td>Bypassed React state updates during active cycles, applying transform translate attributes directly to SVG nodes using spring interpolation.</td>
+                            <td>Eliminates visual stutter, keeping animations running smoothly at 60fps.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Slide 8.4: Hydraulic Press Fitting & Interlocks -->
+            <section>
+                <h3>5.3 Hydraulic Press Fitting & Interlocks</h3>
+                <p style="font-size: 1.02em; margin-bottom: 12px; color: var(--text-light);">
+                    Press-fitting bearings and shafts onto workpieces using double-acting hydraulic pressure valves. Press displacements are read via analog linear encoders mapped to PLC registers:
+                </p>
+
+                <!-- Custom Interlock Flow Infographic -->
+                <div class="interlock-flow-container">
+                    <div class="interlock-flow-row">
+                        <div class="interlock-flow-node">Start Press Cycle</div>
+                        <div class="interlock-flow-arrow">➔</div>
+                        <div class="interlock-flow-node pass">Vice Closed? (Pressure Check)</div>
+                        <div class="interlock-flow-arrow">➔</div>
+                        <div class="interlock-flow-node pass">Light Curtain Clear? (Buzzer Check)</div>
+                        <div class="interlock-flow-arrow">➔</div>
+                        <div class="interlock-flow-node">Extend Cylinder (fit bearings)</div>
+                    </div>
+                    <div style="display:flex; justify-content: center; margin: 5px 0; color:#ef4444; font-weight:bold; font-size:0.8em; font-family:var(--font-mono);">
+                        ▲ IF ANY CHECK FAILS: SYSTEM FAULTS & BUZZER ACTIVE (LOCKOUT WEB INPUT)
+                    </div>
+                </div>
+
+                <table class="custom-table" style="font-size: 0.85em; margin: 0;">
+                    <thead>
+                        <tr>
+                            <th>What was used</th>
+                            <th>How it was used</th>
+                            <th>How it is helpful</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>OPC-UA tag monitors & visual HUD blockouts</strong></td>
+                            <td>Checked vice clamp and displacement coordinates continuously, overriding and locking user command inputs when a safety curtain breach was active.</td>
+                            <td>Ensures operational safety on the shop floor and prevents physical machine damage from overlapping command dispatches.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Slide 8.5: AMR Floor Map Dispatch -->
+            <section>
+                <h3>5.4 AMR Navigation & Floor Map</h3>
+                <p style="font-size: 1.02em; margin-bottom: 12px; color: var(--text-light);">
+                    Autonomous Mobile Robots coordinate transport routes between 7 station coordinate zones in real-time:
+                </p>
+
+                <div class="grid-2col" style="margin-bottom: 15px; gap: 20px;">
+                    <div class="info-card accent" style="margin-bottom: 0;">
+                        <h4 style="font-size: 1.05em;"><span class="material-icons" style="font-size:18px; vertical-align:middle; color:var(--primary-color);">near_me</span> Routing & Coordinates</h4>
+                        <ul style="font-size: 0.82em; margin: 0; padding-left: 18px; line-height: 1.65; color: var(--text-light);">
+                            <li><strong>Station coordinates:</strong> Zone coordinates (Home, ASRS, Lathe, Mill, Press, Inspection, Testing) mapped to physical factory coordinates in meters.</li>
+                            <li><strong>Arrival check:</strong> Radial threshold math determines when target coordinates are reached:
+                                <code style="font-size:0.9em;">hypot(x1 - x2, y1 - y2) &lt; 0.25m</code>.
+                            </li>
+                            <li><strong>Interpolation:</strong> Plots in-transit coordinates dynamically onto HMI floorplans using weighted distance calculations.</li>
+                        </ul>
+                    </div>
+
+                    <div class="info-card accent" style="border-left-color: var(--modbus-color); margin-bottom: 0;">
+                        <h4 style="font-size: 1.05em;"><span class="material-icons" style="font-size:18px; vertical-align:middle; color:var(--modbus-color);">power</span> Connection Management</h4>
+                        <ul style="font-size: 0.82em; margin: 0; padding-left: 18px; line-height: 1.65; color: var(--text-light);">
+                            <li><strong>Manual connect:</strong> Connections are established via HMI triggers rather than at server startup.</li>
+                            <li><strong>Failure protection:</strong> Prevents startup loops if the AMR is powered off or charging.</li>
+                            <li><strong>Reconnect backoff:</strong> Attempts up to 3 reconnection loops with 1-second backoffs before raising alarm events.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <table class="custom-table" style="font-size: 0.85em; margin: 0;">
+                    <thead>
+                        <tr>
+                            <th>What was used</th>
+                            <th>How it was used</th>
+                            <th>How it is helpful</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Modbus coordinates & Euclidean checks</strong></td>
+                            <td>Calculated real-world coordinates and dispatched navigation calls over Modbus TCP, plotting the path onto the SVG map.</td>
+                            <td>Exposes live robot locations on the HMI and automates station handoffs.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Slide 8.6: TM Cobot Raw TCP Driver -->
+            <section>
+                <h3>5.5 TM Cobot Raw TCP Driver</h3>
+                <p style="font-size: 1.02em; margin-bottom: 12px; color: var(--text-light);">
+                    The TM Collaborative Robot handles workpiece pick-and-place loads using precise axis coordinate registers. Communication uses raw socket command packages:
+                </p>
+
+                <!-- Custom Packet Builder Breakdown Block -->
+                <div class="packet-container">
+                    <div class="packet-row">
+                        <div class="packet-segment header">Header Token ($TMSCT)</div>
+                        <div class="packet-segment length">Length (Bytes)</div>
+                        <div class="packet-segment id">Command ID</div>
+                        <div class="packet-segment script">Script Code (e.g., P1_PICKUP)</div>
+                        <div class="packet-segment checksum">XOR Checksum (*XX)</div>
+                    </div>
+                    <div class="packet-legend">
+                        <span>Starts Frame</span>
+                        <span>Length of Payload</span>
+                        <span>Validation Tracker</span>
+                        <span>Pick/Place Axis Coordinates</span>
+                        <span>XOR Checksum byte</span>
+                    </div>
+                </div>
+
+                <table class="custom-table" style="font-size: 0.85em; margin: 0;">
+                    <thead>
+                        <tr>
+                            <th>What was used</th>
+                            <th>How it was used</th>
+                            <th>How it is helpful</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Raw TCP Socket Streams</strong></td>
+                            <td>Calculated XOR byte checksums and wrote script commands directly to port 5890 sockets, parsing return confirmation packets.</td>
+                            <td>Allows direct, script-based cobot movement triggers without manual pendant overrides.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Slide 9: WebSocket Delta Protocol -->
+            <section>
+                <h2>6. WebSocket Delta Protocol</h2>
+                <p style="font-size: 1.02em; margin-bottom: 15px; color: var(--text-light);">
+                    State change payloads are optimized using snapshot-delta frames to minimize network overhead on the local factory LAN:
+                </p>
+
+                <!-- Custom Comparative Visual Grid for WebSockets -->
+                <div class="comparison-grid">
+                    <div class="comparison-card left-side" style="border-top-color: var(--websocket-color);">
+                        <h4 class="comparison-header">
+                            <span class="material-icons" style="color:var(--websocket-color);">history</span> Standard Snapshot Payload
+                        </h4>
+                        <ul class="comparison-list">
+                            <li>Sent immediately on initial client WebSocket handshake connection.</li>
+                            <li>Contains complete system state records and inventory maps.</li>
+                            <li>Payload size is ~3.2 KB.</li>
+                            <li>Useful for aligning states at launch, but expensive for frequent updates.</li>
+                        </ul>
+                    </div>
+                    <div class="comparison-card right-side" style="border-top-color: #10b981;">
+                        <h4 class="comparison-header">
+                            <span class="material-icons" style="color:#10b981;">flash_on</span> WebSocket Delta Update
+                        </h4>
+                        <ul class="comparison-list">
+                            <li>Computes deep state changes every 100ms on the backend.</li>
+                            <li>Sends *only* changed key-value pairs (deltas) over the socket.</li>
+                            <li>Payload size is reduced to ~0.2 KB (93% compression).</li>
+                            <li>Saves up to 80% network bandwidth and speeds up client JSON parses.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <table class="custom-table" style="font-size: 0.85em; margin: 0;">
+                    <thead>
+                        <tr>
+                            <th>What was used</th>
+                            <th>How it was used</th>
+                            <th>How it is helpful</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>FastAPI Websockets & JSON delta diffs</strong></td>
+                            <td>Compared current telemetry variables with last broadcast frames, sending only changed fields using fast <code>orjson</code> serializations.</td>
+                            <td>Prevents network congestion and HMI visual lag, keeping client HMI performance stable.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Slide 10: TimescaleDB Time-Series Model -->
+            <section>
+                <h2>7. TimescaleDB Time-Series Model</h2>
+                <p style="font-size: 1.02em; margin-bottom: 20px; color: var(--text-light);">
+                    High-frequency sensor data is stored efficiently by combining relational models with partitioned hypertables:
+                </p>
+
+                <div class="grid-2col" style="margin-bottom: 20px; gap: 20px;">
+                    <div class="info-card accent" style="border-left-color: var(--modbus-color); margin-bottom: 0;">
+                        <h4 style="font-size: 1.05em;"><span class="material-icons" style="font-size:18px; vertical-align:middle; color:var(--modbus-color);">storage</span> Database Partitioning</h4>
+                        <ul style="font-size: 0.85em; margin: 0; padding-left: 18px; line-height: 1.65; color: var(--text-light);">
+                            <li><strong>Hypertables:</strong> Partitions high-frequency telemetry records (such as <code>vibit_readings</code>) based on timestamp intervals.</li>
+                            <li><strong>Interval chunking:</strong> Configured for 1-day partitions to align memory maps and index allocations.</li>
+                            <li><strong>Metadata tables:</strong> Standard PostgreSQL tables manage relational entities (users, orders, machines).</li>
+                        </ul>
+                    </div>
+
+                    <div class="info-card accent" style="border-left-color: var(--primary-color); margin-bottom: 0;">
+                        <h4 style="font-size: 1.05em;"><span class="material-icons" style="font-size:18px; vertical-align:middle; color:var(--primary-color);">analytics</span> Operational Value</h4>
+                        <ul style="font-size: 0.85em; margin: 0; padding-left: 18px; line-height: 1.65; color: var(--text-light);">
+                            <li><strong>Index scale:</strong> Chunking indexes prevents DB memory swaps and leg updates as tables grow.</li>
+                            <li><strong>Timescale queries:</strong> Enables rapid queries for historical vibration trends and average equipment performance.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <table class="custom-table" style="font-size: 0.85em; margin: 0;">
+                    <thead>
+                        <tr>
+                            <th>What was used</th>
+                            <th>How it was used</th>
+                            <th>How it is helpful</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>TimescaleDB Hypertables</strong></td>
+                            <td>Converted telemetry records to hypertables using the <code>create_hypertable</code> command, partitioning records by timestamp.</td>
+                            <td>Avoids database slowdowns and index bloat, maintaining fast queries under high time-series workloads.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Slide 11: E-Commerce Customer Portal -->
+            <section>
+                <h2>8. Customer Order Integration</h2>
+                <p style="font-size: 1.02em; margin-bottom: 20px; color: var(--text-light);">
+                    Bridges customer checkouts to mechanical operations through priority-based queues:
+                </p>
+
+                <div class="grid-2col" style="margin-bottom: 20px; gap: 20px;">
+                    <div class="info-card accent" style="border-left-color: var(--primary-color); margin-bottom: 0;">
+                        <h4 style="font-size: 1.05em;"><span class="material-icons" style="font-size:18px; vertical-align:middle; color:var(--primary-color);">shopping_cart</span> The Fulfillment Chain</h4>
+                        <ul style="font-size: 0.85em; margin: 0; padding-left: 18px; line-height: 1.65; color: var(--text-light);">
+                            <li><strong>Checkout logic:</strong> JWT-authenticated checkouts check item availability in <code>subcompartments</code>.</li>
+                            <li><strong>Queue processing:</strong> Successful orders insert tasks into the <code>retrieval_queue</code> (priority 3).</li>
+                            <li><strong>OPC-UA Trigger:</strong> ASRS shuttle driver reads queue target coordinates and writes OPC-UA store/retrieve calls.</li>
+                        </ul>
+                    </div>
+
+                    <div class="info-card accent" style="border-left-color: var(--opcua-color); margin-bottom: 0;">
+                        <h4 style="font-size: 1.05em;"><span class="material-icons" style="font-size:18px; vertical-align:middle; color:var(--opcua-color);">done_all</span> Security & Verification</h4>
+                        <ul style="font-size: 0.85em; margin: 0; padding-left: 18px; line-height: 1.65; color: var(--text-light);">
+                            <li><strong>Audit Logging:</strong> Logs every shuttle run to `storage_transactions` for audit tracking.</li>
+                            <li><strong>HMI sync:</strong> Broadcasts ecom-order coordinates via Websocket to animate shuttle movements.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <table class="custom-table" style="font-size: 0.85em; margin: 0;">
+                    <thead>
+                        <tr>
+                            <th>What was used</th>
+                            <th>How it was used</th>
+                            <th>How it is helpful</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>JWT auth & PostgreSQL priority queues</strong></td>
+                            <td>Validated user JWT tokens and inserted high-priority tasks into PostgreSQL tables, processed by background shuttle loops.</td>
+                            <td>Bridges retail checkouts directly to physical factory operations, enabling automated product delivery.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Slide 12: Key Engineering Decisions -->
+            <section>
+                <h2>9. Key Engineering Decisions</h2>
+                <p style="font-size: 1.02em; margin-bottom: 20px; color: var(--text-light);">Design trade-offs implemented to maintain physical reliability and software safety:</p>
+
+                <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.8em;">
+                    <div class="info-card" style="padding: 15px 20px; margin: 0;">
+                        <strong>1. Database-First AS/RS Operations</strong>
+                        <p style="margin: 4px 0 0 0; color: var(--text-light); line-height: 1.4;">
+                            PLC write calls reside inside SQLAlchemy database transaction blocks. Commits execute *only* when the hardware completes movements. Ensures database registers never show slots as empty if the mechanical retrieve fails.
+                        </p>
+                    </div>
+                    <div class="info-card" style="padding: 15px 20px; margin: 0; border-left: 4px solid var(--opcua-color);">
+                        <strong>2. Modbus Client Serialization Gateway</strong>
+                        <p style="margin: 4px 0 0 0; color: var(--text-light); line-height: 1.4;">
+                            The physical VibIT gateway accepts only one concurrent socket link. Multi-threaded sensor reads are funneled through a registry class and serialized using an `RLock`, preventing connection drops.
+                        </p>
+                    </div>
+                    <div class="info-card" style="padding: 15px 20px; margin: 0; border-left: 4px solid var(--modbus-color);">
+                        <strong>3. Direct-DOM SVG Rendering Bypass</strong>
+                        <p style="margin: 4px 0 0 0; color: var(--text-light); line-height: 1.4;">
+                            Vibration updates arrive at 10Hz. Binding coordinates to React state creates jerking during page reconciliation. Rendering coordinates directly to the DOM using `requestAnimationFrame` maintains stable UI updates.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 13: Production Deployment -->
+            <section>
+                <h2>10. DevOps & Docker Deployment</h2>
+                <p style="font-size: 1.02em; margin-bottom: 15px; color: var(--text-light);">Orchestrating containerized systems with health-checked dependency startup chains:</p>
+
+                <div class="grid-2col" style="margin-bottom: 20px;">
+                    <div style="font-size: 0.85em; display: flex; flex-direction: column; gap: 8px;">
+                        <div class="info-box" style="margin: 0;">
+                            <strong>TimescaleDB (db):</strong><br>
+                            Starts first, registering health states via the <code>pg_isready</code> command check.
+                        </div>
+                        <div class="info-box" style="border-left-color: var(--opcua-color); margin: 0;">
+                            <strong>FastAPI (backend):</strong><br>
+                            Waits for DB health validation, runs Alembic migrations, and triggers Uvicorn.
+                        </div>
+                        <div class="info-box" style="border-left-color: var(--modbus-color); margin: 0;">
+                            <strong>Static Nginx (frontend & ecom):</strong><br>
+                            Binds static builds to Nginx. Starts once backend routing responds to ping checks.
+                        </div>
+                    </div>
+
+                    <pre style="margin: 0;"><code style="font-size: 0.74em; background: #ffffff; color: #334155; border: 1px solid var(--border-color); padding: 15px; border-radius: 6px; display: block; line-height: 1.4; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); font-family: var(--font-mono);"># docker-compose.yml (Excerpt)
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coedm"]
+      interval: 5s
+      timeout: 5s
+
+  backend:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy</code></pre>
+                </div>
+
+                <table class="custom-table" style="font-size: 0.85em; margin: 0;">
+                    <thead>
+                        <tr>
+                            <th>What was used</th>
+                            <th>How it was used</th>
+                            <th>How it is helpful</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Docker Compose + pg_isready Healthchecks</strong></td>
+                            <td>Binds startup sequencing of FastAPI and Nginx to healthy database check statuses.</td>
+                            <td>Prevents backend migration crashes and ensures unified boots across offline factory servers.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Slide 14: Future Roadmap -->
+            <section>
+                <h2>11. Future Roadmap</h2>
+                <p style="font-size: 1.02em; margin-bottom: 25px; color: var(--text-light);">Planned phases to extend centralized digital manufacturing capabilities:</p>
+
+                <div class="grid-3col">
+                    <div class="info-card accent" style="border-top: 4px solid var(--primary-color); border-left: none; margin-bottom: 0;">
+                        <h4 style="font-size: 1.15em; color: var(--primary-color); margin-bottom: 8px;">Q3 2026</h4>
+                        <strong>Vision Inspection:</strong>
+                        <p style="margin: 5px 0 0 0; font-size: 0.85em; line-height: 1.5; color: var(--text-light);">
+                            Integrate computer vision camera nodes. Auto-dispatch QC pass/fail parts using coordinates mapped to the AMR navigation stack.
+                        </p>
+                    </div>
+
+                    <div class="info-card accent" style="border-top: 4px solid var(--primary-color); border-left: none; margin-bottom: 0;">
+                        <h4 style="font-size: 1.15em; color: var(--primary-color); margin-bottom: 8px;">Q4 2026</h4>
+                        <strong>Workflow Loop:</strong>
+                        <p style="margin: 5px 0 0 0; font-size: 0.85em; line-height: 1.5; color: var(--text-light);">
+                            Unify AS/RS, AMR transfer, press fits, and CNC mill runs into an automated manufacturing loop managed by the backend engine.
+                        </p>
+                    </div>
+
+                    <div class="info-card accent" style="border-top: 4px solid var(--primary-color); border-left: none; margin-bottom: 0;">
+                        <h4 style="font-size: 1.15em; color: var(--primary-color); margin-bottom: 8px;">Q1 2027</h4>
+                        <strong>OEE & Analytics:</strong>
+                        <p style="margin: 5px 0 0 0; font-size: 0.85em; line-height: 1.5; color: var(--text-light);">
+                            Add continuous aggregates in TimescaleDB. Display overall equipment metrics and flag predictive maintenance states.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 15: Glossary -->
+            <section>
+                <h2>Glossary</h2>
+                <div style="max-height: 520px; overflow-y: auto; padding-right: 10px;">
+                    <table class="custom-table" style="font-size: 0.85em; margin-top: 0;">
+                        <thead>
+                            <tr>
+                                <th>Term</th>
+                                <th>Meaning</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>AS/RS</strong></td>
+                                <td>Automated Storage and Retrieval System (motorized storage rack shuttles).</td>
+                            </tr>
+                            <tr>
+                                <td><strong>AMR</strong></td>
+                                <td>Autonomous Mobile Robot (wheeled navigators dispatched via Modbus coordinates).</td>
+                            </tr>
+                            <tr>
+                                <td><strong>OPC-UA</strong></td>
+                                <td>Open Platform Communications Unified Architecture (standard industrial protocol).</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Modbus TCP</strong></td>
+                                <td>Register read/write protocol used by VibIT accelerometers and AMRs.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>TMSCT</strong></td>
+                                <td>Techman Script Communication (socket command wrapper with XOR checksums).</td>
+                            </tr>
+                            <tr>
+                                <td><strong>VibIT</strong></td>
+                                <td>Vibration sensor reporting RMS values via Modbus gateways.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>OEE</strong></td>
+                                <td>Overall Equipment Effectiveness (percentage tracking tool utilization).</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Hypertable</strong></td>
+                                <td>TimescaleDB time-partitioned table optimized for large time-series telemetry.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Delta Protocol</strong></td>
+                                <td>WebSocket update system that transmits only changed variable fields.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- Global Footer -->
+        <div id="global-footer">
+            <span>Project ID: 2026.05.1</span>
+            <span>v4.3.0-CI-DEPLOYED</span>
+            <span id="slide-number-display">1 / 15</span>
+        </div>
+    </div>
+
+    <!-- Reveal.js & Mermaid Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/9.3.0/mermaid.min.js"></script>
+    
+    <!-- Custom Script -->
+    <script src="script.js"></script>
+</body>
+</html>
